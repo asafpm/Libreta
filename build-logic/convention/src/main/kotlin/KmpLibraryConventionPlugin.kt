@@ -4,8 +4,10 @@ import org.gradle.api.Project
 import org.gradle.api.plugins.JavaBasePlugin
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
+import pm.asaf.inkpad.buildlogic.CommonPurityCheck
 import pm.asaf.inkpad.buildlogic.InkpadBuild
 import pm.asaf.inkpad.buildlogic.inkpadNamespace
 
@@ -18,6 +20,7 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
         with(target) {
             pluginManager.apply("org.jetbrains.kotlin.multiplatform")
             pluginManager.apply("com.android.kotlin.multiplatform.library")
+            pluginManager.apply(LintConventionPlugin::class.java)
 
             extensions.configure<KotlinMultiplatformExtension> {
                 jvm {
@@ -43,6 +46,15 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
                     targetCompatibility = InkpadBuild.javaVersion
                 }
             }
+
+            val purity =
+                tasks.register<CommonPurityCheck>("checkCommonPurity") {
+                    group = "verification"
+                    description = "Fails on java/javax/android imports in common source sets."
+                    sources.from("src/commonMain/kotlin", "src/commonTest/kotlin")
+                    marker.set(layout.buildDirectory.file("commonPurity/ok"))
+                }
+            tasks.named("check") { dependsOn(purity) }
         }
     }
 }

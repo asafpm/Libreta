@@ -1,0 +1,7 @@
+# Applied on top of detekt's default config (buildUponDefaultConfig = true).
+# Keep this minimal: only list rules whose defaults don't fit the project.
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated:
+      - 'Composable'

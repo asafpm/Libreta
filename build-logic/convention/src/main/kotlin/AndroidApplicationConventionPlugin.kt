@@ -13,6 +13,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
             pluginManager.apply("com.android.application")
+            pluginManager.apply(LintConventionPlugin::class.java)
 
             extensions.configure<ApplicationExtension> {
                 namespace = InkpadBuild.NAMESPACE_ROOT
