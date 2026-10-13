@@ -25,8 +25,12 @@ the file format from its observed structure and sample files).
 
 ## Multiplatform rules (important)
 - Shared modules are Kotlin Multiplatform (KMP). Enabled targets for now:
-  `androidTarget` and `jvm` (jvm only for fast unit tests). An iOS target
-  will be added in a later phase; do not add it yet.
+  Android (via the `com.android.kotlin.multiplatform.library` plugin, which
+  replaces `androidTarget` since AGP 9) and `jvm` (jvm only for fast unit
+  tests). An iOS target will be added in a later phase; do not add it yet.
+- Until an iOS target exists the compiler does not reject JDK APIs in
+  `commonMain`; the `checkCommonPurity` task (part of `check`) enforces the
+  import rule below.
 - Shared code lives in `commonMain`. Use only multiplatform libraries there:
   Okio (file IO, gzip), xmlutil (XML), kotlinx-serialization (settings or
   metadata if needed), kotlinx-coroutines.
