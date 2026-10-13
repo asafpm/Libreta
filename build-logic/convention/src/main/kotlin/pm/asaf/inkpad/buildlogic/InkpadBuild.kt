@@ -13,6 +13,13 @@ object InkpadBuild {
 
     val javaVersion: JavaVersion = JavaVersion.VERSION_17
     val jvmTarget: JvmTarget = JvmTarget.JVM_17
+
+    /** Robolectric touches JDK internals that JDK 17+ no longer exports by default. */
+    val robolectricJvmArgs: List<String> =
+        listOf(
+            "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED",
+            "--enable-native-access=ALL-UNNAMED",
+        )
 }
 
 /** `:core:model` -> `pm.asaf.inkpad.core.model` */

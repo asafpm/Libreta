@@ -16,5 +16,17 @@ gradlePlugin {
             id = libs.plugins.inkpad.kmp.library.get().pluginId
             implementationClass = "KmpLibraryConventionPlugin"
         }
+        register("androidLibrary") {
+            id = libs.plugins.inkpad.android.library.get().pluginId
+            implementationClass = "AndroidLibraryConventionPlugin"
+        }
+        register("androidApplication") {
+            id = libs.plugins.inkpad.android.application.get().pluginId
+            implementationClass = "AndroidApplicationConventionPlugin"
+        }
+        register("androidCompose") {
+            id = libs.plugins.inkpad.android.compose.get().pluginId
+            implementationClass = "AndroidComposeConventionPlugin"
+        }
     }
 }

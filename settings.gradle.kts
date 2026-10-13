@@ -26,3 +26,5 @@ rootProject.name = "inkpad"
 include(":core:model")
 include(":core:format")
 include(":core:geometry")
+include(":android:render")
+include(":android:app")
