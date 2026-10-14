@@ -53,7 +53,7 @@ class DocumentRenderingTest {
 
 /** testdata/ files. */
 object TestDocuments {
-    private val root = File(checkNotNull(System.getProperty("inkpad.testdata")))
+    val root = File(checkNotNull(System.getProperty("inkpad.testdata")))
 
     fun file(path: String): File = File(root, path)
 
@@ -64,12 +64,16 @@ object TestDocuments {
 /**
  * Image backgrounds next to a gzip document: `attach` files are `<document>.<filename>`,
  * `absolute` ones are relative to the document's directory (docs/xopp-format.md §4).
+ * Only files inside testdata/ are used, so results do not depend on the machine.
  */
 class SidecarImages(
     private val document: File,
 ) : BackgroundSource by BackgroundSource.None {
     override fun image(background: Background.Pixmap): Bitmap? =
-        locate(background)?.takeIf { it.isFile }?.let { BitmapFactory.decodeFile(it.path) }
+        locate(background)
+            ?.canonicalFile
+            ?.takeIf { it.isFile && it.startsWith(TestDocuments.root.canonicalFile) }
+            ?.let { BitmapFactory.decodeFile(it.path) }
 
     private fun locate(background: Background.Pixmap): File? {
         val name = background.filename ?: return null
