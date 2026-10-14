@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 package pm.asaf.inkpad.core.geometry
 
 import pm.asaf.inkpad.core.model.CoreModel

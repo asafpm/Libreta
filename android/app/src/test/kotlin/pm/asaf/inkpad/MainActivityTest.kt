@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 package pm.asaf.inkpad
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule

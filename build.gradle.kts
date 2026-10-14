@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 // Declaring every plugin here (apply false) puts them on one classloader, so all
 // modules share the same KGP version instead of the one AGP pulls in transitively.
 plugins {

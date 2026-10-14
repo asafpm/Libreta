@@ -4,8 +4,10 @@
 A native Android handwriting/PDF-annotation app that reads and writes
 Xournal++ `.xopp` files losslessly, with low-latency stylus input.
 Android first; architected so an iOS app can later reuse the core logic.
-Written from scratch (do NOT copy Xournal++ source, which is GPL-2.0; implement
-the file format from its observed structure and sample files).
+Licensed GPL-2.0-or-later (see LICENSE and NOTICE.md). Xournal++ v1.3.8
+(also GPL-2.0-or-later) is the reference implementation for the file format;
+its code and test files may be ported or copied with attribution (a header
+naming the Xournal++ source file, plus an entry in NOTICE.md).
 
 ## Tech stack
 - Kotlin, Gradle Kotlin DSL, version catalog (libs.versions.toml)
@@ -65,6 +67,8 @@ Document → Pages → Layers → Elements
 - Images stored as encoded bytes (PNG/JPEG), decoded only by platform code
 
 ## .xopp format notes (core:format)
+The full specification, with references into the Xournal++ source, is
+`docs/xopp-format.md`. Summary:
 - Gzipped XML; root `<xournal creator=... fileversion="4">`
 - `<page width h>` → `<background type="solid|pdf|pixmap" ...>` → `<layer>`
 - `<stroke tool color="#rrggbbaa" width="w0 w1 w2 ...">x0 y0 x1 y1 ...</stroke>`
@@ -158,6 +162,9 @@ an XCFramework. Build a native iOS app: SwiftUI shell, Metal or Core Graphics
 canvas, Apple Pencil input via UITouch coalesced/predicted touches, PDFKit
 for PDF rendering/export, UIDocument for files. Repeat Phases 2–8 for the
 iOS platform layer only; shared logic is reused as-is.
+Note: because the project is GPL and contains Xournal++-derived code, App
+Store distribution is likely unavailable (its terms are widely considered
+incompatible with the GPL); plan for distribution outside the App Store.
 ✅ Same `testdata/` round-trip tests pass on iOS targets.
 
 ## Working rules for Claude Code
@@ -167,4 +174,8 @@ iOS platform layer only; shared logic is reused as-is.
 - Write tests first for format, model, and geometry logic.
 - Commit at the end of each green sub-step with a descriptive message.
 - Never break .xopp compatibility; when unsure about format details,
-  stop and ask for a sample file rather than guessing.
+  check the Xournal++ v1.3.8 source and its test files first; if they don't
+  settle it, stop and ask for a sample file rather than guessing.
+- Code derived from Xournal++ gets a header line naming the source file and
+  an entry in NOTICE.md. Every source file starts with
+  `// SPDX-License-Identifier: GPL-2.0-or-later`.

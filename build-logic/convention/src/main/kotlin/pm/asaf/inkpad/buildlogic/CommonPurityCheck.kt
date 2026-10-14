@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 package pm.asaf.inkpad.buildlogic
 
 import org.gradle.api.DefaultTask
