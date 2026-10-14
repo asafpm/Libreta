@@ -65,8 +65,10 @@ internal class StrokePath(
     stroke: Element.Stroke,
 ) {
     private val points: PointList = stroke.points
-    private val widths: DoubleList? = stroke.segmentWidths
     val size: Int = points.size
+
+    /** A width for each segment; widths that don't fit the points (a damaged file) are dropped. */
+    private val widths: DoubleList? = stroke.segmentWidths?.takeIf { it.size >= size - 1 }
     val hasPressure: Boolean = widths != null
 
     fun x(index: Int): Double = points.x(index)
@@ -381,7 +383,7 @@ class ErasableStroke(
         path.size < 2 ||
             remaining == listOf(PathParameter(0, 0.0), PathParameter(path.size - 2, 1.0))
 
-    /** Erases what the square of half side [halfSize] at ([x], [y]) covers. Returns whether anything changed. */
+    /** Erases what the square of half side [halfSize] at ([x], [y]) covers. Returns whether anything was left there. */
     fun erase(
         x: Double,
         y: Double,
@@ -403,12 +405,13 @@ class ErasableStroke(
         return remove(near.flatMap { StrokeEraser.intersectWithPaddedBox(path, box, it.first, it.last) })
     }
 
-    /** Removes the sections between each pair of [erased] (sorted, disjoint). Returns whether there were any. */
+    /** Removes the sections between each pair of [erased] (sorted, disjoint). Returns whether any remained. */
     internal fun remove(erased: List<PathParameter>): Boolean {
         if (erased.isEmpty()) return false
+        val before = remaining
         val all = Intervals.complement(erased, PathParameter(0, 0.0), PathParameter(path.size - 2, 1.0))
         remaining = Intervals.intersect(remaining, all)
-        return true
+        return remaining != before
     }
 
     /** The strokes left: one per remaining section (a closed stroke's two ends joined). */

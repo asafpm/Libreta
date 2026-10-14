@@ -18,19 +18,21 @@ import pm.asaf.inkpad.core.geometry.intersects
 import pm.asaf.inkpad.core.model.Bounds
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
+import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PageChange
-import pm.asaf.inkpad.core.model.PenSettings
+import pm.asaf.inkpad.core.model.ToolSettings
 import kotlin.math.roundToInt
 
 /**
- * Writing on a [DocumentView]: input ([InkInput]), wet ink while a stroke is written, and
- * committing it to its page, where it is drawn on top ([PendingInk]) until the page's tiles
- * show it. Its wet ink goes once the page has drawn it for a few frames, so it never
- * flickers; at once if the view moves.
+ * Writing and erasing on a [DocumentView]: input ([InkInput]), wet ink while a stroke is
+ * written, and committing it to its page, where it is drawn on top ([PendingChanges]) until
+ * the page's tiles show it. Its wet ink goes once the page has drawn it for a few frames, so
+ * it never flickers; at once if the view moves. Erasing ([Erasing]) redraws what it changed
+ * right away the same way.
  */
 internal class Inking(
-    view: View,
+    private val view: View,
     private val host: Host,
 ) {
     /** What is shown, once there is a document and a size. */
@@ -52,22 +54,44 @@ internal class Inking(
         fun startGesture(event: MotionEvent)
     }
 
-    var pen = PenSettings()
+    var tools = ToolSettings()
     var fingerDraws = false
     var wetInk: WetInk = WetInk.None
     var onEdit: ((Edit) -> Unit)? = null
 
-    /** Renders committed strokes on the UI thread. */
+    /** Renders committed strokes and changed areas on the UI thread. */
     var renderer: PageRenderer? = null
 
-    private val pending = PendingInk()
+    private val pending = PendingChanges()
     private var wetFramesLeft = 0
     private val predictor: MotionEventPredictor? = runCatching { MotionEventPredictor.newInstance(view) }.getOrNull()
+
+    private val erasing =
+        Erasing(
+            object : Erasing.Host {
+                override fun pageAt(
+                    viewX: Float,
+                    viewY: Float,
+                ): PageMapping? = mappingAt(viewX, viewY)
+
+                override fun page(index: Int): Page = checkNotNull(host.state).renderer.page(index)
+
+                override fun show(
+                    index: Int,
+                    page: Page,
+                    changed: Bounds,
+                ) = showPage(index, page, changed)
+
+                override fun edited(edit: Edit) {
+                    onEdit?.invoke(edit)
+                }
+            },
+        )
 
     val input =
         InkInput(
             object : InkInput.Host {
-                override val pen: PenSettings get() = this@Inking.pen
+                override val tools: ToolSettings get() = this@Inking.tools
                 override val fingerDraws: Boolean get() = this@Inking.fingerDraws
                 override val wetInk: WetInk get() = this@Inking.wetInk
 
@@ -87,12 +111,45 @@ internal class Inking(
                     page: Int,
                     stroke: Element.Stroke,
                 ) = commitStroke(page, stroke)
+
+                override fun startErasing(
+                    deleteStrokes: Boolean,
+                    halfSize: Double,
+                ) = erasing.start(deleteStrokes, halfSize)
+
+                override fun eraseAt(
+                    viewX: Float,
+                    viewY: Float,
+                ) {
+                    erasing.eraseAt(viewX, viewY)
+                    // The cursor moved.
+                    view.invalidate()
+                }
+
+                override fun finishErasing() {
+                    erasing.finish()
+                    view.invalidate()
+                }
             },
         )
 
     /** Records [event] for motion prediction. */
     fun record(event: MotionEvent) {
         predictor?.record(event)
+    }
+
+    /** The stylus hovers: shows where the eraser would erase, if it would. */
+    fun hover(event: MotionEvent) {
+        val eraser = tools.eraser
+        val erases = tools.erases(event, 0)
+        val halfSize =
+            when {
+                !erases || event.actionMasked == MotionEvent.ACTION_HOVER_EXIT -> null
+                eraser.type == EraserType.WHITEOUT -> eraser.width / 2
+                else -> eraser.width
+            }
+        erasing.hover(event.x, event.y, halfSize)
+        view.invalidate()
     }
 
     /** The view moved: wet ink of finished strokes would be out of place. */
@@ -109,15 +166,50 @@ internal class Inking(
         wetInk.clear()
     }
 
-    /** Draws the committed strokes the tiles don't show yet. Returns whether to draw again soon. */
+    /** Draws the changes the tiles don't show yet, and the eraser. Returns whether to draw again soon. */
     fun draw(canvas: Canvas): Boolean {
         val state = host.state
         val painter = renderer
         if (state != null && painter != null) {
-            pending.draw(canvas, state.layout, state.viewport, state.caches, painter, state.renderer::version)
+            val tiles = state.renderer
+            pending.draw(canvas, state.layout, state.viewport, state.caches, painter, tiles::page, tiles::version)
         }
+        erasing.drawCursor(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()
         return wetFramesLeft > 0
+    }
+
+    /**
+     * Shows [pages] (by index) in place of the current ones, e.g. on undo, drawing what
+     * changed until the tiles are re-rendered.
+     */
+    fun showPages(pages: Map<Int, Page>) {
+        val state = host.state ?: return
+        val measurer = renderer?.textMeasurer ?: return
+        for ((index, page) in pages) {
+            val changed = ElementDiff.changedBounds(state.renderer.page(index), page, measurer)
+            if (changed != null) {
+                showPage(index, page, changed)
+            } else {
+                // The renderer still gets the document's page.
+                state.renderer.updatePage(index, page, null, onScreen(state, index))
+            }
+        }
+        // Wet ink of a stroke just undone would still show it.
+        viewportChanged()
+        host.pageChanged()
+    }
+
+    /** Page [index] is now [page], changed within [changed]: drawn from it until the tiles show it. */
+    private fun showPage(
+        index: Int,
+        page: Page,
+        changed: Bounds,
+    ) {
+        val state = host.state ?: return
+        val version = state.renderer.updatePage(index, page, changed, onScreen(state, index))
+        pending.addArea(index, version, changed)
+        host.pageChanged()
     }
 
     /** The page under a view point, placed where the tiles draw it (whole pixels). */
@@ -164,27 +256,9 @@ internal class Inking(
         val before = state.renderer.page(index)
         val page = before.withElementAdded(stroke)
         val version = state.renderer.updatePage(index, page, bounds, onScreen(state, index))
-        pending.add(index, version, stroke, bounds)
+        pending.addStroke(index, version, stroke, bounds)
         wetFramesLeft = WET_INK_FRAMES
         onEdit?.invoke(Edit(listOf(PageChange(index, before, page))))
-        host.pageChanged()
-    }
-
-    /**
-     * Shows [pages] (by index) in place of the current ones, e.g. on undo. Tiles touching what
-     * changed re-render; meanwhile the old ones stand in.
-     */
-    fun showPages(pages: Map<Int, Page>) {
-        val state = host.state ?: return
-        val measurer = renderer?.textMeasurer ?: return
-        for ((index, page) in pages) {
-            val changed = ElementDiff.changedBounds(state.renderer.page(index), page, measurer)
-            // Unchanged-looking pages too: the renderer has the document's pages.
-            state.renderer.updatePage(index, page, changed, onScreen(state, index))
-            pending.clear(index)
-        }
-        // Wet ink of a stroke just undone would still show it.
-        viewportChanged()
         host.pageChanged()
     }
 

@@ -27,12 +27,18 @@ import pm.asaf.inkpad.core.geometry.DocumentLayout
 import pm.asaf.inkpad.core.geometry.Size
 import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
+import pm.asaf.inkpad.core.model.EraserSettings
+import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.Layer
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.StrokeTool
+import pm.asaf.inkpad.core.model.StylusButton
+import pm.asaf.inkpad.core.model.Tool
 import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
@@ -77,6 +83,7 @@ class InkingTest {
     private val caches = RenderCaches(TileCache(Long.MAX_VALUE), Thumbnails(Long.MAX_VALUE))
     private val wetInk = RecordingWetInk()
     private val edits = ArrayList<Pair<Int, Page>>()
+    private val allEdits = ArrayList<Edit>()
     private lateinit var view: DocumentView
 
     @Before
@@ -86,7 +93,10 @@ class InkingTest {
         view.setDocument(pages, caches, { PageRenderer(context) }, RenderThreads(workers = 1, dispatcher, dispatcher))
         view.wetInk = wetInk
         view.pen = PenSettings(Color.of(255, 0, 0), PenSize.THICK)
-        view.onEdit = { edit -> edit.changes.forEach { edits += it.index to it.after } }
+        view.onEdit = { edit ->
+            allEdits += edit
+            edit.changes.forEach { edits += it.index to it.after }
+        }
         view.measure(
             View.MeasureSpec.makeMeasureSpec(WIDTH, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(HEIGHT, View.MeasureSpec.EXACTLY),
@@ -296,16 +306,152 @@ class InkingTest {
         assertEquals(before, viewport)
     }
 
+    /** A vertical sweep at [x] across y = 300 to 500, by [pointer] at each point. */
+    private fun sweep(
+        x: Float,
+        buttons: Int = 0,
+        pointer: (Float, Float) -> Pointer = ::stylus,
+    ) {
+        send(MotionEvent.ACTION_DOWN, pointer(x, 300f), buttons = buttons)
+        for (step in 1..STEPS) send(MotionEvent.ACTION_MOVE, pointer(x, 300f + 200f * step / STEPS), buttons = buttons)
+        send(MotionEvent.ACTION_UP, pointer(x, 500f), buttons = buttons)
+    }
+
+    private fun eraserEnd(
+        x: Float,
+        y: Float,
+    ) = Pointer(0, MotionEvent.TOOL_TYPE_ERASER, x, y)
+
+    /** The top layer's strokes in the last edit. */
+    private fun erasedStrokes(): List<Element.Stroke> =
+        allEdits
+            .last()
+            .changes
+            .single()
+            .after.layers
+            .last()
+            .elements
+            .map { it as Element.Stroke }
+
     @Test
-    fun theEraserEndAndTheStylusButtonDontDraw() {
-        send(MotionEvent.ACTION_DOWN, Pointer(0, MotionEvent.TOOL_TYPE_ERASER, 300f, 400f))
-        send(MotionEvent.ACTION_MOVE, Pointer(0, MotionEvent.TOOL_TYPE_ERASER, 400f, 600f))
-        send(MotionEvent.ACTION_UP, Pointer(0, MotionEvent.TOOL_TYPE_ERASER, 400f, 600f))
-        send(MotionEvent.ACTION_DOWN, stylus(300f, 400f), buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
-        send(MotionEvent.ACTION_MOVE, stylus(400f, 600f), buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
-        send(MotionEvent.ACTION_UP, stylus(400f, 600f), buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
-        assertTrue(edits.isEmpty())
+    fun theEraserEndCutsStrokes() {
+        write(300f, 400f, length = 400f)
+        sweep(500f, pointer = ::eraserEnd)
+        // One edit for the gesture, cutting the stroke in two.
+        assertEquals(2, allEdits.size)
+        val pieces = erasedStrokes()
+        assertEquals(2, pieces.size)
+        val written =
+            allEdits
+                .first()
+                .changes
+                .single()
+                .after
+        assertTrue(pieces.all { it.color == Color.of(255, 0, 0) && it.width == PenSize.THICK.width })
+        assertTrue(
+            allEdits
+                .last()
+                .changes
+                .single()
+                .before === written,
+        )
+        // Nothing to erase: no edit.
+        sweep(900f, pointer = ::eraserEnd)
+        assertEquals(2, allEdits.size)
+    }
+
+    @Test
+    fun holdingTheStylusButtonErasesUnlessTurnedOff() {
+        write(300f, 400f, length = 400f)
+        sweep(500f, buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
+        assertEquals(2, erasedStrokes().size)
         assertEquals(0.0, viewport.offsetY, 0.0)
+
+        view.tools = view.tools.copy(button = StylusButton.NONE)
+        sweep(600f, buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
+        assertEquals(StrokeTool.PEN, erasedStrokes().last().tool)
+        assertEquals(3, erasedStrokes().size)
+    }
+
+    @Test
+    fun theEraserToolDeletesStrokesOrPaintsWhite() {
+        write(300f, 400f, length = 400f)
+        write(300f, 450f, length = 400f)
+        view.tools = view.tools.copy(tool = Tool.ERASER, eraser = EraserSettings(EraserType.DELETE_STROKE))
+        // Just touching the second stroke.
+        send(MotionEvent.ACTION_DOWN, stylus(500f, 455f))
+        send(MotionEvent.ACTION_UP, stylus(500f, 455f))
+        // The first stroke is left as it was.
+        val first =
+            allEdits
+                .first()
+                .changes
+                .single()
+                .after.layers
+                .last()
+                .elements
+                .single()
+        assertTrue(erasedStrokes().single() === first)
+
+        view.tools = view.tools.copy(eraser = EraserSettings(EraserType.WHITEOUT, PenSize.THICK))
+        sweep(500f)
+        val whiteout = erasedStrokes().last()
+        assertEquals(StrokeTool.ERASER, whiteout.tool)
+        assertEquals(Color.of(255, 255, 255), whiteout.color)
+        assertEquals(12.0, whiteout.width, 0.0)
+        assertEquals(null, whiteout.segmentWidths)
+    }
+
+    @Test
+    fun erasedInkGoesAtOnce() {
+        scheduler.advanceUntilIdle()
+        write(300f, 400f, length = 400f)
+        scheduler.advanceUntilIdle()
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.RED, bitmap.getPixel(500, 400))
+        // Tiles not re-rendered yet: the erased area is drawn from the page.
+        sweep(500f, pointer = ::eraserEnd)
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, 400))
+        assertEquals(android.graphics.Color.RED, bitmap.getPixel(350, 400))
+        scheduler.advanceUntilIdle()
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, 400))
+        assertEquals(android.graphics.Color.RED, bitmap.getPixel(350, 400))
+    }
+
+    @Test
+    fun theEraserCursorShowsWhileHovering() {
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        val hover =
+            MotionEvent.obtain(
+                time,
+                time,
+                MotionEvent.ACTION_HOVER_MOVE,
+                1,
+                arrayOf(MotionEvent.PointerProperties().apply { toolType = MotionEvent.TOOL_TYPE_ERASER }),
+                arrayOf(
+                    MotionEvent.PointerCoords().apply {
+                        x = 500f
+                        y = 400f
+                    },
+                ),
+                0,
+                0,
+                1f,
+                1f,
+                0,
+                0,
+                InputDevice.SOURCE_STYLUS,
+                0,
+            )
+        view.dispatchGenericMotionEvent(hover)
+        hover.recycle()
+        view.draw(Canvas(bitmap))
+        // The square's edge: half a medium eraser (8.5 pt) from the centre.
+        val half = Math.round(8.5 * viewport.zoom).toInt()
+        assertEquals(0xFF404040.toInt(), bitmap.getPixel(500 + half, 400))
     }
 
     @Test

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// Pen widths and default colour from Xournal++ v1.3.8 src/core/control/ToolHandler.cpp, the
-// palette from palettes/xournalpp.gpl, © Xournal++ contributors.
+// Pen and eraser widths, default colour and eraser types from Xournal++ v1.3.8
+// src/core/control/ToolHandler.cpp, the palette from palettes/xournalpp.gpl, © Xournal++
+// contributors.
 
 package pm.asaf.inkpad.core.model
 
@@ -19,6 +20,45 @@ enum class PenSize(
 data class PenSettings(
     val color: Color = Palette.DEFAULT_PEN,
     val size: PenSize = PenSize.MEDIUM,
+)
+
+/** What the eraser does (Xournal++'s eraser types). */
+enum class EraserType {
+    /** Erases what it goes over, cutting strokes. */
+    STANDARD,
+
+    /** Paints white strokes over the page. */
+    WHITEOUT,
+
+    /** Deletes the strokes it touches. */
+    DELETE_STROKE,
+}
+
+/** The eraser: Xournal++'s defaults are the standard eraser at medium width. */
+data class EraserSettings(
+    val type: EraserType = EraserType.STANDARD,
+    val size: PenSize = PenSize.MEDIUM,
+) {
+    /** In points: half the side of the square erased, and the width of whiteout strokes. */
+    val width: Double get() = ERASER_WIDTHS[size.ordinal]
+
+    private companion object {
+        val ERASER_WIDTHS = listOf(1.0, 2.83, 8.5, 12.0, 18.0)
+    }
+}
+
+/** The tool chosen in the toolbar. */
+enum class Tool { PEN, ERASER }
+
+/** What the stylus does while its side button is held. */
+enum class StylusButton { ERASER, NONE }
+
+/** The tools and their settings: what the stylus (or a finger) does. */
+data class ToolSettings(
+    val tool: Tool = Tool.PEN,
+    val pen: PenSettings = PenSettings(),
+    val eraser: EraserSettings = EraserSettings(),
+    val button: StylusButton = StylusButton.ERASER,
 )
 
 object Palette {

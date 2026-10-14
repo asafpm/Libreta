@@ -5,9 +5,11 @@ package pm.asaf.inkpad.viewer
 import android.view.MotionEvent
 import pm.asaf.inkpad.core.geometry.InkSample
 import pm.asaf.inkpad.core.geometry.StrokeBuilder
+import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.Element
-import pm.asaf.inkpad.core.model.PenSettings
+import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.StrokeTool
+import pm.asaf.inkpad.core.model.ToolSettings
 
 /** Where a page is on screen while a stroke is written: page units to view pixels and back. */
 internal class PageMapping(
@@ -28,16 +30,16 @@ internal class PageMapping(
 }
 
 /**
- * Turns touches into strokes. The stylus draws (fingers too if [Host.fingerDraws]); its
- * eraser end and a pressed stylus button don't (they belong to the eraser, Phase 5). While a
- * stroke is written, other pointers (a resting palm) are ignored; a cancelled pointer drops
- * the stroke.
+ * Turns touches into strokes and erasing. The stylus uses the chosen tool (fingers too if
+ * [Host.fingerDraws]); its eraser end erases, and so does holding its side button unless
+ * that is turned off. While a stroke is written or erasing goes on, other pointers (a resting
+ * palm) are ignored; a cancelled pointer drops the stroke.
  */
 internal class InkInput(
     private val host: Host,
 ) {
     interface Host {
-        val pen: PenSettings
+        val tools: ToolSettings
         val fingerDraws: Boolean
         val wetInk: WetInk
 
@@ -60,6 +62,20 @@ internal class InkInput(
             page: Int,
             stroke: Element.Stroke,
         )
+
+        /** Starts erasing: deleting the strokes touched, or cutting them; a square of half side [halfSize] points. */
+        fun startErasing(
+            deleteStrokes: Boolean,
+            halfSize: Double,
+        )
+
+        /** Erases at a view point, going on from the last one. */
+        fun eraseAt(
+            viewX: Float,
+            viewY: Float,
+        )
+
+        fun finishErasing()
     }
 
     /** One stroke in progress. */
@@ -69,15 +85,18 @@ internal class InkInput(
         val builder: StrokeBuilder,
         val color: Int,
         val byFinger: Boolean,
+        val pressure: Boolean,
     )
 
     private var writing: Writing? = null
 
-    /** The rest of this touch sequence is ignored (e.g. the eraser end touched). */
+    private val eraser = EraserInput(host)
+
+    /** The rest of this touch sequence is ignored (e.g. it started off the pages). */
     private var ignoring = false
 
-    /** Whether a stroke is being written. */
-    val isWriting: Boolean get() = writing != null
+    /** Whether a stroke is being written, or erasing goes on. */
+    val isActive: Boolean get() = writing != null || eraser.isActive
 
     /**
      * Handles [event] if it belongs to writing; false leaves it to the gestures. A touch
@@ -94,10 +113,13 @@ internal class InkInput(
                 continueStroke(active, event)
             }
 
+            eraser.isActive -> {
+                if (!eraser.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+                true
+            }
+
             event.actionMasked == MotionEvent.ACTION_DOWN || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN -> {
-                start(
-                    event,
-                )
+                start(event)
             }
 
             else -> {
@@ -111,32 +133,25 @@ internal class InkInput(
         val tool = event.getToolType(index)
         val stylus = tool == MotionEvent.TOOL_TYPE_STYLUS
         val finger = tool == MotionEvent.TOOL_TYPE_FINGER
-        return when {
-            tool == MotionEvent.TOOL_TYPE_ERASER || (
-                stylus &&
-                    event.isButtonPressed(
-                        MotionEvent.BUTTON_STYLUS_PRIMARY,
-                    )
-            ) -> {
-                ignoring = !event.isSequenceEnd()
-                true
-            }
-
-            stylus || (finger && host.fingerDraws && event.actionMasked == MotionEvent.ACTION_DOWN) -> {
-                begin(event, index, byFinger = finger)
-                true
-            }
-
-            else -> {
-                false
-            }
+        val tools = host.tools
+        val erases = tools.erases(event, index)
+        val draws =
+            stylus || tool == MotionEvent.TOOL_TYPE_ERASER ||
+                (finger && host.fingerDraws && event.actionMasked == MotionEvent.ACTION_DOWN)
+        when {
+            !draws -> return false
+            erases && tools.eraser.type == EraserType.WHITEOUT -> begin(event, index, finger, whiteout = true)
+            erases -> eraser.begin(event, index)
+            else -> begin(event, index, finger, whiteout = false)
         }
+        return true
     }
 
     private fun begin(
         event: MotionEvent,
         index: Int,
         byFinger: Boolean,
+        whiteout: Boolean,
     ) {
         val x = event.getX(index)
         val y = event.getY(index)
@@ -146,12 +161,28 @@ internal class InkInput(
             ignoring = !event.isSequenceEnd()
             return
         }
-        val pen = host.pen
-        val builder = StrokeBuilder(StrokeTool.PEN, pen.color, pen.size.width)
-        val color = pen.color.let { android.graphics.Color.argb(it.alpha, it.red, it.green, it.blue) }
-        val stroke = Writing(event.getPointerId(index), page, builder, color, byFinger)
+        val tools = host.tools
+        // Like Xournal++: whiteout is a white eraser stroke, and only the pen uses pressure.
+        val ink = if (whiteout) WHITE else tools.pen.color
+        val builder =
+            if (whiteout) {
+                StrokeBuilder(StrokeTool.ERASER, ink, tools.eraser.width)
+            } else {
+                StrokeBuilder(StrokeTool.PEN, ink, tools.pen.size.width)
+            }
+        val color = android.graphics.Color.argb(ink.alpha, ink.red, ink.green, ink.blue)
+        val stroke =
+            Writing(
+                event.getPointerId(index),
+                page,
+                builder,
+                color,
+                byFinger,
+                pressure =
+                    !whiteout && !byFinger,
+            )
         writing = stroke
-        add(stroke, builder.add(sample(stroke.page, x, y, event.getPressure(index), byFinger)), emptyList())
+        add(stroke, builder.add(sample(stroke, x, y, event.getPressure(index))), emptyList())
     }
 
     private fun continueStroke(
@@ -180,26 +211,17 @@ internal class InkInput(
         for (h in 0 until event.historySize) {
             val sample =
                 sample(
-                    stroke.page,
+                    stroke,
                     event.getHistoricalX(index, h),
                     event.getHistoricalY(index, h),
                     event.getHistoricalPressure(index, h),
-                    stroke.byFinger,
                 )
             first = minOf(first, stroke.builder.add(sample))
         }
         first =
             minOf(
                 first,
-                stroke.builder.add(
-                    sample(
-                        stroke.page,
-                        event.getX(index),
-                        event.getY(index),
-                        event.getPressure(index),
-                        stroke.byFinger,
-                    ),
-                ),
+                stroke.builder.add(sample(stroke, event.getX(index), event.getY(index), event.getPressure(index))),
             )
         add(stroke, first, prediction(stroke, event))
     }
@@ -210,7 +232,7 @@ internal class InkInput(
         index: Int,
     ) {
         writing = null
-        val pressure = if (stroke.byFinger) null else event.getPressure(index).toDouble()
+        val pressure = if (stroke.pressure) event.getPressure(index).toDouble() else null
         host.wetInk.commit()
         host.commit(stroke.page.page, stroke.builder.finish(pressure))
         if (!event.isSequenceEnd()) ignoring = true
@@ -228,6 +250,14 @@ internal class InkInput(
         host.wetInk.cancel()
         host.startGesture(event)
     }
+
+    /** A sample of [stroke] at view point ([x], [y]). */
+    private fun sample(
+        stroke: Writing,
+        x: Float,
+        y: Float,
+        pressure: Float,
+    ) = InkSample(stroke.page.toPageX(x), stroke.page.toPageY(y), if (stroke.pressure) pressure.toDouble() else null)
 
     /** Draws the points from [first] on (and the segment leading to them) as wet ink. */
     private fun add(
@@ -273,14 +303,7 @@ internal class InkInput(
     }
 }
 
-/** A sample at view point ([x], [y]) on [page]; fingers have no pressure. */
-private fun sample(
-    page: PageMapping,
-    x: Float,
-    y: Float,
-    pressure: Float,
-    byFinger: Boolean,
-) = InkSample(page.toPageX(x), page.toPageY(y), if (byFinger) null else pressure.toDouble())
+private val WHITE = Color.of(255, 255, 255)
 
 private fun MotionEvent.isSequenceEnd() =
     actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL

@@ -22,6 +22,7 @@ import pm.asaf.inkpad.core.geometry.ViewportNavigator
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PenSettings
+import pm.asaf.inkpad.core.model.ToolSettings
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -96,11 +97,18 @@ class DocumentView
                 },
             )
 
+        /** The tools the stylus (and fingers that draw) use. */
+        var tools: ToolSettings
+            get() = inking.tools
+            set(value) {
+                inking.tools = value
+            }
+
         /** The pen new strokes are written with. */
         var pen: PenSettings
-            get() = inking.pen
+            get() = inking.tools.pen
             set(value) {
-                inking.pen = value
+                inking.tools = inking.tools.copy(pen = value)
             }
 
         /** Whether fingers write too (then two fingers pan and zoom). */
@@ -236,10 +244,10 @@ class DocumentView
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
             inking.record(event)
-            val wasWriting = inking.input.isWriting
+            val wasActive = inking.input.isActive
             if (!inking.input.onTouchEvent(event)) {
                 feedGestures(event)
-            } else if (inking.input.isWriting && !wasWriting) {
+            } else if (inking.input.isActive && !wasActive) {
                 // The stylus took over a finger gesture: end it.
                 if (gestureActive) {
                     val cancel = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
@@ -251,6 +259,11 @@ class DocumentView
                 requestUnbufferedDispatch(event)
             }
             return true
+        }
+
+        override fun onHoverEvent(event: MotionEvent): Boolean {
+            inking.hover(event)
+            return super.onHoverEvent(event)
         }
 
         private fun feedGestures(event: MotionEvent) {

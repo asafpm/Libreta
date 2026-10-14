@@ -11,6 +11,7 @@ import pm.asaf.inkpad.core.geometry.intersects
 import pm.asaf.inkpad.core.model.Bounds
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.Page
+import java.util.IdentityHashMap
 import kotlin.math.ceil
 
 /**
@@ -49,7 +50,7 @@ class PageRenderer(
             for (layer in page.layers) {
                 for (element in layer.elements) {
                     // Like Xournal++, skip elements that do not overlap the area being drawn.
-                    val bounds = ElementGeometry.bounds(element, textMeasurer) ?: continue
+                    val bounds = boundsOf(element) ?: continue
                     if (bounds.intersects(clip)) paintElement(canvas, element, zoom)
                 }
             }
@@ -76,6 +77,18 @@ class PageRenderer(
         }
     }
 
+    /** Elements' bounds, by identity (elements never change), so that drawing small areas is quick. */
+    private val bounds = IdentityHashMap<Element, Bounds>()
+
+    private fun boundsOf(element: Element): Bounds? {
+        bounds[element]?.let { return it.takeIf { it !== NO_BOUNDS } }
+        // Kept small: elements no longer shown would stay in memory.
+        if (bounds.size >= MAX_CACHED_BOUNDS) bounds.clear()
+        val computed = ElementGeometry.bounds(element, textMeasurer)
+        bounds[element] = computed ?: NO_BOUNDS
+        return computed
+    }
+
     private fun paintElement(
         canvas: Canvas,
         element: Element,
@@ -100,5 +113,12 @@ class PageRenderer(
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         render(page, Canvas(bitmap), zoom)
         return bitmap
+    }
+
+    private companion object {
+        const val MAX_CACHED_BOUNDS = 50_000
+
+        /** Cached for elements that draw nothing. */
+        val NO_BOUNDS = Bounds(0.0, 0.0, 0.0, 0.0)
     }
 }

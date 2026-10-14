@@ -76,8 +76,10 @@ Xournal++ live in `testdata/xournalpp/`.
   `src/util/include/util/UnionOfIntervals.h` and the padding of
   `src/core/control/tools/EraseHandler.h`; its tests port
   `test/unit_tests/model/ErasableStrokeTest.cpp`.
-- `core/model/src/commonMain/.../PenSettings.kt`: pen widths and colour of
-  `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
+- `core/geometry/src/commonMain/.../PageEraser.kt`: the eraser gesture of
+  `src/core/control/tools/EraseHandler.cpp`.
+- `core/model/src/commonMain/.../PenSettings.kt`: pen and eraser widths, colour and
+  eraser types of `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
 - `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of
   `src/core/control/jobs/SaveJob.cpp`.
 

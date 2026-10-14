@@ -18,7 +18,8 @@ import kotlin.math.ceil
 /**
  * A [BackgroundSource] for documents annotating the PDF [pdfFile]: each page is drawn at the
  * PDF page's own size from the origin, like Xournal++ (docs/rendering.md §2.3). Image
- * backgrounds come from [images]. Calls are serialised; renders are cached per page and zoom.
+ * backgrounds come from [images]. Renders are serialised and cached per page and zoom; cached
+ * ones are drawn without waiting.
  */
 class PdfBackgroundSource(
     pdfFile: File,
@@ -27,30 +28,44 @@ class PdfBackgroundSource(
     Closeable {
     private val descriptor = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY)
     private val renderer = PdfRenderer(descriptor)
-    private val cache = LruCache<Pair<Int, Float>, Bitmap>(CACHE_SIZE)
+
+    /** A PDF page rendered, and its size in points. */
+    private class Rendered(
+        val bitmap: Bitmap,
+        val width: Float,
+        val height: Float,
+    )
+
+    private val cache = LruCache<Pair<Int, Float>, Rendered>(CACHE_SIZE)
     private val paint = Paint().apply { isFilterBitmap = true }
 
-    val pageCount: Int get() = renderer.pageCount
+    val pageCount: Int = renderer.pageCount
 
     override fun image(background: Background.Pixmap): Bitmap? = images.image(background)
 
-    @Synchronized
     override fun drawPdfPage(
         canvas: Canvas,
         pageNumber: Long,
         zoom: Float,
     ): Boolean {
         val index = (pageNumber - 1).toInt()
-        if (pageNumber < 1 || index >= renderer.pageCount) return false
-        val key = index to zoom
-        val (bitmap, width, height) =
-            renderer.openPage(index).use { page ->
-                val rendered = cache.get(key) ?: render(page, zoom).also { cache.put(key, it) }
-                Triple(rendered, page.width, page.height)
-            }
-        canvas.drawBitmap(bitmap, null, RectF(0f, 0f, width.toFloat(), height.toFloat()), paint)
+        if (pageNumber < 1 || index >= pageCount) return false
+        // Rendered pages are drawn without waiting for a render on another thread.
+        val rendered = cache.get(index to zoom) ?: renderPage(index, zoom)
+        canvas.drawBitmap(rendered.bitmap, null, RectF(0f, 0f, rendered.width, rendered.height), paint)
         return true
     }
+
+    @Synchronized
+    private fun renderPage(
+        index: Int,
+        zoom: Float,
+    ): Rendered =
+        cache.get(index to zoom) ?: renderer.openPage(index).use { page ->
+            Rendered(render(page, zoom), page.width.toFloat(), page.height.toFloat()).also {
+                cache.put(index to zoom, it)
+            }
+        }
 
     private fun render(
         page: PdfRenderer.Page,
