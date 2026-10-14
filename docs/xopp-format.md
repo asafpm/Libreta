@@ -129,8 +129,14 @@ double**, never using an exponent, written as `-0` for negative zero, and as
   strokes and texts refer to through their `fn` attribute.
 - **Any other child:** warned about and ignored.
 
-**Inkpad:** keeps `title` and `preview` (as bytes). `audio` and any unknown
-root-level children are kept verbatim and written after the pages.
+**Inkpad:** keeps `title` and `preview` (as bytes). Unknown root-level
+children are kept verbatim and written after the pages. `<audio>` is the one
+exception: it is never kept in the document.
+- In a zip package, the audio data is returned with the other attachments.
+- Read from any other container, it is dropped with a warning.
+- Xournal++ handles `<audio>` only inside zip packages and crashes on it in a
+  gzip file (`LoadHandler.cpp:795-815` reads it from the zip handle
+  unconditionally), so writing it back would break the file.
 
 ### `<page width height>` — `LoadHandler.cpp:316-325`, `SaveHandler.cpp:219-310`
 - **Size:** `width` and `height` are doubles, in points.

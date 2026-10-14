@@ -49,7 +49,7 @@ object XoppReader {
         attachments: Map<String, ByteString> = emptyMap(),
         packageFileVersion: Int? = null,
     ): XoppReadResult {
-        val context = DecodeContext(attachments)
+        val context = DecodeContext(attachments, isPackage = container == XoppContainer.ZIP)
         val document = DocumentCodec.decode(XmlTree.parse(xml), context, packageFileVersion)
         return XoppReadResult(document, context.warnings.toList(), container, attachments)
     }

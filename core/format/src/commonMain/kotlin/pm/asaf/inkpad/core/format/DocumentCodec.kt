@@ -78,6 +78,14 @@ internal object DocumentCodec {
                         preview == null && element.isTextOnly() && decodePreview(element)
                     }
 
+                    // Declares an audio file of a zip package; the data is in the read result's
+                    // attachments. Xournal++ crashes on <audio> outside zip packages, so it is
+                    // never written back (docs/xopp-format.md §4).
+                    "audio" -> {
+                        if (!context.isPackage) context.warn("document", "<audio> dropped: only valid in zip packages")
+                        true
+                    }
+
                     else -> {
                         false
                     }

@@ -11,6 +11,8 @@ import pm.asaf.inkpad.core.model.ForeignText
 internal class DecodeContext(
     /** Zip package entries by path; empty for gzip/plain files. */
     val attachments: Map<String, ByteString>,
+    /** Whether the document comes from a zip package. */
+    val isPackage: Boolean = false,
 ) {
     val warnings = mutableListOf<FormatWarning>()
 

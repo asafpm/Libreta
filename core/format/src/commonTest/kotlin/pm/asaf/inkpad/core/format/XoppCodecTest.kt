@@ -180,7 +180,7 @@ class XoppCodecTest {
             """
             <xournal creator="x" fileversion="4" future="1">
             <title>T</title>
-            <audio fn="a.ogg"/>
+            <bookmark page="1"/>
             <page width="1" height="1" rotation="90">
             <background type="solid" color="#ffffffff" style="plain" tint="3"/>
             <layer name="L" locked="true">
@@ -195,7 +195,7 @@ class XoppCodecTest {
         val result = read(xml)
         val document = result.document
         assertEquals(mapOf("future" to "1"), document.extraAttributes)
-        assertEquals(listOf(ForeignElement("audio", mapOf("fn" to "a.ogg"))), document.extraChildren)
+        assertEquals(listOf(ForeignElement("bookmark", mapOf("page" to "1"))), document.extraChildren)
         val page = document.pages.single()
         assertEquals(mapOf("rotation" to "90"), page.extraAttributes)
         assertEquals(listOf(ForeignElement("marker", mapOf("id" to "m"))), page.extraChildren)
@@ -213,7 +213,7 @@ class XoppCodecTest {
         val written = XoppWriter.toXml(document)
         for (fragment in listOf(
             "future=\"1\"",
-            "<audio fn=\"a.ogg\"/>",
+            "<bookmark page=\"1\"/>",
             "rotation=\"90\"",
             "tint=\"3\"",
             "locked=\"true\"",
@@ -224,6 +224,19 @@ class XoppCodecTest {
             assertTrue(fragment in written, "missing $fragment in\n$written")
         }
         assertRoundTrips(xml)
+    }
+
+    @Test
+    fun audioDeclarationsAreNotKeptBecauseXournalppCrashesOnThemOutsideZipPackages() {
+        val zip = XoppReader.read(TestData.read("xournalpp/packaged_xopp/audioAttachment/new.xopp"))
+        assertEquals(emptyList(), zip.document.extraChildren)
+        assertEquals(emptyList(), zip.warnings)
+        assertTrue("<audio" !in XoppWriter.toXml(zip.document))
+
+        val withAudio = document(layerOf()).replace("<title>T</title>", "<audio fn=\"a.ogg\"/>")
+        val gzip = read(withAudio)
+        assertEquals(emptyList(), gzip.document.extraChildren)
+        assertEquals(1, gzip.warnings.size)
     }
 
     @Test
