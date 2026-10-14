@@ -25,6 +25,23 @@
                 <data android:mimeType="application/x-xournal" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
+            <!-- File managers that know no type for them (e.g. Samsung My Files) send no type:
+                 match the name at the end of the content path. pathSuffix needs API 31;
+                 pathPattern stops at the first dot, hence one pattern per dot count. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathSuffix=".xopp" />
+                <data android:pathSuffix=".xoj" />
+                <data android:pathPattern=".*\\.xopp" />
+                <data android:pathPattern=".*\\..*\\.xopp" />
+                <data android:pathPattern=".*\\..*\\..*\\.xopp" />
+                <data android:pathPattern=".*\\.xoj" />
+                <data android:pathPattern=".*\\..*\\.xoj" />
+                <data android:pathPattern=".*\\..*\\..*\\.xoj" />
+            </intent-filter>
         </activity>
     </application>
 
