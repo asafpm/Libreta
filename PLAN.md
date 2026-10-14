@@ -75,7 +75,9 @@ The full specification, with references into the Xournal++ source, is
   (first width = nominal, rest = per-segment pressure widths)
 - `<text font size x y color>`, `<image left top right bottom>` base64 PNG
 - Unknown elements/attributes must be preserved on round-trip
-- Also read legacy `.xoj` (same format, older Xournal)
+- Also read legacy `.xoj` (same format, older Xournal), uncompressed XML, and
+  the zip packages written by Xournal++ 1.0.x (`content.xml` + attachments);
+  always write gzip, as Xournal++ 1.3 does
 
 ## Phases (complete one at a time; each ends green on `./gradlew check`)
 
