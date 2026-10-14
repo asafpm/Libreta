@@ -22,7 +22,13 @@ data class Document(
     val extraAttributes: Map<String, String> = emptyMap(),
     /** Uninterpreted root-level children, written after the pages. */
     val extraChildren: List<ForeignNode> = emptyList(),
-)
+) {
+    /** This document with page [index] replaced by [page]. */
+    fun withPage(
+        index: Int,
+        page: Page,
+    ): Document = copy(pages = pages.toMutableList().also { it[index] = page })
+}
 
 data class Page(
     val width: Double,
@@ -36,6 +42,24 @@ data class Page(
 ) {
     init {
         require(layers.isNotEmpty()) { "a page needs at least one layer" }
+    }
+
+    /**
+     * This page with [element] added above everything else in layer [layerIndex]; by
+     * default the top layer, where Xournal++ draws unless another layer is selected.
+     */
+    fun withElementAdded(
+        element: Element,
+        layerIndex: Int = layers.lastIndex,
+    ): Page {
+        val layer = layers[layerIndex]
+        return copy(
+            layers =
+                layers.toMutableList().also {
+                    it[layerIndex] =
+                        layer.copy(elements = layer.elements + element)
+                },
+        )
     }
 }
 

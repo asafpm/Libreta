@@ -67,6 +67,11 @@ Xournal++ live in `testdata/xournalpp/`.
   `test/unit_tests/util/XojPreviewExtractorTest.cpp`.
 - `core/model/src/commonMain/.../NewNote.kt`: default file name pattern of
   `src/core/control/settings/Settings.cpp`.
+- `core/geometry/src/commonMain/.../StrokeBuilder.kt`: stroke building of
+  `src/core/control/tools/StrokeHandler.cpp` and the pressure filter of
+  `src/core/gui/inputdevices/PenInputHandler.cpp`.
+- `core/model/src/commonMain/.../PenSettings.kt`: pen widths and colour of
+  `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
 
 ## Fonts
 
