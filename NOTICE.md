@@ -48,6 +48,9 @@ Xournal++ live in `testdata/xournalpp/`.
   opacity/blending of `view/StrokeView.cpp`.
 - `core/geometry/src/commonMain/.../StrokeContour.kt`: pressure-stroke outline
   of `model/StrokeContour.cpp` and `view/StrokeViewHelper.cpp`.
+- `core/geometry/src/commonMain/.../BackgroundConfig.kt`, `BackgroundPattern.kt`,
+  `BackgroundStyles.kt`: background ruling of `model/BackgroundConfig.cpp`,
+  `view/background/*BackgroundView.cpp` and `control/pagetype/PageTypeHandler.cpp`.
 - `core/geometry/src/commonTest/.../PressureRepairTest.kt`: test case ported from
   `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from
