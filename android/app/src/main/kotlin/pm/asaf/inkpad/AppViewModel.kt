@@ -14,6 +14,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -26,6 +27,8 @@ import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.store.StoreId
+import pm.asaf.inkpad.files.Autosave
+import pm.asaf.inkpad.files.Backups
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.files.NoteFile
@@ -41,6 +44,7 @@ import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
 import pm.asaf.inkpad.settings.ToolPreferences
 import pm.asaf.inkpad.store.SafDocumentStore
+import java.io.File
 import java.io.IOException
 
 /** A screen of the app; the back stack is a list of these. */
@@ -94,6 +98,8 @@ class AppViewModel
         private val io: CoroutineDispatcher = Dispatchers.IO,
         /** Where note pages are rendered. */
         val renderThreads: RenderThreads = RenderThreads(),
+        /** When the open note is saved while it is edited. */
+        private val autosave: Autosave = Autosave(),
     ) : AndroidViewModel(application) {
         private val context: Context get() = getApplication()
         private val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
@@ -127,10 +133,16 @@ class AppViewModel
         /** Where the open note was last shown, restored after rotation. */
         var noteAnchor: ViewportAnchor? = null
 
-        private val saver = NoteSaver(application, store)
+        private val saver = NoteSaver(application, store, Backups(File(application.filesDir, "backups")))
 
         /** The save in progress: a note is read only after it, in case it is the same file. */
         private var saving: Job? = null
+
+        /** Saving the open note as it is edited. */
+        private var autosaving: Job? = null
+
+        /** Whether the last save failed, not to say so again with each autosave. */
+        private var lastSaveFailed = false
 
         private val errorState = MutableStateFlow<String?>(null)
 
@@ -203,49 +215,62 @@ class AppViewModel
                 // Still the same note?
                 if (stack.value.lastOrNull() == screen) {
                     noteState.value = state
+                    if (state is NoteState.Loaded) startAutosave(state)
                 } else {
                     (state as? NoteState.Loaded)?.files?.close()
                 }
             }
         }
 
-        /** Saves the open note if it changed, then calls [then] on the main thread. */
-        fun saveNote(then: () -> Unit = {}) {
+        /** Saves [note] while it is edited, until it is closed. */
+        private fun startAutosave(note: NoteState.Loaded) {
+            autosaving?.cancel()
+            autosaving =
+                viewModelScope.launch {
+                    // Changes from now on.
+                    autosave.run(note.session.changes.drop(1)) { saveNote().join() }
+                }
+        }
+
+        /** Saves the open note if it changed, then calls [then] on the main thread. Returns the save's job. */
+        fun saveNote(then: () -> Unit = {}): Job {
             val note = noteState.value as? NoteState.Loaded
-            if (note == null) {
-                then()
-                return
-            }
             val previous = saving
-            saving =
+            val job =
                 viewModelScope.launch {
                     previous?.join()
-                    val result = withContext(io) { saver.save(note.file, note.session, note.files) }
-                    when (result) {
-                        is SaveResult.SavedAsCopy -> {
-                            errorState.value =
-                                context.getString(R.string.saved_as_copy, result.name)
-                        }
-
-                        is SaveResult.Failed -> {
-                            errorState.value =
-                                context.getString(R.string.error_save_note, note.file.name)
-                        }
-
-                        else -> {
-                            Unit
-                        }
-                    }
-                    if (result is SaveResult.Saved || result is SaveResult.SavedAsCopy) {
-                        note.file.location?.let { library.refresh(it.folders.last()) }
-                    }
+                    if (note != null) report(note, withContext(io) { saver.save(note.file, note.session, note.files) })
                     then()
                 }
+            saving = job
+            return job
+        }
+
+        /** Tells about a save that went to a copy, or failed (once in a row: autosave would repeat it). */
+        private fun report(
+            note: NoteState.Loaded,
+            result: SaveResult,
+        ) {
+            when {
+                result is SaveResult.SavedAsCopy -> {
+                    errorState.value = context.getString(R.string.saved_as_copy, result.name)
+                }
+
+                result is SaveResult.Failed && !lastSaveFailed -> {
+                    errorState.value = context.getString(R.string.error_save_note, note.file.name)
+                }
+            }
+            lastSaveFailed = result is SaveResult.Failed
+            if (result is SaveResult.Saved || result is SaveResult.SavedAsCopy) {
+                note.file.location?.let { library.refresh(it.folders.last()) }
+            }
         }
 
         /** Leaves the open note: it is saved, then its files are released. */
         private fun closeNote() {
             val note = noteState.value as? NoteState.Loaded
+            autosaving?.cancel()
+            autosaving = null
             saveNote {
                 note?.caches?.clear()
                 note?.files?.close()

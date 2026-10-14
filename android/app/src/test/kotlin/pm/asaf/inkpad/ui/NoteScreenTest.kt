@@ -26,6 +26,8 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
+import okio.buffer
+import okio.source
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -38,17 +40,21 @@ import org.robolectric.shadows.ShadowLooper
 import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.android.render.RenderThreads
+import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.EraserSettings
 import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.Tool
+import pm.asaf.inkpad.files.Autosave
 import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.LibraryRoots
 import pm.asaf.inkpad.viewer.DocumentView
 import java.io.File
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -61,10 +67,11 @@ class NoteScreenTest {
 
     private val application = ApplicationProvider.getApplicationContext<Application>()
     private val testData = File(checkNotNull(System.getProperty("inkpad.testdata")))
+    private lateinit var directory: File
 
     @Before
     fun setUp() {
-        val directory = temporary.newFolder("Notes")
+        directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
         val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
@@ -129,9 +136,9 @@ class NoteScreenTest {
     }
 
     /** Opens Lecture.xopp in the app, rendering paused. */
-    private fun openLecture(): AppViewModel {
+    private fun openLecture(autosave: Autosave = Autosave()): AppViewModel {
         val paused = StandardTestDispatcher()
-        val model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused))
+        val model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused), autosave)
         compose.setContent { MaterialTheme { InkpadApp(model) } }
         compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasText("Lecture.xopp")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lecture.xopp").performClick()
@@ -258,6 +265,36 @@ class NoteScreenTest {
         compose.onNodeWithContentDescription("Colour: Red").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Colour: #123456").performScrollTo().assertIsNotSelected()
         assertEquals(listOf(picked), AppViewModel(application).tools.recentColors.value)
+    }
+
+    @Test
+    fun editsAreSavedWhileWriting() {
+        val model = openLecture(Autosave(idle = 200.milliseconds))
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        val file = File(directory, "Lecture.xopp")
+        val before = file.readBytes()
+        write(view)
+        val written = model.elements().last()
+        // Saved in place, without leaving the note (autosave's delays run on the main looper's clock).
+        eventually {
+            ShadowLooper.idleMainLooper(50, TimeUnit.MILLISECONDS)
+            !file.readBytes().contentEquals(before)
+        }
+        val saved =
+            file
+                .source()
+                .buffer()
+                .use { XoppReader.read(it) }
+                .document
+        assertEquals(
+            written,
+            saved.pages[0]
+                .layers
+                .last()
+                .elements
+                .last(),
+        )
+        eventually { !(model.note.value as NoteState.Loaded).session.dirty }
     }
 
     private companion object {

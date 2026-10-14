@@ -42,7 +42,8 @@ class NoteSaverTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val testData = File(checkNotNull(System.getProperty("inkpad.testdata")))
     private val store = SafDocumentStore(context.contentResolver)
-    private val saver = NoteSaver(context, store)
+    private lateinit var backups: Backups
+    private lateinit var saver: NoteSaver
     private lateinit var directory: File
     private lateinit var root: FolderRef
 
@@ -57,6 +58,8 @@ class NoteSaverTest {
     @Before
     fun setUp() {
         directory = temporary.newFolder("Notes")
+        backups = Backups(temporary.newFolder("backups"))
+        saver = NoteSaver(context, store, backups)
         FakeDocumentsProvider.install(directory)
         root = FolderRef(FakeDocumentsProvider.folderId(), "Notes")
     }
@@ -121,6 +124,26 @@ class NoteSaverTest {
         val modified = File(directory, "Lecture.xopp").lastModified()
         assertEquals(SaveResult.Unchanged, saver.save(note.file, note.session, note.files))
         assertEquals(modified, File(directory, "Lecture.xopp").lastModified())
+    }
+
+    @Test
+    fun theOriginalIsBackedUpOncePerSession() {
+        val original = File(testData, "note-taking.xopp").readBytes()
+        val note = open("note-taking.xopp", "Lecture.xopp")
+        note.write()
+        saver.save(note.file, note.session, note.files)
+        note.write(stroke.copy(width = 1.0))
+        saver.save(note.file, note.session, note.files)
+        val id = note.file.id
+        assertTrue(original.contentEquals(backups.of(id).single().readBytes()))
+
+        // Opened again: what the last session saved is backed up before it is overwritten.
+        val saved = File(directory, "Lecture.xopp").readBytes()
+        val again = NoteLoader.load(context, store, id, "Lecture.xopp", DocumentLocation(listOf(root), "Lecture.xopp"))
+        (again as NoteState.Loaded).write()
+        saver.save(again.file, again.session, again.files)
+        assertEquals(2, backups.of(id).size)
+        assertTrue(saved.contentEquals(backups.of(id).last().readBytes()))
     }
 
     @Test

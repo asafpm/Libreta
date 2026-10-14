@@ -36,6 +36,9 @@ class NoteFile(
     /** Its version when read or last saved. */
     @Volatile var version: FileVersion?,
 ) {
+    /** Whether the file as it was has been backed up, once per session. */
+    @Volatile var backedUp: Boolean = false
+
     /** Xournal++ 1.0 zip packages are read only: their attachment paths don't fit the gzip format. */
     val writable: Boolean get() = container != XoppContainer.ZIP
 }
@@ -61,12 +64,14 @@ sealed interface SaveResult {
 
 /**
  * Writes edited notes back to their files in one go, keeping everything Inkpad doesn't edit,
- * with a fresh preview like Xournal++. A file changed elsewhere since it was opened is not
- * overwritten: the note is saved next to it as a conflict copy. Blocking.
+ * with a fresh preview like Xournal++. Before a file is first overwritten, it is copied to
+ * [backups]. A file changed elsewhere since it was opened is not overwritten: the note is
+ * saved next to it as a conflict copy. Blocking.
  */
 class NoteSaver(
     private val context: Context,
     private val store: DocumentStore,
+    private val backups: Backups,
 ) {
     fun save(
         file: NoteFile,
@@ -90,6 +95,7 @@ class NoteSaver(
         try {
             val preview = document.pages.firstOrNull()?.let { preview(it, files) }
             val bytes = NoteEncoder.encode(document.copy(creator = NewNoteCreator.creator(context), preview = preview))
+            if (!file.backedUp) backUp(file)
             val result =
                 when (val written = store.write(file.id, bytes, expected = file.version)) {
                     is WriteResult.Written -> {
@@ -112,6 +118,18 @@ class NoteSaver(
             Log.w(TAG, "Cannot save ${file.name}", e)
             SaveResult.Failed(e)
         }
+
+    /** Copies [file] as it is to the backups. Saving goes on without a copy if that fails. */
+    private fun backUp(file: NoteFile) {
+        try {
+            backups.keep(file.id, file.name) { store.read(file.id) }
+        } catch (e: IOException) {
+            Log.w(TAG, "Cannot back up ${file.name}", e)
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Cannot back up ${file.name}", e)
+        }
+        file.backedUp = true
+    }
 
     /** Saves [bytes] next to [file] as `<name> (conflict <date>).xopp`. */
     private fun writeCopy(
