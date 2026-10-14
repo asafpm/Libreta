@@ -46,6 +46,8 @@ Xournal++ live in `testdata/xournalpp/`.
   `StrokeStyle.kt`: pressure rules of `LoadHandler.cpp`, bounding boxes of
   `model/Stroke.cpp`, dash patterns of `model/StrokeStyle.cpp` and stroke
   opacity/blending of `view/StrokeView.cpp`.
+- `core/geometry/src/commonMain/.../StrokeContour.kt`: pressure-stroke outline
+  of `model/StrokeContour.cpp` and `view/StrokeViewHelper.cpp`.
 - `core/geometry/src/commonTest/.../PressureRepairTest.kt`: test case ported from
   `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from

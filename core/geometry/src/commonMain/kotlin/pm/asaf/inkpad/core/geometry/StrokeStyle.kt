@@ -19,14 +19,17 @@ object DashPattern {
             LineStyle.DOT to doubleArrayOf(0.5, 3.0),
         )
 
-    /** Alternating on/off lengths, or null for a solid stroke. */
+    /**
+     * Alternating on/off lengths, or null for a solid stroke. Patterns with negative lengths
+     * or a zero total are drawn solid (they would never advance).
+     */
     fun of(style: LineStyle?): DoubleArray? =
         when {
             style == null -> null
             style in named -> named.getValue(style).copyOf()
             style.value.startsWith(CUSTOM_PREFIX) -> parseCustom(style.value.removePrefix(CUSTOM_PREFIX))
             else -> null
-        }
+        }?.takeIf { lengths -> lengths.all { it >= 0.0 } && lengths.sum() > 0.0 }
 
     /** Like the C++ stream Xournal++ uses: reads numbers until the first one that fails. */
     private fun parseCustom(lengths: String): DoubleArray? =

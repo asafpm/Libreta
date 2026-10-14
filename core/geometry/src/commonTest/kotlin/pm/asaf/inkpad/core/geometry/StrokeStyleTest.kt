@@ -29,7 +29,15 @@ class StrokeStyleTest {
 
     @Test
     fun anythingElseIsSolid() {
-        for (style in listOf(null, LineStyle("plain"), LineStyle("cust: "), LineStyle("cust:1 2"), LineStyle("wavy"))) {
+        for (style in listOf(
+            null,
+            LineStyle("plain"),
+            LineStyle("cust: "),
+            LineStyle("cust:1 2"),
+            LineStyle("wavy"),
+            LineStyle("cust: 0 0"),
+            LineStyle("cust: 2 -1"),
+        )) {
             assertNull(DashPattern.of(style), style.toString())
         }
     }
