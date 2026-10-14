@@ -8,9 +8,11 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:geometry"))
     implementation(libs.androidx.exifinterface)
+    implementation(libs.kotlinx.coroutines.android)
 
     // Sample documents in screenshot tests.
     testImplementation(project(":core:format"))
+    testImplementation(libs.kotlinx.coroutines.test)
 
     // Device tests: PdfRenderer only runs on Android itself.
     androidTestImplementation(project(":core:format"))
