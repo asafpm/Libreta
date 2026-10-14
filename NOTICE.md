@@ -62,6 +62,11 @@ Xournal++ live in `testdata/xournalpp/`.
   `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from
   `test/unit_tests/control/LoadHandlerTest.cpp`.
+- `core/format/src/commonMain/.../XoppPreview.kt`: preview lookup of
+  `src/util/XojPreviewExtractor.cpp`; `XoppPreviewTest.kt`: expectations from
+  `test/unit_tests/util/XojPreviewExtractorTest.cpp`.
+- `core/model/src/commonMain/.../NewNote.kt`: default file name pattern of
+  `src/core/control/settings/Settings.cpp`.
 
 ## Fonts
 

@@ -5,3 +5,8 @@ naming:
   FunctionNaming:
     ignoreAnnotated:
       - 'Composable'
+
+style:
+  MagicNumber:
+    # Enum entries name their values already (paper sizes, …).
+    ignoreEnums: true
