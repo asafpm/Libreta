@@ -311,3 +311,21 @@ against Xournal++ 1.3.8:
   - Square caps can extend slightly outside this box.
 - **Image, LaTeX:** their box.
 - **Text:** `(x, y)` plus the layout size, which the platform measures.
+
+## 4. Strokes being written and erased (Inkpad)
+Xournal++ draws the stroke in progress with the page (`StrokeToolView`). Inkpad
+draws it where it shows soonest, then hands over to the page without a visible
+change:
+
+- **Pens and whiteout** are drawn as wet ink in a front buffer above the page
+  (`LowLatencyWetInk`): round-capped segments, each as wide as its first point,
+  plus a predicted continuation. Once committed, the stroke is drawn over the
+  stale tiles until they are re-rendered; its wet ink goes a few frames later.
+  Both are opaque, so drawing them twice changes nothing.
+- **Highlighters** are drawn by the page view, as they will be on the page:
+  translucent and **multiplied** with what is below, which a separate surface
+  cannot do. They show a frame later than wet ink. A change is never drawn over
+  tiles that already show it, so translucent ink never darkens in between.
+- **Erasing** changes the page with each move; until the tiles are re-rendered,
+  the changed areas (plus 1.5 pixels for anti-aliasing) are drawn from the page
+  over the stale tiles. Undo and redo are shown the same way.

@@ -105,6 +105,25 @@ class StrokeBuilderTest {
     }
 
     @Test
+    fun showsTheStrokeSoFar() {
+        val builder = builder(width = 2.0)
+        builder.add(InkSample(7.0, 8.0, 0.5))
+        // A dot until it moves.
+        assertEquals(
+            listOf(7.0, 8.0, 7.0, 8.0),
+            builder
+                .current()
+                .points
+                .toInterleavedArray()
+                .toList(),
+        )
+        builder.add(InkSample(17.0, 8.0, 0.5))
+        val current = builder.current()
+        assertEquals(2, builder.pointCount)
+        assertEquals(current, builder.finish(0.5))
+    }
+
+    @Test
     fun movesWithoutPressureAreIgnored() {
         val builder = builder()
         builder.add(InkSample(0.0, 0.0, 0.5))

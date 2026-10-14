@@ -9,16 +9,21 @@ import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.ToolSettings
 
 /**
- * Whether pointer [index] of [event] erases: the stylus's eraser end does, so does holding
- * its side button unless that is turned off, and otherwise the chosen tool decides.
+ * The tool pointer [index] of [event] uses: the stylus's eraser end erases, holding its side
+ * button uses the tool set for it, and otherwise the chosen tool.
  */
-internal fun ToolSettings.erases(
+internal fun ToolSettings.toolFor(
     event: MotionEvent,
     index: Int,
-): Boolean {
+): Tool {
     val type = event.getToolType(index)
     val buttonHeld = type == MotionEvent.TOOL_TYPE_STYLUS && event.isButtonPressed(MotionEvent.BUTTON_STYLUS_PRIMARY)
-    return type == MotionEvent.TOOL_TYPE_ERASER || (buttonHeld && button == StylusButton.ERASER) || tool == Tool.ERASER
+    return when {
+        type == MotionEvent.TOOL_TYPE_ERASER -> Tool.ERASER
+        buttonHeld && button == StylusButton.ERASER -> Tool.ERASER
+        buttonHeld && button == StylusButton.HIGHLIGHTER -> Tool.HIGHLIGHTER
+        else -> tool
+    }
 }
 
 /** Erasing for [InkInput]: one pointer erases until it lifts, other pointers (a palm) are ignored. */

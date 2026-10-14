@@ -21,6 +21,7 @@ import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PageChange
+import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.ToolSettings
 import kotlin.math.roundToInt
 
@@ -63,6 +64,9 @@ internal class Inking(
     var renderer: PageRenderer? = null
 
     private val pending = PendingChanges()
+
+    /** A stroke being written that the view draws (a highlighter), and its page. */
+    private var inView: Pair<Int, Element.Stroke>? = null
     private var wetFramesLeft = 0
     private val predictor: MotionEventPredictor? = runCatching { MotionEventPredictor.newInstance(view) }.getOrNull()
 
@@ -130,6 +134,14 @@ internal class Inking(
                     erasing.finish()
                     view.invalidate()
                 }
+
+                override fun drawInView(
+                    page: Int,
+                    stroke: Element.Stroke?,
+                ) {
+                    inView = stroke?.let { page to it }
+                    view.invalidate()
+                }
             },
         )
 
@@ -141,7 +153,7 @@ internal class Inking(
     /** The stylus hovers: shows where the eraser would erase, if it would. */
     fun hover(event: MotionEvent) {
         val eraser = tools.eraser
-        val erases = tools.erases(event, 0)
+        val erases = tools.toolFor(event, 0) == Tool.ERASER
         val halfSize =
             when {
                 !erases || event.actionMasked == MotionEvent.ACTION_HOVER_EXIT -> null
@@ -162,6 +174,7 @@ internal class Inking(
 
     fun reset() {
         pending.clear()
+        inView = null
         wetFramesLeft = 0
         wetInk.clear()
     }
@@ -173,6 +186,11 @@ internal class Inking(
         if (state != null && painter != null) {
             val tiles = state.renderer
             pending.draw(canvas, state.layout, state.viewport, state.caches, painter, tiles::page, tiles::version)
+            inView?.let { (page, stroke) ->
+                canvas.onPage(state.layout, state.viewport, page) {
+                    painter.renderElements(listOf(stroke), canvas, state.viewport.zoom.toFloat())
+                }
+            }
         }
         erasing.drawCursor(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()

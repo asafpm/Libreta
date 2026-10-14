@@ -18,6 +18,23 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
+/** Draws with [draw] in page units of page [index], placed where the tiles draw it (whole pixels). */
+internal inline fun Canvas.onPage(
+    layout: DocumentLayout,
+    viewport: Viewport,
+    index: Int,
+    draw: () -> Unit,
+) {
+    val placed = layout.pageBounds(index)
+    val saved = save()
+    translate(
+        ((placed.left - viewport.offsetX) * viewport.zoom).roundToInt().toFloat(),
+        ((placed.top - viewport.offsetY) * viewport.zoom).roundToInt().toFloat(),
+    )
+    draw()
+    restoreToCount(saved)
+}
+
 /**
  * Page changes drawn over the tiles until the tiles show them: the tiles touching a change are
  * re-rendered in the background, and the old ones stand in meanwhile. A stroke just written is
@@ -69,9 +86,9 @@ internal class PendingChanges {
     fun clear() = changes.clear()
 
     /**
-     * Draws the pending changes with [renderer] (at the page positions the tiles use): areas
-     * from the pages ([pageAt]), then strokes. Then forgets those whose visible tiles at the
-     * current zoom are rendered with them.
+     * Forgets the changes whose visible tiles at the current zoom are rendered with them, then
+     * draws the others with [renderer] (at the page positions the tiles use): areas from the
+     * pages ([pageAt]), then strokes.
      */
     fun draw(
         canvas: Canvas,
@@ -82,24 +99,20 @@ internal class PendingChanges {
         pageAt: (Int) -> Page,
         version: (Int) -> Int,
     ) {
+        // The tiles drawn below may show some already; drawn again, translucent ink would darken.
+        changes.removeAll { shown(it, layout, viewport, caches, version(it.page)) }
         if (changes.isEmpty()) return
         val zoom = viewport.zoom.toFloat()
         for (pending in changes.sortedBy { it.stroke != null }) {
-            val placed = layout.pageBounds(pending.page)
-            val clip = visiblePart(pending, placed, viewport) ?: continue
-            val saved = canvas.save()
-            canvas.translate(
-                ((placed.left - viewport.offsetX) * viewport.zoom).roundToInt().toFloat(),
-                ((placed.top - viewport.offsetY) * viewport.zoom).roundToInt().toFloat(),
-            )
-            if (pending.stroke != null) {
-                renderer.renderElements(listOf(pending.stroke), canvas, zoom)
-            } else {
-                renderer.render(pageAt(pending.page), canvas, zoom, clip)
+            val clip = visiblePart(pending, layout.pageBounds(pending.page), viewport) ?: continue
+            canvas.onPage(layout, viewport, pending.page) {
+                if (pending.stroke != null) {
+                    renderer.renderElements(listOf(pending.stroke), canvas, zoom)
+                } else {
+                    renderer.render(pageAt(pending.page), canvas, zoom, clip)
+                }
             }
-            canvas.restoreToCount(saved)
         }
-        changes.removeAll { shown(it, layout, viewport, caches, version(it.page)) }
     }
 
     /** The part of [pending] on screen, in page units, or null if none. */

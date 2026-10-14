@@ -455,6 +455,43 @@ class InkingTest {
     }
 
     @Test
+    fun highlightersAreDrawnInTheViewAsTheyWillLook() {
+        scheduler.advanceUntilIdle()
+        view.tools = view.tools.copy(tool = Tool.HIGHLIGHTER)
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        send(MotionEvent.ACTION_DOWN, stylus(300f, 400f))
+        for (step in 1..STEPS) send(MotionEvent.ACTION_MOVE, stylus(300f + 400f * step / STEPS, 400f))
+        // Not wet ink: the view draws it, blended with the page.
+        assertTrue(wetInk.segments.isEmpty())
+        view.draw(Canvas(bitmap))
+        val writing = bitmap.getPixel(500, 400)
+        assertTrue(Integer.toHexString(writing), android.graphics.Color.blue(writing) < 200)
+        assertEquals(255, android.graphics.Color.red(writing))
+        send(MotionEvent.ACTION_UP, stylus(700f, 400f))
+
+        val stroke = erasedStrokes().single()
+        assertEquals(StrokeTool.HIGHLIGHTER, stroke.tool)
+        assertEquals(Color.of(255, 255, 0), stroke.color)
+        assertEquals(8.5, stroke.width, 0.0)
+        assertEquals(null, stroke.segmentWidths)
+        // The same before and after the tiles show it.
+        view.draw(Canvas(bitmap))
+        assertEquals(writing, bitmap.getPixel(500, 400))
+        scheduler.advanceUntilIdle()
+        view.draw(Canvas(bitmap))
+        assertEquals(writing, bitmap.getPixel(500, 400))
+    }
+
+    @Test
+    fun theStylusButtonCanHighlight() {
+        view.tools = view.tools.copy(button = StylusButton.HIGHLIGHTER)
+        sweep(500f, buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)
+        assertEquals(StrokeTool.HIGHLIGHTER, erasedStrokes().single().tool)
+        sweep(600f)
+        assertEquals(StrokeTool.PEN, erasedStrokes().last().tool)
+    }
+
+    @Test
     fun theStylusTakesOverAFingerPan() {
         send(MotionEvent.ACTION_DOWN, finger(500f, 1200f, id = 1))
         send(MotionEvent.ACTION_MOVE, finger(500f, 1150f, id = 1))

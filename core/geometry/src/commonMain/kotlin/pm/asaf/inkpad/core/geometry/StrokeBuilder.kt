@@ -89,10 +89,17 @@ class StrokeBuilder(
             if (hasPressure) widths[0] = max(widths[0], pressureWidth(releasePressure))
             append(xs[0], ys[0], widths[0])
         }
-        val coordinates = DoubleArray(2 * pointCount)
-        for (i in 0 until pointCount) {
-            coordinates[2 * i] = xs[i]
-            coordinates[2 * i + 1] = ys[i]
+        return current()
+    }
+
+    /** The stroke so far, e.g. to draw it while it is written; a single point is a dot. */
+    fun current(): Element.Stroke {
+        check(pointCount > 0) { "no samples" }
+        val count = max(pointCount, 2)
+        val coordinates = DoubleArray(2 * count)
+        for (i in 0 until count) {
+            coordinates[2 * i] = xs[min(i, pointCount - 1)]
+            coordinates[2 * i + 1] = ys[min(i, pointCount - 1)]
         }
         return Element.Stroke(
             tool = tool,
@@ -100,7 +107,7 @@ class StrokeBuilder(
             width = width,
             points = PointList.fromInterleaved(coordinates),
             // Xournal++ stores one width per point except the last.
-            segmentWidths = if (hasPressure) DoubleList.fromArray(widths.copyOf(pointCount - 1)) else null,
+            segmentWidths = if (hasPressure) DoubleList.fromArray(widths.copyOf(count - 1)) else null,
         )
     }
 
