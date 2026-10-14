@@ -51,10 +51,23 @@ Xournal++ live in `testdata/xournalpp/`.
 - `core/geometry/src/commonMain/.../BackgroundConfig.kt`, `BackgroundPattern.kt`,
   `BackgroundStyles.kt`: background ruling of `model/BackgroundConfig.cpp`,
   `view/background/*BackgroundView.cpp` and `control/pagetype/PageTypeHandler.cpp`.
+- `android/render/src/main/.../BackgroundPainter.kt`: background drawing of
+  `view/background/*BackgroundView.cpp` and `control/PdfCache.cpp`.
 - `core/geometry/src/commonTest/.../PressureRepairTest.kt`: test case ported from
   `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from
   `test/unit_tests/control/LoadHandlerTest.cpp`.
+
+## Fonts
+
+`android/render/src/main/res/font/` contains DejaVu Sans, DejaVu Serif and
+DejaVu Sans Mono (regular, bold, italic/oblique, bold italic/oblique) from
+DejaVu Fonts 2.37 (https://dejavu-fonts.github.io/), unmodified. Fonts are
+© Bitstream (Bitstream Vera Fonts licence); DejaVu changes are in the public
+domain; glyphs imported from Arev fonts are © Tavmjong Bah. Full licence:
+[licenses/DejaVu-LICENSE.txt](licenses/DejaVu-LICENSE.txt). The release archive
+`dejavu-fonts-ttf-2.37.zip` had SHA-256
+`7576310b219e04159d35ff61dd4a4ec4cdba4f35c00e002a136f00e96a908b0a`.
 
 ## Third-party libraries
 
