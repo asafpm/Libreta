@@ -232,11 +232,21 @@ requires an even count.
 - **Size:** `size` is the em size in page units.
 - **Layout:** no wrapping (lines break only at `\n`), left-aligned, line spacing
   factor 1.0.
-- **Position:** `(x, y)` is the top-left of the layout's logical rectangle, so the
-  first baseline is at `y + ascent`.
+- **Position:** `(x, y)` is the top-left of the layout's logical rectangle.
+- **Line positions:** Pango uses *hinted* font metrics, rounded to whole points.
+  Measured on Xournal++ 1.3.8 with DejaVu at 15 sizes from 6 to 36 pt, using the
+  font's ascent and descent (hhea, scaled to `size`):
+  - the first baseline is `y + ceil(ascent)`;
+  - consecutive baselines are `ceil(ascent + descent)` apart, which is also the
+    height of each line.
+- **Width:** the widest line's advance, unhinted.
 - **Colour:** opaque.
 
-**Inkpad:** bundles DejaVu Sans, Serif and Mono (regular, bold, italic,
+The font a name resolves to depends on each machine's fontconfig. On a system
+without DejaVu, Xournal++ draws `Sans` with e.g. Noto Sans, which has different
+metrics.
+
+**Inkpad:** draws each line separately at those baselines. It bundles DejaVu Sans, Serif and Mono (regular, bold, italic,
 bold-italic), which is what Xournal++ uses on typical Linux systems for `Sans`,
 `Serif` and `Monospace`.
 - **Style words** (case-insensitive): `bold`, `semibold`, `demibold`, `heavy`,
@@ -253,6 +263,11 @@ bold-italic), which is what Xournal++ uses on typical Linux systems for `Sans`,
 - **Images:** the decoded image (PNG, JPEG, …) is stretched to
   `left, top, right, bottom`, with no aspect-ratio preservation, smooth
   filtering and normal blending.
+  - EXIF orientation is applied.
+  - Images larger than 2²⁵ pixels are shrunk when decoded.
+  - **Inkpad:** uses bilinear filtering limited to the box. Cairo's filter also
+    blurs the image's edges into the surroundings, which is visible when a tiny
+    image is scaled up a lot.
 - **LaTeX (`teximage`):** the data is detected by its bytes 1–3 (`PDF` or `PNG`).
   - PDF data: page 1 of the PDF is scaled into the box over a transparent
     background, so only the glyphs are drawn.

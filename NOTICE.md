@@ -55,6 +55,9 @@ Xournal++ live in `testdata/xournalpp/`.
   `view/background/*BackgroundView.cpp` and `control/PdfCache.cpp`.
 - `android/render/src/main/.../StrokePainter.kt`: stroke drawing of
   `view/StrokeView.cpp` and `view/StrokeViewHelper.cpp`.
+- `android/render/src/main/.../TextPainter.kt`, `ImagePainter.kt`: text and image
+  drawing of `model/Text.cpp`, `view/TextView.cpp`, `view/ImageView.cpp`,
+  `view/TexImageView.cpp` and `model/Image.cpp`.
 - `core/geometry/src/commonTest/.../PressureRepairTest.kt`: test case ported from
   `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from

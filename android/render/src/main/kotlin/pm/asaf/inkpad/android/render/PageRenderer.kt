@@ -6,7 +6,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import pm.asaf.inkpad.core.geometry.ElementGeometry
-import pm.asaf.inkpad.core.geometry.Size
 import pm.asaf.inkpad.core.geometry.TextMeasurer
 import pm.asaf.inkpad.core.geometry.intersects
 import pm.asaf.inkpad.core.model.Bounds
@@ -21,11 +20,16 @@ import kotlin.math.ceil
 class PageRenderer(
     context: Context,
     backgroundSource: BackgroundSource = BackgroundSource.None,
+    pdfRasterizer: PdfRasterizer = PdfRasterizer.NONE,
 ) {
     private val fonts = FontResolver(context)
     private val backgrounds = BackgroundPainter(backgroundSource, fonts)
     private val strokes = StrokePainter()
-    private val textMeasurer = TextMeasurer { Size(0.0, 0.0) }
+    private val texts = TextPainter(fonts)
+    private val images = ImagePainter(pdfRasterizer)
+
+    /** Measures text the way it is drawn, e.g. for bounding boxes. */
+    val textMeasurer: TextMeasurer get() = texts
 
     /**
      * Draws [page] onto [canvas] with page coordinates scaled by [zoom] (pixels per point),
@@ -46,7 +50,7 @@ class PageRenderer(
                 for (element in layer.elements) {
                     // Like Xournal++, skip elements that do not overlap the area being drawn.
                     val bounds = ElementGeometry.bounds(element, textMeasurer) ?: continue
-                    if (bounds.intersects(clip)) paintElement(canvas, element)
+                    if (bounds.intersects(clip)) paintElement(canvas, element, zoom)
                 }
             }
         } finally {
@@ -57,10 +61,14 @@ class PageRenderer(
     private fun paintElement(
         canvas: Canvas,
         element: Element,
+        zoom: Float,
     ) {
         when (element) {
             is Element.Stroke -> strokes.paint(canvas, element)
-            is Element.Text, is Element.Image, is Element.TexImage, is Element.Unknown -> Unit
+            is Element.Text -> texts.paint(canvas, element)
+            is Element.Image -> images.paint(canvas, element)
+            is Element.TexImage -> images.paint(canvas, element, zoom)
+            is Element.Unknown -> Unit
         }
     }
 

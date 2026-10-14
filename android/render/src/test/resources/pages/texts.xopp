@@ -1,0 +1,26 @@
+<?xml version="1.0" standalone="no"?>
+<xournal creator="inkpad-test" fileversion="4">
+<title>Text rendering tests</title>
+<page width="300" height="400">
+<background type="solid" color="#ffffffff" style="plain"/>
+<layer>
+<text font="Sans" size="12" x="10" y="10" color="#000000ff">Sans 12: The quick brown fox</text>
+<text font="Liberation Serif Bold" size="16" x="10" y="35" color="#3333ccff">Liberation Serif Bold 16</text>
+<text font="DejaVu Sans Mono Oblique" size="11" x="10" y="65" color="#008000ff">DejaVu Sans Mono Oblique 11</text>
+<text font="Sans" size="30" x="10" y="90" color="#ff0000ff">Big 30 Ag</text>
+<text font="Sans" size="14" x="10" y="140" color="#000000ff">Two lines
+second line, same x</text>
+<text font="DejaVu Serif Italic" size="12" x="10" y="190" color="#000000ff">Accents: àéîõü ñ ç — Greek: αβγ Ωμ</text>
+<text font="Sans" size="12" x="10" y="215" color="#000000ff">CJK fallback: 测试 テスト</text>
+<text font="Nimbus Roman" size="14" x="10" y="240" color="#ff00ffff">Nimbus Roman 14 &amp; &lt;tags&gt;</text>
+<text font="Sans" size="10" x="260" y="100" color="#000000ff">H1
+H2
+H3
+H4
+H5
+H6</text>
+<stroke tool="pen" color="#ff0000ff" width="0.5" capStyle="round">10 10 290 10</stroke>
+<stroke tool="pen" color="#ff0000ff" width="0.5" capStyle="round">10 10 10 300</stroke>
+</layer>
+</page>
+</xournal>

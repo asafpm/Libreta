@@ -7,6 +7,7 @@ plugins {
 dependencies {
     api(project(":core:model"))
     api(project(":core:geometry"))
+    implementation(libs.androidx.exifinterface)
 
     // Sample documents in screenshot tests.
     testImplementation(project(":core:format"))
