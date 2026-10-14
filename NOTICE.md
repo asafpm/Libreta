@@ -32,6 +32,8 @@ Xournal++ live in `testdata/xournalpp/`.
   and saver, with source references.
 - `core/format/src/commonMain/.../ColorCodec.kt`: colour-name tables from
   `src/core/control/xojfile/LoadHandlerHelper.cpp`.
+- `core/format/src/commonMain/.../XmlTree.kt`: output layout and escaping of
+  `src/core/control/xml/XmlNode.cpp`, `TextAttribute.cpp`, `XmlTextNode.cpp`.
 - `core/format/src/commonTest/.../ColorCodecTest.kt`: expectations from
   `LoadHandlerHelper.cpp` and `test/unit_tests/control/LoadHandlerTest.cpp`.
 
