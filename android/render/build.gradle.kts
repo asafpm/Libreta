@@ -11,6 +11,28 @@ dependencies {
 
     // Sample documents in screenshot tests.
     testImplementation(project(":core:format"))
+
+    // Device tests: PdfRenderer only runs on Android itself.
+    androidTestImplementation(project(":core:format"))
+    androidTestImplementation(libs.androidx.test.services.storage)
+    androidTestUtil(libs.androidx.test.services)
+}
+
+android {
+    defaultConfig {
+        // Lets device tests save rendered images, pulled into build/outputs/connected_android_test_additional_output.
+        testInstrumentationRunnerArguments["useTestStorageService"] = "true"
+    }
+}
+
+// The sample documents, readable by device tests as assets.
+androidComponents {
+    onVariants { variant ->
+        variant.androidTest
+            ?.sources
+            ?.assets
+            ?.addStaticSourceDirectory(testData.asFile.absolutePath)
+    }
 }
 
 // Screenshot tests compare against PNGs in src/test/screenshots. Record new references with
