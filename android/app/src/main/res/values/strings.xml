@@ -35,6 +35,9 @@
 
     <!-- Note -->
     <string name="fit_width">Fit width</string>
+    <string name="folder_needed">This note\'s background is in a separate file. Add its folder to your library to show it.</string>
+    <string name="add_this_folder">Add folder</string>
+    <string name="missing_files">Not found: %1$s</string>
 
     <!-- Errors -->
     <string name="error_create_note">Couldn\'t create %1$s</string>

@@ -4,6 +4,7 @@ package pm.asaf.inkpad.ui
 
 import android.app.Application
 import android.content.Context
+import android.provider.DocumentsContract
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -142,6 +143,28 @@ class InkpadAppTest {
         waitForText("Broken.xopp")
         compose.onNodeWithText("Broken.xopp").performClick()
         waitForText("Broken.xopp isn't a Xournal++ note, or it is damaged")
+    }
+
+    @Test
+    fun opensNotesFromOtherApps() {
+        val sample = "xournalpp/packaged_xopp/imgBackground"
+        File(testData, "$sample/old.xopp").copyTo(File(directory, "Shared/old.xopp"))
+        File(testData, "$sample/old.xopp.bg_1.png").copyTo(File(directory, "Shared/old.xopp.bg_1.png"))
+        val model = show()
+        val uri = DocumentsContract.buildDocumentUri(FakeDocumentsProvider.AUTHORITY, "root/Shared/old.xopp")
+        compose.runOnIdle { model.openExternal(uri) }
+        eventually { model.note.value is NoteState.Loaded }
+        // Outside the library its background can't be found.
+        assertTrue((model.note.value as NoteState.Loaded).folderNeeded)
+        compose.onNodeWithText("Add folder").assertIsDisplayed()
+
+        // As if the user picked the folder: the note opens again, with its background.
+        compose.runOnIdle { model.addFolderForNote(FakeDocumentsProvider.treeUri("Shared")) }
+        eventually { (model.note.value as? NoteState.Loaded)?.folderNeeded == false }
+        val note = model.note.value as NoteState.Loaded
+        assertEquals(emptyList<String>(), note.files.missing)
+        assertEquals(listOf("Shared"), (model.screens.value.last() as Screen.Note).location?.folders?.map { it.name })
+        assertEquals(listOf(Screen.Home, model.screens.value.last()), model.screens.value)
     }
 
     private companion object {

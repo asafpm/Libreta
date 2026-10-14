@@ -74,6 +74,21 @@ class FakeDocumentsProvider : DocumentsProvider() {
         fileOf(documentId).deleteRecursively()
     }
 
+    override fun findDocumentPath(
+        parentDocumentId: String?,
+        childDocumentId: String,
+    ): DocumentsContract.Path {
+        val parent = parentDocumentId ?: ROOT
+        if (childDocumentId != parent &&
+            !isChildDocument(parent, childDocumentId)
+        ) {
+            throw FileNotFoundException(childDocumentId)
+        }
+        val below = childDocumentId.removePrefix(parent).split('/').filter { it.isNotEmpty() }
+        val ids = below.runningFold(parent) { id, name -> "$id/$name" }
+        return DocumentsContract.Path(if (parentDocumentId == null) ROOT else null, ids)
+    }
+
     override fun isChildDocument(
         parentDocumentId: String,
         documentId: String,

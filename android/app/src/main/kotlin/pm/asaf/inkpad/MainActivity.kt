@@ -2,6 +2,7 @@
 
 package pm.asaf.inkpad
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,10 +17,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // After a rotation the note is open already.
+        if (savedInstanceState == null) openFrom(intent)
         setContent {
             MaterialTheme {
                 InkpadApp(model)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openFrom(intent)
+    }
+
+    /** "Open with" from another app. */
+    private fun openFrom(intent: Intent) {
+        val uri = intent.data
+        if (intent.action == Intent.ACTION_VIEW && uri != null) model.openExternal(uri)
     }
 }

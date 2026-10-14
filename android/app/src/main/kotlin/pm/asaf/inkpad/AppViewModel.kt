@@ -24,6 +24,9 @@ import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.files.DocumentFiles
+import pm.asaf.inkpad.files.DocumentLocation
+import pm.asaf.inkpad.files.NoteLoader
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.Library
@@ -44,9 +47,11 @@ sealed interface Screen {
 
     data object Settings : Screen
 
+    /** A note; [location] is where its background files are looked for (null: not in the library). */
     data class Note(
         val uri: Uri,
         val name: String,
+        val location: DocumentLocation?,
     ) : Screen
 }
 
@@ -58,6 +63,9 @@ sealed interface NoteState {
         val document: Document,
         /** Tiles and thumbnails, kept across rotation. */
         val caches: RenderCaches,
+        val files: DocumentFiles,
+        /** Its background files are outside it, but where it is was not granted. */
+        val folderNeeded: Boolean,
     ) : NoteState
 
     data class Failed(
@@ -65,13 +73,15 @@ sealed interface NoteState {
     ) : NoteState
 }
 
-/** The new-note dialog for [folder], with a suggested [name]. */
+/** The new-note dialog for the last folder of [path] (from a library root), with a suggested [name]. */
 data class NewNoteRequest(
-    val folder: FolderRef,
+    val path: List<FolderRef>,
     val name: String,
     val paper: PaperSize,
     val landscape: Boolean,
-)
+) {
+    val folder: FolderRef get() = path.last()
+}
 
 /** The app's state: navigation, the library and the open note. */
 class AppViewModel
@@ -137,11 +147,11 @@ class AppViewModel
 
         // New notes
 
-        fun startNewNote(folder: FolderRef) {
+        fun startNewNote(path: List<FolderRef>) {
             viewModelScope.launch {
-                val name = withContext(io) { NewNoteCreator.suggestedName(context.contentResolver, folder) }
+                val name = withContext(io) { NewNoteCreator.suggestedName(context.contentResolver, path.last()) }
                 val paper = PaperSize.entries.getOrNull(preferences.getInt(PAPER_KEY, 0)) ?: PaperSize.A4
-                newNoteState.value = NewNoteRequest(folder, name, paper, preferences.getBoolean(LANDSCAPE_KEY, false))
+                newNoteState.value = NewNoteRequest(path, name, paper, preferences.getBoolean(LANDSCAPE_KEY, false))
             }
         }
 
@@ -167,14 +177,22 @@ class AppViewModel
                 val created =
                     withContext(io) {
                         runCatching {
-                            val uri = NewNoteCreator.create(resolver, request.folder, name, paper, landscape, creator())
+                            val uri =
+                                NewNoteCreator.create(
+                                    resolver,
+                                    request.folder,
+                                    name,
+                                    paper,
+                                    landscape,
+                                    NewNoteCreator.creator(context),
+                                )
                             uri to (FolderListing.nameOf(resolver, uri) ?: NewNoteCreator.fileName(name))
                         }
                     }
                 created
                     .onSuccess { (uri, fileName) ->
                         library.refresh(request.folder)
-                        open(Screen.Note(uri, fileName))
+                        open(Screen.Note(uri, fileName, DocumentLocation(request.path, fileName)))
                     }.onFailure { e ->
                         Log.w(TAG, "Cannot create $name", e)
                         errorState.value = context.getString(R.string.error_create_note, name)
@@ -182,42 +200,53 @@ class AppViewModel
             }
         }
 
-        private fun creator(): String {
-            val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName
-            return listOfNotNull(context.getString(R.string.app_name), version).joinToString(" ")
+        // The open note
+
+        /** Opens a note from another app ("Open with"), finding it in the library if it is there. */
+        fun openExternal(uri: Uri) {
+            viewModelScope.launch {
+                val screen =
+                    withContext(io) {
+                        val name = NoteLoader.nameOf(context.contentResolver, uri)
+                        Screen.Note(
+                            uri,
+                            name,
+                            NoteLoader.locate(context.contentResolver, library.roots.value, uri, name),
+                        )
+                    }
+                if (stack.value.last() is Screen.Note) back()
+                open(screen)
+            }
         }
 
-        // The open note
+        /** Adds the folder of the open note to the library, then opens the note again to find its files. */
+        fun addFolderForNote(treeUri: Uri) {
+            val note = stack.value.last() as? Screen.Note ?: return
+            library.addRoot(treeUri) {
+                back()
+                openExternal(note.uri)
+            }
+        }
 
         private fun loadNote(screen: Screen.Note) {
             noteAnchor = null
             noteState.value = NoteState.Loading
             viewModelScope.launch {
-                val state =
-                    withContext(io) {
-                        try {
-                            val stream =
-                                context.contentResolver.openInputStream(screen.uri) ?: throw IOException("No stream")
-                            val document = stream.source().use { XoppReader.read(it).document }
-                            NoteState.Loaded(document, RenderCaches.forDevice(context))
-                        } catch (e: IOException) {
-                            Log.w(TAG, "Cannot read ${screen.uri}", e)
-                            NoteState.Failed(context.getString(R.string.error_read_note, screen.name))
-                        } catch (e: XoppFormatException) {
-                            Log.w(TAG, "Cannot read ${screen.uri}", e)
-                            NoteState.Failed(context.getString(R.string.error_not_a_note, screen.name))
-                        } catch (e: SecurityException) {
-                            Log.w(TAG, "No access to ${screen.uri}", e)
-                            NoteState.Failed(context.getString(R.string.error_read_note, screen.name))
-                        }
-                    }
+                val state = withContext(io) { NoteLoader.load(context, screen.uri, screen.name, screen.location) }
                 // Still the same note?
-                if (stack.value.lastOrNull() == screen) noteState.value = state
+                if (stack.value.lastOrNull() == screen) {
+                    noteState.value = state
+                } else {
+                    (state as? NoteState.Loaded)?.files?.close()
+                }
             }
         }
 
         private fun closeNote() {
-            (noteState.value as? NoteState.Loaded)?.caches?.clear()
+            (noteState.value as? NoteState.Loaded)?.let {
+                it.caches.clear()
+                it.files.close()
+            }
             noteState.value = null
             noteAnchor = null
         }

@@ -13,6 +13,18 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- "Open with" for Xournal++ notes. Android has no type for .xopp/.xoj, so file
+                 managers usually send application/octet-stream; other files fail to load with
+                 a message. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/x-xopp" />
+                <data android:mimeType="application/x-xoj" />
+                <data android:mimeType="application/x-xournal" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
         </activity>
     </application>
 

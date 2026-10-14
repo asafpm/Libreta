@@ -17,11 +17,12 @@ import kotlinx.coroutines.sync.withLock
 import okio.ByteString.Companion.encodeUtf8
 import okio.source
 import pm.asaf.inkpad.android.render.BitmapLru
-import pm.asaf.inkpad.android.render.PageRenderer
 import pm.asaf.inkpad.android.render.TileRenderer
 import pm.asaf.inkpad.core.format.XoppFormatException
 import pm.asaf.inkpad.core.format.XoppPreview
 import pm.asaf.inkpad.core.format.XoppReader
+import pm.asaf.inkpad.files.DocumentFiles
+import pm.asaf.inkpad.files.DocumentLocation
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -39,8 +40,9 @@ class PreviewCache(
     private val resolver: ContentResolver = context.contentResolver
     private val memory = BitmapLru<String>(MEMORY_BYTES)
 
-    // Rendering is serial: one renderer, and documents are parsed in parallel anyway.
-    private val renderer by lazy { PageRenderer(context.applicationContext) }
+    private val context: Context = context.applicationContext
+
+    // Rendering is serial, to bound memory; documents are still read in parallel.
     private val rendering = Mutex()
 
     /** The finished preview, if it is in memory. */
@@ -77,14 +79,15 @@ class PreviewCache(
         }
 
     private suspend fun render(document: LibraryEntry.Document): Bitmap? {
-        val page =
-            readOrNull(document) {
-                XoppReader
-                    .read(it.source())
-                    .document.pages
-                    .firstOrNull()
-            } ?: return null
-        return rendering.withLock { TileRenderer.renderThumbnail(renderer, page) }
+        val read = readOrNull(document) { XoppReader.read(it.source()) }
+        val page = read?.document?.pages?.firstOrNull() ?: return null
+        // Background files next to the note are found; paths leaving its folder are not.
+        val files = DocumentFiles.open(context, read, DocumentLocation(listOf(document.parent), document.name))
+        return try {
+            rendering.withLock { TileRenderer.renderThumbnail(files.newRenderer(), page) }
+        } finally {
+            files.close()
+        }
     }
 
     private fun <T> readOrNull(

@@ -14,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.Screen
-import pm.asaf.inkpad.android.render.BackgroundSource
+import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.library.LibraryRoot
 
 /** The app's screens, driven by [model]. */
@@ -69,7 +69,10 @@ private fun libraryActions(
                 .map { it.folder }
         model.open(Screen.Folder(path + entry.folder))
     },
-    openDocument = { entry -> model.open(Screen.Note(entry.uri, entry.name)) },
+    openDocument = { entry ->
+        val folders = parent?.path ?: listOf(entry.parent)
+        model.open(Screen.Note(entry.uri, entry.name, DocumentLocation(folders, entry.name)))
+    },
 )
 
 @Composable
@@ -84,7 +87,7 @@ private fun Home(
         folders = folders,
         previews = model.previews,
         actions = libraryActions(model, parent = null),
-        onNewNote = model::startNewNote,
+        onNewNote = { folder -> model.startNewNote(listOf(folder)) },
         onAddFolder = addFolder,
         onSettings = { model.open(Screen.Settings) },
     )
@@ -101,7 +104,7 @@ private fun Folder(
         state = folders[screen.folder],
         previews = model.previews,
         actions = libraryActions(model, parent = screen),
-        onNewNote = { model.startNewNote(screen.folder) },
+        onNewNote = { model.startNewNote(screen.path) },
         onBreadcrumb = { index -> repeat(screen.path.lastIndex - index) { model.back() } },
         onBack = { model.back() },
     )
@@ -129,12 +132,17 @@ private fun Note(
     screen: Screen.Note,
 ) {
     val note by model.note.collectAsStateWithLifecycle()
+    val pickFolder =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+            uri?.let(model::addFolderForNote)
+        }
     NoteScreen(
         name = screen.name,
         state = note,
-        backgrounds = BackgroundSource.None,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
+        // The picker starts next to the note, where the provider supports it.
+        onAddFolder = { pickFolder.launch(screen.uri) },
         onBack = { model.back() },
     )
 }

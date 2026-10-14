@@ -3,9 +3,11 @@
 package pm.asaf.inkpad.library
 
 import android.content.ContentResolver
+import android.content.Context
 import android.net.Uri
 import android.provider.DocumentsContract
 import okio.sink
+import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.format.XoppWriter
 import pm.asaf.inkpad.core.model.NewNote
 import pm.asaf.inkpad.core.model.PaperSize
@@ -27,6 +29,12 @@ object NewNoteCreator {
         val names = runCatching { FolderListing.list(resolver, folder).map { it.name } }
         val existing = names.getOrDefault(emptyList()).toSet()
         return NewNote.suggestedName(now.year, now.monthValue, now.dayOfMonth, now.hour, now.minute, existing)
+    }
+
+    /** The `creator` written into new notes: the app name and version. */
+    fun creator(context: Context): String {
+        val version = context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        return listOfNotNull(context.getString(R.string.app_name), version).joinToString(" ")
     }
 
     /** [name] made safe as a file name, with the `.xopp` extension. */

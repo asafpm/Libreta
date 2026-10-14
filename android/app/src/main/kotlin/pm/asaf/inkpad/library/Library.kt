@@ -75,8 +75,11 @@ class Library(
         folderStates.value.keys.forEach { refresh(it) }
     }
 
-    /** Adds a folder picked with ACTION_OPEN_DOCUMENT_TREE, keeping access to it. */
-    fun addRoot(treeUri: Uri) {
+    /** Adds a folder picked with ACTION_OPEN_DOCUMENT_TREE, keeping access to it, then calls [then]. */
+    fun addRoot(
+        treeUri: Uri,
+        then: () -> Unit = {},
+    ) {
         scope.launch {
             val root =
                 withContext(io) {
@@ -86,6 +89,7 @@ class Library(
                 }
             configured.add(root)
             refresh(root.folder)
+            then()
         }
     }
 
