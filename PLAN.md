@@ -103,11 +103,23 @@ references in `android/render/src/test/screenshots`, recorded with
 `-Pinkpad.recordScreenshots=true`; PDF rendering (PdfRenderer) tested on the device;
 `scripts/render-crosscheck.sh` compares every sample page with Xournal++.
 
-### Phase 3 — Viewer
-Scrollable continuous page list, pinch-zoom/pan, per-page bitmap cache
-at current zoom, low-res placeholder while zooming, re-render on settle.
-Open .xopp via SAF.
+### Phase 3 — Library and viewer
+Library home screen: the user picks folders (SAF trees) in Settings; each
+appears with its subfolders and notes as a grid of page previews, and a
+"New note" button (Xournal++'s name `yyyy-MM-dd-Note-HH-mm.xopp`, paper size,
+orientation). Tapping a note opens the viewer: scrollable continuous page list,
+pinch-zoom/pan/fling, tiles cached at the current zoom, low-res placeholders
+while zooming, re-render on settle. Background files (sidecars, relative
+paths, zip attachments) are found through the folder grants; "Open with"
+from file managers works, offering to add the note's folder when needed.
 ✅ Opens a 100-page file smoothly; memory bounded (LRU cache).
+Done: `LargeDocumentTest` (androidTest) opens 104 dense pages (23 MB) in 2.6 s
+and scrolls them with p95 frame time 10.5 ms on the Tab S9; measure speed with
+the `benchmark` build type (`-Pinkpad.testBuildType=benchmark`), since
+debuggable builds are several times slower. Library and file code is in
+`android/app` (`library/`, `files/`, `viewer/`, `ui/`); Phase 5 moves its SAF
+calls behind `DocumentStore`. Samsung My Files can't open .xopp files with any
+app (it refuses unknown extensions); the system Files app can.
 
 ### Phase 4 — Inking
 Pen tool with pressure, using historical MotionEvent points, front-buffered
@@ -125,7 +137,11 @@ Undo/redo (command stack in core:model), stroke eraser, whiteout/partial
 eraser (stroke splitting in core:geometry), highlighter, color/width palette,
 save via SAF + autosave. All file access goes through a `DocumentStore` interface
 (list, read, write, metadata incl. version/etag) in a shared module;
-SAF is the first implementation. No direct SAF calls outside it.
+SAF is the first implementation. No direct SAF calls outside it (Phase 3's
+`FolderListing`, `NewNoteCreator`, `FileFinder` and `DocumentFiles` move behind it).
+Saving large notes: `NumberCodec.formatDouble` goes through `Double.toString`
+and substrings, JNI calls on Android; profile saving 100 pages on the device
+the way Phase 3 profiled reading.
 ✅ Edits survive save → reopen; undo and eraser tests in commonTest.
 
 ### Phase 6 — Pages & layers
@@ -150,6 +166,7 @@ New KMP module `:core:sync` using Ktor client (shared with future iOS).
   (Android Keystore now, iOS Keychain later).
 - Local cache of synced files; work offline, sync on open/save and
   periodically via WorkManager (Android layer only).
+- Library roots get a `LibraryRoot.Remote` variant next to `Local` (Phase 3).
 - A document's referenced PDF backgrounds sync along with it
   (resolve relative paths against the remote folder).
 - Conflicts: .xopp can't be merged; if the ETag changed remotely,
