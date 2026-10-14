@@ -24,10 +24,10 @@ import org.junit.runner.RunWith
 import pm.asaf.inkpad.android.render.PageRenderer
 import pm.asaf.inkpad.android.render.RenderCaches
 import pm.asaf.inkpad.core.format.XoppReader
-import pm.asaf.inkpad.core.format.XoppWriter
 import pm.asaf.inkpad.core.geometry.DocumentLayout
 import pm.asaf.inkpad.core.geometry.Size
 import pm.asaf.inkpad.core.model.Document
+import pm.asaf.inkpad.files.NoteEncoder
 import java.util.Collections
 import kotlin.math.roundToInt
 
@@ -89,8 +89,12 @@ class LargeDocumentTest {
 
     @Test
     fun largeDocumentIsSmooth() {
-        val pages = largeDocument().pages
-        val bytes = XoppWriter.toByteString(largeDocument())
+        val source = largeDocument()
+        val pages = source.pages
+        // Saving: the first write, as when a note is first saved.
+        val writeStart = SystemClock.elapsedRealtime()
+        val bytes = NoteEncoder.encode(source)
+        val writeMs = SystemClock.elapsedRealtime() - writeStart
         val loadStart = SystemClock.elapsedRealtime()
         val document = XoppReader.read(bytes).document
         val loadMs = SystemClock.elapsedRealtime() - loadStart
@@ -121,12 +125,12 @@ class LargeDocumentTest {
             scenario.onActivity { it.window.removeOnFrameMetricsAvailableListener(recorder) }
 
             val durations = recorder.durations()
-            val report = report(document.pages.size, bytes.size, loadMs, scroll, durations, recorder, caches)
+            val report = report(document.pages.size, bytes.size, loadMs, writeMs, scroll, durations, recorder, caches)
             Log.i(TAG, report)
             TestStorage().openOutputFile("large-document-report.txt").use { it.write(report.toByteArray()) }
 
             assertTrue(report, scroll.reachedEnd)
-            if (!debuggable) assertTrue(report, loadMs < MAX_LOAD_MS)
+            if (!debuggable) assertTrue(report, loadMs < MAX_LOAD_MS && writeMs < MAX_WRITE_MS)
             assertTrue(report, percentile(durations, 95) < FRAME_BUDGET_MS)
             assertTrue(report, (durations.lastOrNull() ?: 0.0) < MAX_FRAME_MS)
             assertTrue(
@@ -158,6 +162,7 @@ class LargeDocumentTest {
         pages: Int,
         bytes: Int,
         loadMs: Long,
+        writeMs: Long,
         scroll: Scroll,
         durations: List<Double>,
         recorder: Recorder,
@@ -165,6 +170,7 @@ class LargeDocumentTest {
     ) = buildString {
         appendLine("Pages: $pages, file: ${bytes / KB} KB")
         appendLine("Load (parse): $loadMs ms${if (debuggable) " (debuggable build: not checked)" else ""}")
+        appendLine("Save (write): $writeMs ms")
         appendLine("Scroll to the end: ${scroll.flings} flings, ${scroll.milliseconds} ms")
         appendLine("  reached the end: ${scroll.reachedEnd}")
         appendLine("Frames: ${durations.size}")
@@ -317,6 +323,7 @@ class LargeDocumentTest {
         const val FRAME_BUDGET_MS = 16.7
         const val MAX_FRAME_MS = 100.0
         const val MAX_LOAD_MS = 3000
+        const val MAX_WRITE_MS = 3000
         const val SCROLL_LIMIT_MS = 120_000L
         const val SETTLE_MS = 2000L
         const val STILL_MS = 100L

@@ -6,22 +6,29 @@ package pm.asaf.inkpad.core.format
  * Numbers in .xopp files (docs/xopp-format.md §3).
  *
  * Writing produces the shortest decimal that parses back to the same double, without an
- * exponent. For values with at most 8 significant digits this equals Xournal++'s `%.8g`.
+ * exponent ([DecimalWriter]). For values with at most 8 significant digits this equals
+ * Xournal++'s `%.8g`.
  * Reading is strict (a malformed value makes the caller keep the element verbatim) but
  * accepts everything `g_ascii_strtod` produces: exponents and `nan`/`inf` forms.
  */
 internal object NumberCodec {
     private const val LL_SUFFIX = "ll"
 
-    fun formatDouble(value: Double): String =
-        when {
-            value.isNaN() -> if (value.toRawBits() < 0) "-nan" else "nan"
-            value == Double.POSITIVE_INFINITY -> "inf"
-            value == Double.NEGATIVE_INFINITY -> "-inf"
-            else -> toPlainDecimal(value.toString())
-        }
+    fun formatDouble(value: Double): String = buildString { DecimalWriter.append(this, value) }
 
-    fun formatDoubleList(values: DoubleArray): String = values.joinToString(separator = " ") { formatDouble(it) }
+    /** Appends [value] as [formatDouble] writes it. */
+    fun appendDouble(
+        out: StringBuilder,
+        value: Double,
+    ) = DecimalWriter.append(out, value)
+
+    fun formatDoubleList(values: DoubleArray): String =
+        buildString {
+            for (index in values.indices) {
+                if (index > 0) append(' ')
+                DecimalWriter.append(this, values[index])
+            }
+        }
 
     fun parseDouble(text: String): Double? = parseDouble(text, 0, text.length, DecimalScanner(text))
 
@@ -121,31 +128,6 @@ internal object NumberCodec {
     }
 
     /** Rewrites Kotlin's `Double.toString()` (possibly `1.0E-5`) as a plain decimal. */
-    private fun toPlainDecimal(text: String): String {
-        val negative = text.startsWith('-')
-        val unsigned = if (negative) text.substring(1) else text
-        val exponentIndex = unsigned.indexOfFirst { it == 'E' || it == 'e' }
-        val mantissa = if (exponentIndex < 0) unsigned else unsigned.substring(0, exponentIndex)
-        val exponent = if (exponentIndex < 0) 0 else unsigned.substring(exponentIndex + 1).toInt()
-        val dot = mantissa.indexOf('.')
-        val integerPart = if (dot < 0) mantissa else mantissa.substring(0, dot)
-        val fractionPart = if (dot < 0) "" else mantissa.substring(dot + 1)
-
-        var digits = integerPart + fractionPart
-        var pointPosition = integerPart.length + exponent
-        val firstNonZero = digits.indexOfFirst { it != '0' }
-        if (firstNonZero < 0) return if (negative) "-0" else "0"
-        digits = digits.substring(firstNonZero).trimEnd('0')
-        pointPosition -= firstNonZero
-
-        val body =
-            when {
-                pointPosition <= 0 -> "0." + "0".repeat(-pointPosition) + digits
-                pointPosition >= digits.length -> digits + "0".repeat(pointPosition - digits.length)
-                else -> digits.substring(0, pointPosition) + "." + digits.substring(pointPosition)
-            }
-        return if (negative) "-$body" else body
-    }
 
     private fun Char.isAsciiDigit(): Boolean = this in '0'..'9'
 

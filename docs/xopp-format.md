@@ -40,6 +40,10 @@ through zlib, which accepts both gzip and plain XML. Saving always writes gzip
 **Inkpad:** reads all three containers and writes gzip only, as Xournal++ does.
 When a zip is read, its attachments are returned alongside the document, keyed
 by path. Image attachments become the image's data.
+It compresses at zlib level 2 rather than the default 6, which Xournal++
+uses, so that saving keeps up with autosave. On a Galaxy Tab S9 Ultra, 70 MB of
+XML (104 pages) compresses in 1.0 s instead of 4.4 s, and the file is 11%
+larger (25.6 MB instead of 23.0 MB). Any level reads the same.
 
 ## 2. XML conventions
 
@@ -90,9 +94,9 @@ double**, never using an exponent, written as `-0` for negative zero, and as
   significant digits. That covers everything Xournal++ 1.2 and later writes.
 - It keeps higher-precision values from older files, such as `461.01539741`,
   where `%.8g` would round them.
-- Coordinates created by Inkpad itself should be rounded to 8 significant
-  digits when the stroke is built, so that files stay as compact as
-  Xournal++'s. That is the inking phase's job, not the writer's.
+- Coordinates created by Inkpad itself are rounded to 8 significant digits
+  when strokes are built or cut by the eraser, so that files stay as compact
+  as Xournal++'s.
 
 ## 4. Document structure
 

@@ -11,7 +11,6 @@ import android.util.Log
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import pm.asaf.inkpad.core.format.XoppContainer
-import pm.asaf.inkpad.core.format.XoppWriter
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.store.DocumentStore
 import pm.asaf.inkpad.core.store.FileVersion
@@ -90,10 +89,7 @@ class NoteSaver(
     ): SaveResult =
         try {
             val preview = document.pages.firstOrNull()?.let { preview(it, files) }
-            val bytes =
-                XoppWriter.toByteString(
-                    document.copy(creator = NewNoteCreator.creator(context), preview = preview),
-                )
+            val bytes = NoteEncoder.encode(document.copy(creator = NewNoteCreator.creator(context), preview = preview))
             val result =
                 when (val written = store.write(file.id, bytes, expected = file.version)) {
                     is WriteResult.Written -> {

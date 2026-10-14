@@ -67,7 +67,8 @@ class StrokeBuilderTest {
         builder.add(InkSample(2.0, 0.0, 1.0))
         // Width 0.25 -> 1.0 needs ceil(0.75 / 0.3) = 3 steps; the 2 pt segment allows them
         // (>= 0.3 pt each). Like Xournal++, the interpolated widths run one step ahead.
-        assertClose(listOf(0.0, 0.0, 2.0 / 3, 0.0, 4.0 / 3, 0.0, 2.0, 0.0), builder.coordinates())
+        // Points keep 8 significant digits.
+        assertEquals(listOf(0.0, 0.0, 0.66666667, 0.0, 1.3333333, 0.0, 2.0, 0.0), builder.coordinates())
         assertClose(listOf(0.25, 0.75, 1.0, 1.0), (0 until builder.pointCount).map { builder.width(it) })
     }
 
@@ -121,6 +122,21 @@ class StrokeBuilderTest {
         val current = builder.current()
         assertEquals(2, builder.pointCount)
         assertEquals(current, builder.finish(0.5))
+    }
+
+    @Test
+    fun keepsEightSignificantDigitsLikeXournalppFiles() {
+        val stroke =
+            builder(width = 2.0).run {
+                add(InkSample(1 / 3.0, 200 / 3.0, 1 / 3.0))
+                add(InkSample(1000 / 3.0, -2 / 3.0, 1 / 3.0))
+                finish(null)
+            }
+        assertEquals(
+            listOf(0.33333333, 66.666667, 333.33333, -0.66666667),
+            stroke.points.toInterleavedArray().toList(),
+        )
+        assertEquals(listOf(0.66666667), widths(stroke))
     }
 
     @Test

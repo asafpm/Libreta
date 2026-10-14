@@ -179,9 +179,10 @@ class StrokeBuilder(
             ys = ys.copyOf(pointCount * 2)
             widths = widths.copyOf(pointCount * 2)
         }
-        xs[pointCount] = x
-        ys[pointCount] = y
-        widths[pointCount] = z
+        // As written to files: short.
+        xs[pointCount] = x.toEightDigits()
+        ys[pointCount] = y.toEightDigits()
+        widths[pointCount] = z.toEightDigits()
         pointCount++
     }
 

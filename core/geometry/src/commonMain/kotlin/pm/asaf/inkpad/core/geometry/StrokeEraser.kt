@@ -78,11 +78,15 @@ internal class StrokePath(
     /** The width at point [index], or [NO_PRESSURE]. */
     fun z(index: Int): Double = widths?.takeIf { index < it.size }?.get(index) ?: NO_PRESSURE
 
-    /** The point at [parameter]; its width is that of the segment it is on. */
+    /** The point at [parameter] (to 8 digits, as written to files); its width is that of the segment it is on. */
     fun at(parameter: PathParameter): Triple<Double, Double, Double> {
         val i = parameter.index
         val t = parameter.t
-        return Triple(x(i) + t * (x(i + 1) - x(i)), y(i) + t * (y(i + 1) - y(i)), z(i))
+        return Triple(
+            (x(i) + t * (x(i + 1) - x(i))).toEightDigits(),
+            (y(i) + t * (y(i + 1) - y(i))).toEightDigits(),
+            z(i),
+        )
     }
 
     companion object {

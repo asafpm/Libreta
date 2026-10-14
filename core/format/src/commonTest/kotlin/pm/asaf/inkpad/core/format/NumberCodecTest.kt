@@ -67,6 +67,32 @@ class NumberCodecTest {
     }
 
     @Test
+    fun shortDecimalsAreWrittenAsDoubleToStringWouldBe() {
+        val random = Random(seed = 42)
+        repeat(50_000) {
+            // Decimals as files have them: up to 12 places, positive and negative.
+            val places = random.nextInt(0, 13)
+            val digits = random.nextLong(0, 10_000_000_000_000L).toString().padStart(places + 1, '0')
+            val text = digits.dropLast(places) + (if (places > 0) "." + digits.takeLast(places) else "")
+            val value = text.toDouble() * (if (random.nextBoolean()) -1 else 1)
+            assertEquals(DecimalWriter.formatViaToString(value), NumberCodec.formatDouble(value), text)
+        }
+        for (value in listOf(0.1, 0.2, 0.3, 1e-7, 1e-22, 5e-324, 123.0, 1e15, 9007199254740991.0, 9007199254740993.0)) {
+            assertEquals(DecimalWriter.formatViaToString(value), NumberCodec.formatDouble(value))
+            assertEquals(DecimalWriter.formatViaToString(-value), NumberCodec.formatDouble(-value))
+        }
+    }
+
+    @Test
+    fun anyDoubleIsWrittenAsDoubleToStringWouldBe() {
+        val random = Random(seed = 43)
+        repeat(50_000) {
+            val value = if (it % 2 == 0) random.nextDouble(-50.0, 1200.0) else Double.fromBits(random.nextLong())
+            assertEquals(DecimalWriter.formatViaToString(value), NumberCodec.formatDouble(value))
+        }
+    }
+
+    @Test
     fun parsesEveryFormSeenInFiles() {
         assertEquals(1.41, NumberCodec.parseDouble("1.41000000"))
         assertEquals(12.0, NumberCodec.parseDouble("12.00"))

@@ -62,18 +62,21 @@ internal object StrokeCodec {
     fun encode(stroke: Element.Stroke): ForeignElement {
         val widths =
             buildString {
-                append(NumberCodec.formatDouble(stroke.width))
+                NumberCodec.appendDouble(this, stroke.width)
                 stroke.segmentWidths?.let { segments ->
-                    for (index in 0 until segments.size) append(' ').append(NumberCodec.formatDouble(segments[index]))
+                    for (index in 0 until segments.size) {
+                        append(' ')
+                        NumberCodec.appendDouble(this, segments[index])
+                    }
                 }
             }
         val coordinates =
             buildString {
                 for (index in 0 until stroke.points.size) {
                     if (index > 0) append(' ')
-                    append(NumberCodec.formatDouble(stroke.points.x(index)))
+                    NumberCodec.appendDouble(this, stroke.points.x(index))
                     append(' ')
-                    append(NumberCodec.formatDouble(stroke.points.y(index)))
+                    NumberCodec.appendDouble(this, stroke.points.y(index))
                 }
             }
         val attributes =
