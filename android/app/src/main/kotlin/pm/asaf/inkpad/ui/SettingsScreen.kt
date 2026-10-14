@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -23,6 +24,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -42,6 +44,7 @@ import pm.asaf.inkpad.library.SortOrder
 fun SettingsScreen(
     roots: List<LibraryRoot>,
     sortOrder: SortOrder,
+    fingerDraws: Boolean,
     actions: SettingsActions,
     onBack: () -> Unit,
 ) {
@@ -73,6 +76,19 @@ fun SettingsScreen(
                 stringResource(R.string.sort_name),
                 sortOrder == SortOrder.NAME,
             ) { actions.sortBy(SortOrder.NAME) }
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.input))
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.draw_with_finger)) },
+                supportingContent = { Text(stringResource(R.string.draw_with_finger_summary)) },
+                trailingContent = { Switch(checked = fingerDraws, onCheckedChange = null) },
+                modifier =
+                    Modifier.toggleable(
+                        value = fingerDraws,
+                        role = Role.Switch,
+                        onValueChange = actions.fingerDraws,
+                    ),
+            )
         }
     }
 }

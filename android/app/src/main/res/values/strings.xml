@@ -35,6 +35,29 @@
 
     <!-- Note -->
     <string name="fit_width">Fit width</string>
+    <string name="draw_with_finger">Draw with finger</string>
+    <string name="draw_with_finger_summary">Otherwise fingers scroll and zoom, and only the stylus writes</string>
+    <string name="input">Input</string>
+    <string name="pen_color">Pen colour: %1$s</string>
+    <string name="pen_width">Pen width: %1$s</string>
+    <string name="color_royal_blue">Royal blue</string>
+    <string name="color_yellow">Yellow</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_purple">Purple</string>
+    <string name="color_light_green">Light green</string>
+    <string name="color_light_blue">Light blue</string>
+    <string name="color_gray">Grey</string>
+    <string name="color_dark_green">Dark green</string>
+    <string name="color_red">Red</string>
+    <string name="color_dark_blue">Dark blue</string>
+    <string name="color_black">Black</string>
+    <string name="color_white">White</string>
+    <string name="color_custom">Custom</string>
+    <string name="width_very_fine">Very fine</string>
+    <string name="width_fine">Fine</string>
+    <string name="width_medium">Medium</string>
+    <string name="width_thick">Thick</string>
+    <string name="width_very_thick">Very thick</string>
     <string name="folder_needed">This note\'s background is in a separate file. Add its folder to your library to show it.</string>
     <string name="add_this_folder">Add folder</string>
     <string name="missing_files">Not found: %1$s</string>

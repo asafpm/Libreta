@@ -33,6 +33,7 @@ import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.Library
 import pm.asaf.inkpad.library.NewNoteCreator
 import pm.asaf.inkpad.library.PreviewCache
+import pm.asaf.inkpad.settings.PenPreferences
 import java.io.IOException
 
 /** A screen of the app; the back stack is a list of these. */
@@ -100,6 +101,7 @@ class AppViewModel
         private val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
         val library = Library(application.contentResolver, preferences, viewModelScope, io)
         val previews = PreviewCache(application)
+        val pens = PenPreferences(preferences)
 
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
         val screens: StateFlow<List<Screen>> = stack.asStateFlow()

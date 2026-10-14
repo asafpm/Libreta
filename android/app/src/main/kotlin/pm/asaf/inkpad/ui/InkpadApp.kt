@@ -117,11 +117,20 @@ private fun Settings(
 ) {
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
+    val fingerDraws by model.pens.fingerDraws.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
         sortOrder = sortOrder,
-        actions = SettingsActions(addFolder, library::removeRoot, library::moveRoot, library::setSortOrder),
+        fingerDraws = fingerDraws,
+        actions =
+            SettingsActions(
+                addFolder,
+                library::removeRoot,
+                library::moveRoot,
+                library::setSortOrder,
+                model.pens::setFingerDraws,
+            ),
         onBack = { model.back() },
     )
 }
@@ -132,6 +141,8 @@ private fun Note(
     screen: Screen.Note,
 ) {
     val note by model.note.collectAsStateWithLifecycle()
+    val pen by model.pens.pen.collectAsStateWithLifecycle()
+    val fingerDraws by model.pens.fingerDraws.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model::addFolderForNote)
@@ -141,6 +152,7 @@ private fun Note(
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
+        pen = PenControls(pen, fingerDraws, model.pens::setColor, model.pens::setSize, model.pens::setFingerDraws),
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(screen.uri) },
         onBack = { model.back() },
