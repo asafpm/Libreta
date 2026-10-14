@@ -96,7 +96,7 @@ internal class BackgroundPainter(
         val paint =
             Paint().apply {
                 isAntiAlias = true
-                typeface = fonts.typeface(FontDescription(FontFamily.SANS, bold = true, italic = false))
+                typeface = fonts.typeface(FontDescription(FontFamily.DEJAVU_SANS, bold = true, italic = false))
                 textSize = MISSING_PDF_TEXT_SIZE
                 color = MISSING_PDF_COLOR
             }

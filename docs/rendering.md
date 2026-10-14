@@ -252,26 +252,40 @@ The font a name resolves to depends on each machine's fontconfig. On a system
 without DejaVu, Xournal++ draws `Sans` with e.g. Noto Sans, which has different
 metrics.
 
-**Inkpad:** draws each line separately at those baselines. It bundles DejaVu Sans, Serif and Mono (regular, bold, italic,
-bold-italic), which is what Xournal++ uses on typical Linux systems for `Sans`,
-`Serif` and `Monospace`.
-- **Style words** (case-insensitive): `bold`, `semibold`, `demibold`, `heavy`,
-  `black` and `ultrabold` count as bold; `italic` and `oblique` count as italic.
-  Other trailing words (`regular`, `book`, `medium`, `light`, `condensed`, …) are
-  dropped.
-- **Family:**
-  - *mono* if it contains `mono`, `courier`, `consol`, `code`, `typewriter` or
-    another known monospace family (`inconsolata`, `menlo`, `hack`, `cousine`);
-  - *serif* if it contains `serif` (but not `sans`), or a known serif family whose
-    name does not say so: `roman`, `times`, `georgia`, `palatino`, `garamond`,
-    `cambria`, `antiqua`, `c059` and `p052` (URW's Century Schoolbook and
-    Palatino), `century`, `schoolbook`, `bookman`, `libertine`, `computer modern`,
-    `cmu`, `baskerville`, `caslon`, `charter`, `tinos`, `utopia`, `didot`, `bodoni`;
-  - *sans* otherwise.
-- **Width differences:** a document that names a font with different metrics
-  (e.g. Liberation Serif, which is metric-compatible with Times) is drawn with the
-  DejaVu face of the same class. Its lines then come out wider or narrower than in
-  Xournal++ on a system with that font.
+**Inkpad:** draws each line separately at those baselines, with bundled fonts:
+- **DejaVu** Sans, Serif and Sans Mono. These are what Xournal++ uses on typical
+  Linux systems for `Sans`, `Serif` and `Monospace`, and for unknown families.
+- **Liberation** Sans, Serif and Mono, which have the same metrics as Arial/Helvetica,
+  Times and Courier.
+- Each comes in regular, bold, italic and bold italic.
+
+Font names are resolved the way Pango and fontconfig resolve them, as checked
+against Xournal++ 1.3.8:
+1. **Style words:** trailing style words are removed, case-insensitively. `bold`,
+   `semibold`, `demibold`, `heavy`, `black` and `ultrabold` count as bold; `italic`
+   and `oblique` count as italic; `regular`, `book`, `medium`, `light`, `condensed`,
+   **`roman`** and others are dropped. The rest is the family.
+   - Because Pango reads `Roman` as a style, `Times New Roman` and `Nimbus Roman`
+     become the unknown families `Times New` and `Nimbus`. Xournal++ draws them in the
+     default sans font, and measured line widths confirm it.
+2. **Known families, by exact name:**
+   - *Liberation Serif*: `liberation serif`, `times`, `tinos`, `thorndale`,
+     `nimbus roman no9 l`, `tex gyre termes`.
+   - *Liberation Sans*: `liberation sans`, `arial`, `helvetica`, `nimbus sans`,
+     `arimo`, `albany`, `tex gyre heros`.
+   - *Liberation Mono*: `liberation mono`, `courier`, `courier new`, `nimbus mono`
+     (`ps`, `l`), `cousine`, `cumberland`.
+   - *DejaVu*: `sans`, `sans-serif`, `serif`, `monospace` and the DejaVu names.
+3. **Other families**, approximated by class:
+   - *DejaVu Sans Mono* if the name contains `mono`, `courier`, `consol`, `code`,
+     `typewriter`, `inconsolata`, `menlo` or `hack`;
+   - *DejaVu Serif* if it contains `serif` (but not `sans`), or a known serif family
+     whose name does not say so: `georgia`, `palatino`, `garamond`, `cambria`,
+     `antiqua`, `c059` and `p052` (URW's Century Schoolbook and Palatino), `century`,
+     `schoolbook`, `bookman`, `libertine`, `computer modern`, `cmu`, `baskerville`,
+     `caslon`, `charter`, `utopia`, `didot`, `bodoni`;
+   - *DejaVu Sans* otherwise.
+   - These families render with different metrics than on a system that has them.
 
 ### 3.5 Images and LaTeX — `view/ImageView.cpp`, `view/TexImageView.cpp`
 - **Images:** the decoded image (PNG, JPEG, …) is stretched to

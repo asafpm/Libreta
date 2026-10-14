@@ -2,12 +2,28 @@
 
 package pm.asaf.inkpad.core.geometry
 
-/** The generic font families Inkpad bundles (DejaVu Sans, Serif and Sans Mono). */
-enum class FontFamily { SANS, SERIF, MONO }
+/** The font families Inkpad bundles. */
+enum class FontFamily {
+    DEJAVU_SANS,
+    DEJAVU_SERIF,
+    DEJAVU_SANS_MONO,
+
+    /** Metric-compatible with Arial / Helvetica. */
+    LIBERATION_SANS,
+
+    /** Metric-compatible with Times New Roman / Times. */
+    LIBERATION_SERIF,
+
+    /** Metric-compatible with Courier New / Courier. */
+    LIBERATION_MONO,
+}
 
 /**
- * A Xournal++ font name (a Pango font description such as `Liberation Serif Bold`) reduced
- * to what Inkpad can draw (docs/rendering.md §3.4).
+ * A Xournal++ font name reduced to a bundled font (docs/rendering.md §3.4).
+ *
+ * The name is a Pango font description: trailing style words (including "Roman") are
+ * removed and the rest is the family, which is looked up like fontconfig does. So, like in
+ * Xournal++, "Times New Roman" is the unknown family "Times New" and gets the default font.
  */
 data class FontDescription(
     val family: FontFamily,
@@ -48,14 +64,43 @@ data class FontDescription(
                 "roman",
                 "small-caps",
             )
+
+        /** Families with a bundled equivalent, by exact (case-insensitive) name. */
+        private val knownFamilies: Map<String, FontFamily> =
+            buildMap {
+                listOf("sans", "sans-serif", "dejavu sans").forEach { put(it, FontFamily.DEJAVU_SANS) }
+                listOf("serif", "dejavu serif").forEach { put(it, FontFamily.DEJAVU_SERIF) }
+                listOf("monospace", "mono", "dejavu sans mono").forEach { put(it, FontFamily.DEJAVU_SANS_MONO) }
+                listOf("liberation serif", "times", "tinos", "thorndale", "nimbus roman no9 l", "tex gyre termes")
+                    .forEach { put(it, FontFamily.LIBERATION_SERIF) }
+                listOf(
+                    "liberation sans",
+                    "arial",
+                    "helvetica",
+                    "nimbus sans",
+                    "nimbus sans l",
+                    "arimo",
+                    "albany",
+                    "tex gyre heros",
+                ).forEach { put(it, FontFamily.LIBERATION_SANS) }
+                listOf(
+                    "liberation mono",
+                    "courier",
+                    "courier new",
+                    "nimbus mono",
+                    "nimbus mono ps",
+                    "nimbus mono l",
+                    "cousine",
+                    "cumberland",
+                ).forEach { put(it, FontFamily.LIBERATION_MONO) }
+            }
+
         private val monoHints =
-            listOf("mono", "courier", "consol", "code", "typewriter", "inconsolata", "menlo", "hack", "cousine")
+            listOf("mono", "courier", "consol", "code", "typewriter", "inconsolata", "menlo", "hack")
 
         /** Serif families whose names do not say "serif" (e.g. URW's C059 = Century Schoolbook). */
         private val serifHints =
             listOf(
-                "roman",
-                "times",
                 "georgia",
                 "palatino",
                 "garamond",
@@ -72,7 +117,6 @@ data class FontDescription(
                 "baskerville",
                 "caslon",
                 "charter",
-                "tinos",
                 "utopia",
                 "didot",
                 "bodoni",
@@ -86,29 +130,32 @@ data class FontDescription(
                     .filter { it.isNotEmpty() }
                     .map { it.lowercase() }
             // Pango reads style words (and an optional size) from the end of the description.
-            val style =
-                words.takeLastWhile {
-                    it in boldWords || it in italicWords || it in otherStyleWords ||
-                        it.toDoubleOrNull() != null
-                }
-            val lowerName = name.lowercase()
-            val family =
-                when {
-                    monoHints.any { it in lowerName } -> FontFamily.MONO
-
-                    ("serif" in lowerName && "sans" !in lowerName) ||
-                        serifHints.any {
-                            it in lowerName
-                        }
-                    -> FontFamily.SERIF
-
-                    else -> FontFamily.SANS
-                }
+            val style = words.takeLastWhile { it.isStyleWord() }
+            // A description made only of style words keeps them as its family.
+            val familyWords = words.dropLast(style.size).ifEmpty { words }
             return FontDescription(
-                family,
+                family(familyWords.joinToString(" ")),
                 bold = style.any { it in boldWords },
                 italic = style.any { it in italicWords },
             )
         }
+
+        private fun String.isStyleWord(): Boolean =
+            this in boldWords || this in italicWords || this in otherStyleWords || toDoubleOrNull() != null
+
+        /** Fontconfig falls back to the default (sans) font for families it does not know. */
+        private fun family(name: String): FontFamily =
+            knownFamilies[name]
+                ?: when {
+                    monoHints.any { it in name } -> FontFamily.DEJAVU_SANS_MONO
+
+                    ("serif" in name && "sans" !in name) || name == "roman" ||
+                        serifHints.any {
+                            it in name
+                        }
+                    -> FontFamily.DEJAVU_SERIF
+
+                    else -> FontFamily.DEJAVU_SANS
+                }
     }
 }

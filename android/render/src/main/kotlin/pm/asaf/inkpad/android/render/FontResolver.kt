@@ -7,7 +7,7 @@ import android.graphics.Typeface
 import pm.asaf.inkpad.core.geometry.FontDescription
 import pm.asaf.inkpad.core.geometry.FontFamily
 
-/** Maps Xournal++ font names to the bundled DejaVu fonts (docs/rendering.md §3.4). */
+/** Maps Xournal++ font names to the bundled DejaVu and Liberation fonts (docs/rendering.md §3.4). */
 class FontResolver(
     context: Context,
 ) {
@@ -38,26 +38,47 @@ class FontResolver(
         /** Regular, bold, italic, bold italic for each family. */
         val fonts =
             mapOf(
-                FontFamily.SANS to
+                FontFamily.DEJAVU_SANS to
                     intArrayOf(
                         R.font.dejavu_sans,
                         R.font.dejavu_sans_bold,
                         R.font.dejavu_sans_oblique,
                         R.font.dejavu_sans_bold_oblique,
                     ),
-                FontFamily.SERIF to
+                FontFamily.DEJAVU_SERIF to
                     intArrayOf(
                         R.font.dejavu_serif,
                         R.font.dejavu_serif_bold,
                         R.font.dejavu_serif_italic,
                         R.font.dejavu_serif_bold_italic,
                     ),
-                FontFamily.MONO to
+                FontFamily.DEJAVU_SANS_MONO to
                     intArrayOf(
                         R.font.dejavu_sans_mono,
                         R.font.dejavu_sans_mono_bold,
                         R.font.dejavu_sans_mono_oblique,
                         R.font.dejavu_sans_mono_bold_oblique,
+                    ),
+                FontFamily.LIBERATION_SANS to
+                    intArrayOf(
+                        R.font.liberation_sans,
+                        R.font.liberation_sans_bold,
+                        R.font.liberation_sans_italic,
+                        R.font.liberation_sans_bold_italic,
+                    ),
+                FontFamily.LIBERATION_SERIF to
+                    intArrayOf(
+                        R.font.liberation_serif,
+                        R.font.liberation_serif_bold,
+                        R.font.liberation_serif_italic,
+                        R.font.liberation_serif_bold_italic,
+                    ),
+                FontFamily.LIBERATION_MONO to
+                    intArrayOf(
+                        R.font.liberation_mono,
+                        R.font.liberation_mono_bold,
+                        R.font.liberation_mono_italic,
+                        R.font.liberation_mono_bold_italic,
                     ),
             )
     }

@@ -65,7 +65,7 @@ Xournal++ live in `testdata/xournalpp/`.
 
 ## Fonts
 
-`android/render/src/main/res/font/` contains DejaVu Sans, DejaVu Serif and
+`android/render/src/main/res/font/dejavu_*.ttf` are DejaVu Sans, DejaVu Serif and
 DejaVu Sans Mono (regular, bold, italic/oblique, bold italic/oblique) from
 DejaVu Fonts 2.37 (https://dejavu-fonts.github.io/), unmodified. Fonts are
 © Bitstream (Bitstream Vera Fonts licence); DejaVu changes are in the public
@@ -73,6 +73,13 @@ domain; glyphs imported from Arev fonts are © Tavmjong Bah. Full licence:
 [licenses/DejaVu-LICENSE.txt](licenses/DejaVu-LICENSE.txt). The release archive
 `dejavu-fonts-ttf-2.37.zip` had SHA-256
 `7576310b219e04159d35ff61dd4a4ec4cdba4f35c00e002a136f00e96a908b0a`.
+
+`android/render/src/main/res/font/liberation_*.ttf` are Liberation Sans, Serif
+and Mono 2.1.5 (https://github.com/liberationfonts/liberation-fonts), unmodified,
+© 2010 Google Corporation and © 2012 Red Hat, Inc., licensed under the SIL Open
+Font License 1.1: [licenses/Liberation-LICENSE.txt](licenses/Liberation-LICENSE.txt).
+The release archive `liberation-fonts-ttf-2.1.5.tar.gz` had SHA-256
+`7191c669bf38899f73a2094ed00f7b800553364f90e2637010a69c0e268f25d0`.
 
 ## Third-party libraries
 
