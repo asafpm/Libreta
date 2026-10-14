@@ -98,6 +98,10 @@ bounding boxes (with tests in commonTest).
 android:render: render a page (backgrounds + variable-width strokes +
 highlighter blending + text + images) to a Bitmap.
 ✅ Geometry unit tests; screenshot tests against reference PNGs.
+Done: rules in `docs/rendering.md` (ported from Xournal++'s view code); screenshot
+references in `android/render/src/test/screenshots`, recorded with
+`-Pinkpad.recordScreenshots=true`; PDF rendering (PdfRenderer) tested on the device;
+`scripts/render-crosscheck.sh` compares every sample page with Xournal++.
 
 ### Phase 3 — Viewer
 Scrollable continuous page list, pinch-zoom/pan, per-page bitmap cache

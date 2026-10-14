@@ -260,10 +260,18 @@ bold-italic), which is what Xournal++ uses on typical Linux systems for `Sans`,
   Other trailing words (`regular`, `book`, `medium`, `light`, `condensed`, …) are
   dropped.
 - **Family:**
-  - *mono* if it contains `mono`, `courier`, `consol`, `code` or `typewriter`;
-  - *serif* if it contains `serif` (but not `sans`), `roman`, `times`, `georgia`,
-    `palatino`, `garamond` or `cambria`;
+  - *mono* if it contains `mono`, `courier`, `consol`, `code`, `typewriter` or
+    another known monospace family (`inconsolata`, `menlo`, `hack`, `cousine`);
+  - *serif* if it contains `serif` (but not `sans`), or a known serif family whose
+    name does not say so: `roman`, `times`, `georgia`, `palatino`, `garamond`,
+    `cambria`, `antiqua`, `c059` and `p052` (URW's Century Schoolbook and
+    Palatino), `century`, `schoolbook`, `bookman`, `libertine`, `computer modern`,
+    `cmu`, `baskerville`, `caslon`, `charter`, `tinos`, `utopia`, `didot`, `bodoni`;
   - *sans* otherwise.
+- **Width differences:** a document that names a font with different metrics
+  (e.g. Liberation Serif, which is metric-compatible with Times) is drawn with the
+  DejaVu face of the same class. Its lines then come out wider or narrower than in
+  Xournal++ on a system with that font.
 
 ### 3.5 Images and LaTeX — `view/ImageView.cpp`, `view/TexImageView.cpp`
 - **Images:** the decoded image (PNG, JPEG, …) is stretched to
