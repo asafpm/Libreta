@@ -49,6 +49,9 @@ class DocumentRenderingTest {
 
     @Test
     fun suite() = assertPage("xournalpp/packaged_xopp/suite.xopp", 0, "suite-p1")
+
+    @Test
+    fun inkpadEdits() = assertPage("inkpad-edits.xopp", 0, "inkpad-edits-p1")
 }
 
 /** testdata/ files. */

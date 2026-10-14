@@ -3,13 +3,11 @@
 package pm.asaf.inkpad.viewer
 
 import android.content.pm.ApplicationInfo
-import android.graphics.Bitmap
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.SystemClock
 import android.util.Log
 import android.view.FrameMetrics
-import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.Window
 import android.widget.FrameLayout
@@ -36,7 +34,6 @@ import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.PenSize
 import java.util.Collections
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -169,17 +166,7 @@ class InkingDeviceTest {
     private fun redOnScreen(
         view: DocumentView,
         y: Float,
-    ): Boolean {
-        val location = IntArray(2)
-        instrumentation.runOnMainSync { view.getLocationOnScreen(location) }
-        val shot: Bitmap = instrumentation.uiAutomation.takeScreenshot()
-        val x = location[0] + view.width / 2
-        return (-SEARCH..SEARCH).any { dy ->
-            val pixel = shot.getPixel(x, (location[1] + y.roundToInt() + dy).coerceIn(0, shot.height - 1))
-            abs(android.graphics.Color.red(pixel) - RED.red) < COLOR_TOLERANCE &&
-                android.graphics.Color.green(pixel) < MAX_GREEN
-        }
-    }
+    ): Boolean = TestInput(instrumentation, view).colorOnScreen(RED, view.width / 2f, y)
 
     /** The height of stroke [index] of [count], down the view. */
     private fun rowY(
@@ -194,29 +181,12 @@ class InkingDeviceTest {
         x: Float,
         y: Float,
         length: Float,
-    ) {
-        val down = SystemClock.uptimeMillis()
-        send(view, down, MotionEvent.ACTION_DOWN, x, y, MotionEvent.TOOL_TYPE_STYLUS)
-        for (step in 1..MOVES) {
-            SystemClock.sleep(EVENT_MS)
-            send(
-                view,
-                down,
-                MotionEvent.ACTION_MOVE,
-                x + length * step / MOVES,
-                y + WAVE * sin(step * WAVE_STEP),
-                MotionEvent.TOOL_TYPE_STYLUS,
-            )
-        }
-        send(
-            view,
-            down,
-            MotionEvent.ACTION_UP,
-            x + length,
-            y + WAVE * sin(MOVES * WAVE_STEP),
-            MotionEvent.TOOL_TYPE_STYLUS,
-        )
-    }
+    ) = TestInput(instrumentation, view).touch(
+        (0..MOVES).map {
+            x + length * it / MOVES to
+                y + WAVE * sin(it * WAVE_STEP)
+        },
+    )
 
     /** A slow finger drag from view row [fromY] to [toY], mid-width. */
     private fun drag(
@@ -225,70 +195,14 @@ class InkingDeviceTest {
         toY: Float,
     ) {
         val x = view.width / 2f
-        val down = SystemClock.uptimeMillis()
-        send(view, down, MotionEvent.ACTION_DOWN, x, fromY, MotionEvent.TOOL_TYPE_FINGER)
-        for (step in 1..MOVES) {
-            SystemClock.sleep(EVENT_MS * 2)
-            send(
-                view,
-                down,
-                MotionEvent.ACTION_MOVE,
-                x,
-                fromY + (toY - fromY) * step / MOVES,
-                MotionEvent.TOOL_TYPE_FINGER,
-            )
-        }
-        SystemClock.sleep(SETTLE_MS / 4)
-        send(view, down, MotionEvent.ACTION_UP, x, toY, MotionEvent.TOOL_TYPE_FINGER)
-    }
-
-    @Suppress("LongParameterList") // one MotionEvent's fields
-    private fun send(
-        view: DocumentView,
-        downTime: Long,
-        action: Int,
-        x: Float,
-        y: Float,
-        tool: Int,
-    ) {
-        val properties =
-            MotionEvent.PointerProperties().apply {
-                id = 0
-                toolType = tool
-            }
-        val coordinates =
-            MotionEvent.PointerCoords().apply {
-                this.x = x
-                this.y = y
-                pressure = PRESSURE
-            }
-        val source =
-            if (tool ==
-                MotionEvent.TOOL_TYPE_STYLUS
-            ) {
-                InputDevice.SOURCE_STYLUS
-            } else {
-                InputDevice.SOURCE_TOUCHSCREEN
-            }
-        val event =
-            MotionEvent.obtain(
-                downTime,
-                SystemClock.uptimeMillis(),
-                action,
-                1,
-                arrayOf(properties),
-                arrayOf(coordinates),
-                0,
-                0,
-                1f,
-                1f,
-                0,
-                0,
-                source,
-                0,
-            )
-        instrumentation.runOnMainSync { view.dispatchTouchEvent(event) }
-        event.recycle()
+        val points = (0..MOVES).map { x to fromY + (toY - fromY) * it / MOVES }
+        // Held still at the end, so that it doesn't fling.
+        TestInput(instrumentation, view).touch(
+            points,
+            MotionEvent.TOOL_TYPE_FINGER,
+            TestInput.EVENT_MS * 2,
+            SETTLE_MS / 4,
+        )
     }
 
     private fun percentile(
@@ -303,18 +217,13 @@ class InkingDeviceTest {
         const val CHECKED_STROKES = 30
         const val SHOTS = 3
         const val MOVES = 60
-        const val EVENT_MS = 4L
         const val SETTLE_MS = 2000L
-        const val PRESSURE = 0.6f
         const val WAVE = 6f
         const val WAVE_STEP = 0.3f
         const val TOP = 0.15f
         const val SPAN = 0.7f
         const val ROW_OFFSET = 25f
         const val SCROLL = 300f
-        const val SEARCH = 20
-        const val COLOR_TOLERANCE = 40
-        const val MAX_GREEN = 140
         const val NANOS_PER_MS = 1_000_000.0
         const val FRAME_BUDGET_MS = 16.7
         val RED = Color.of(237, 83, 83)
