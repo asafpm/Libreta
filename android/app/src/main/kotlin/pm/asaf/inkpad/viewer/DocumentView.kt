@@ -19,6 +19,7 @@ import pm.asaf.inkpad.core.geometry.Size
 import pm.asaf.inkpad.core.geometry.Viewport
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.geometry.ViewportNavigator
+import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PenSettings
 import kotlin.math.abs
@@ -116,11 +117,21 @@ class DocumentView
                 inking.wetInk = value
             }
 
-        /** Called with each page as a stroke is added to it, and the page's new version. */
-        var onPageEdited: ((index: Int, page: Page, version: Int) -> Unit)?
-            get() = inking.onPageEdited
+        /** Called with each edit done here, e.g. a stroke written. */
+        var onEdit: ((Edit) -> Unit)?
+            get() = inking.onEdit
             set(value) {
-                inking.onPageEdited = value
+                inking.onEdit = value
+            }
+
+        /** Shows [pages] (by index) in place of the current ones, e.g. on undo. */
+        fun showPages(pages: Map<Int, Page>) = inking.showPages(pages)
+
+        /** The pages' versions (a copy), for [setDocument] with the same caches later. */
+        val versions: IntArray
+            get() {
+                val renderer = content?.renderer ?: return IntArray(0)
+                return IntArray(renderer.pageCount) { renderer.version(it) }
             }
 
         /**

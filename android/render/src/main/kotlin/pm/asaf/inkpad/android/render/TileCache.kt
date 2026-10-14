@@ -83,7 +83,8 @@ class TileCache(
     ) = tiles.forEach({ it.page == page }, block)
 
     /**
-     * After [page] changed from [version] to [version] + 1 within [changed] (page units):
+     * After [page] changed from [version] to [version] + 1 within [changed] (page units; null:
+     * nowhere):
      * its tiles away from the change are still right and move to the new version; those
      * touching it become stale if [keep] (e.g. on screen, to be drawn until re-rendered) and
      * are dropped otherwise.
@@ -91,11 +92,11 @@ class TileCache(
     fun pageChanged(
         page: Int,
         version: Int,
-        changed: Bounds,
+        changed: Bounds?,
         keep: (TileKey) -> Boolean,
     ) {
         for (key in tiles.keys { it.page == page && it.version == version }) {
-            val touched = key.bounds.expandedBy(1.0 / key.zoom).intersects(changed)
+            val touched = changed != null && key.bounds.expandedBy(1.0 / key.zoom).intersects(changed)
             when {
                 !touched -> tiles.take(key)?.let { tiles.put(key.at(version + 1), it) }
                 !keep(key) -> tiles.take(key)?.let(::recycle)

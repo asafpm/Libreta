@@ -20,7 +20,9 @@ import org.robolectric.annotation.GraphicsMode
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
+import pm.asaf.inkpad.core.model.PageChange
 import pm.asaf.inkpad.core.model.PointList
 import pm.asaf.inkpad.core.model.StrokeTool
 import pm.asaf.inkpad.library.FakeDocumentsProvider
@@ -73,9 +75,9 @@ class NoteSaverTest {
         return NoteLoader.load(context, store, entry.id, name, DocumentLocation(listOf(root), name)) as NoteState.Loaded
     }
 
-    private fun NoteState.Loaded.write() {
-        val page = edits.document.pages[0]
-        edits.pageEdited(0, page.withElementAdded(stroke), version = 1)
+    private fun NoteState.Loaded.write(element: Element = stroke) {
+        val page = session.document.pages[0]
+        session.edited(Edit(listOf(PageChange(0, page, page.withElementAdded(element)))))
     }
 
     private fun lastElement(name: String): Element =
@@ -97,8 +99,8 @@ class NoteSaverTest {
                 .last()
                 .elements.size
         note.write()
-        assertEquals(SaveResult.Saved, saver.save(note.file, note.edits, note.files))
-        assertFalse(note.edits.dirty)
+        assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
+        assertFalse(note.session.dirty)
 
         val saved = read("Lecture.xopp")
         val elements =
@@ -117,7 +119,7 @@ class NoteSaverTest {
         assertEquals(128, maxOf(bitmap.width, bitmap.height))
         // Saving again without changes does nothing.
         val modified = File(directory, "Lecture.xopp").lastModified()
-        assertEquals(SaveResult.Unchanged, saver.save(note.file, note.edits, note.files))
+        assertEquals(SaveResult.Unchanged, saver.save(note.file, note.session, note.files))
         assertEquals(modified, File(directory, "Lecture.xopp").lastModified())
     }
 
@@ -130,7 +132,7 @@ class NoteSaverTest {
         File(testData, "physics.xopp").copyTo(elsewhere, overwrite = true)
         elsewhere.setLastModified(elsewhere.lastModified() + 60_000)
 
-        val result = assertIs<SaveResult.SavedAsCopy>(saver.save(note.file, note.edits, note.files))
+        val result = assertIs<SaveResult.SavedAsCopy>(saver.save(note.file, note.session, note.files))
         assertTrue(result.name, result.name.matches(Regex("""Lecture \(conflict \d{4}-\d\d-\d\d \d\d-\d\d\)\.xopp""")))
         assertEquals(File(testData, "physics.xopp").length(), elsewhere.length())
         assertEquals(
@@ -145,8 +147,8 @@ class NoteSaverTest {
         // Later saves go to the copy.
         assertEquals(result.name, note.file.name)
         val another = stroke.copy(color = Color.of(0, 0, 0))
-        note.edits.pageEdited(0, note.document.pages[0].withElementAdded(another), version = 2)
-        assertEquals(SaveResult.Saved, saver.save(note.file, note.edits, note.files))
+        note.write(another)
+        assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
         assertEquals(another, lastElement(result.name))
     }
 
@@ -156,7 +158,7 @@ class NoteSaverTest {
         assertFalse(note.file.writable)
         note.write()
         val bytes = File(directory, "Package.xopp").readBytes()
-        assertEquals(SaveResult.ReadOnly, saver.save(note.file, note.edits, note.files))
+        assertEquals(SaveResult.ReadOnly, saver.save(note.file, note.session, note.files))
         assertTrue(bytes.contentEquals(File(directory, "Package.xopp").readBytes()))
     }
 }

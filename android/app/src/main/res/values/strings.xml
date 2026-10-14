@@ -35,6 +35,8 @@
 
     <!-- Note -->
     <string name="fit_width">Fit width</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
     <string name="draw_with_finger">Draw with finger</string>
     <string name="draw_with_finger_summary">Otherwise fingers scroll and zoom, and only the stylus writes</string>
     <string name="input">Input</string>

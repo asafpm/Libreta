@@ -67,7 +67,7 @@ class InkingDeviceTest {
             view = DocumentView(activity)
             view.setDocument(pages, RenderCaches.forDevice(activity), { PageRenderer(activity.applicationContext) })
             view.pen = PenSettings(RED, PenSize.THICK)
-            view.onPageEdited = { index, _, _ -> edits += index }
+            view.onEdit = { edit -> edits += edit.changes.single().index }
             val ink = LowLatencyCanvasView(activity)
             view.wetInk = LowLatencyWetInk(ink)
             activity.setContentView(

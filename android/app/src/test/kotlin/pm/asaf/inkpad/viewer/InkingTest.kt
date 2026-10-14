@@ -86,7 +86,7 @@ class InkingTest {
         view.setDocument(pages, caches, { PageRenderer(context) }, RenderThreads(workers = 1, dispatcher, dispatcher))
         view.wetInk = wetInk
         view.pen = PenSettings(Color.of(255, 0, 0), PenSize.THICK)
-        view.onPageEdited = { index, page, _ -> edits += index to page }
+        view.onEdit = { edit -> edit.changes.forEach { edits += it.index to it.after } }
         view.measure(
             View.MeasureSpec.makeMeasureSpec(WIDTH, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(HEIGHT, View.MeasureSpec.EXACTLY),
@@ -349,6 +349,35 @@ class InkingTest {
         bitmap.eraseColor(0)
         view.draw(Canvas(bitmap))
         assertEquals(android.graphics.Color.RED, bitmap.getPixel(500, 400))
+    }
+
+    @Test
+    fun undonePagesAreShown() {
+        scheduler.advanceUntilIdle()
+        write(300f, 400f, length = 400f)
+        val (index, written) = edits.single()
+        // Undo at once: neither the pending stroke nor its wet ink stay.
+        val clears = wetInk.clears
+        view.showPages(mapOf(index to pages[index]))
+        assertTrue(wetInk.clears > clears)
+        scheduler.advanceUntilIdle()
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, 400))
+        // Redo: it is back, and new strokes go on the page shown.
+        view.showPages(mapOf(index to written))
+        scheduler.advanceUntilIdle()
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.RED, bitmap.getPixel(500, 400))
+        write(300f, 600f)
+        assertEquals(
+            2,
+            edits
+                .last()
+                .second.layers
+                .single()
+                .elements.size,
+        )
     }
 
     private fun assertClose(

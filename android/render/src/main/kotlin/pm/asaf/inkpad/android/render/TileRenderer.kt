@@ -97,15 +97,15 @@ class TileRenderer(
     fun page(index: Int): Page = pages[index]
 
     /**
-     * Replaces page [index], which changed within [changed] (page units). Tiles away from the
-     * change are kept; those touching it are stale until re-rendered, and kept meanwhile only
-     * if [keepStale] (see [TileCache.pageChanged]). Call on the results thread. Returns the
-     * new version.
+     * Replaces page [index], which changed within [changed] (page units; null: it looks the
+     * same). Tiles away from the change are kept; those touching it are stale until
+     * re-rendered, and kept meanwhile only if [keepStale] (see [TileCache.pageChanged]). Call
+     * on the results thread. Returns the new version.
      */
     fun updatePage(
         index: Int,
         page: Page,
-        changed: Bounds,
+        changed: Bounds?,
         keepStale: (TileKey) -> Boolean,
     ): Int {
         val old =

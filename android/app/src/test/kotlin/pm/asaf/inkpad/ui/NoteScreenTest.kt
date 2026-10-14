@@ -10,6 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -43,7 +45,7 @@ import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class PenToolbarTest {
+class NoteScreenTest {
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
@@ -119,14 +121,42 @@ class PenToolbarTest {
         event.recycle()
     }
 
-    @Test
-    fun theChosenPenWritesTheNextStroke() {
+    /** Opens Lecture.xopp in the app, rendering paused. */
+    private fun openLecture(): AppViewModel {
         val paused = StandardTestDispatcher()
         val model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused))
         compose.setContent { MaterialTheme { InkpadApp(model) } }
         compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasText("Lecture.xopp")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lecture.xopp").performClick()
         eventually { model.note.value is NoteState.Loaded }
+        return model
+    }
+
+    /** Writes a horizontal stroke a third of the way down the view. */
+    private fun write(
+        view: DocumentView,
+        downTime: Long = 1000,
+    ) {
+        compose.runOnIdle {
+            val y = view.height / 3f
+            stylus(view, MotionEvent.ACTION_DOWN, downTime, downTime, 200f, y)
+            for (step in 1..8) {
+                stylus(view, MotionEvent.ACTION_MOVE, downTime, downTime + step * 10, 200f + step * 30f, y)
+            }
+            stylus(view, MotionEvent.ACTION_UP, downTime, downTime + 100, 440f, y)
+        }
+    }
+
+    private fun AppViewModel.elements(): List<Element> =
+        (note.value as NoteState.Loaded)
+            .document.pages[0]
+            .layers
+            .last()
+            .elements
+
+    @Test
+    fun theChosenPenWritesTheNextStroke() {
+        val model = openLecture()
 
         // The toolbar scrolls on narrow screens.
         compose.onNodeWithContentDescription("Pen colour: Red").performScrollTo().performClick()
@@ -135,28 +165,54 @@ class PenToolbarTest {
         // The flow reaches the view through the main thread.
         val view = checkNotNull(documentView(compose.activity.window.decorView))
         eventually { view.pen.size == PenSize.THICK }
-        compose.runOnIdle {
-            val y = view.height / 3f
-            stylus(view, MotionEvent.ACTION_DOWN, 1000, 1000, 200f, y)
-            for (step in 1..8) stylus(view, MotionEvent.ACTION_MOVE, 1000, 1000L + step * 10, 200f + step * 30f, y)
-            stylus(view, MotionEvent.ACTION_UP, 1000, 1100, 440f, y)
-        }
-        val edits = (model.note.value as NoteState.Loaded).edits
+        write(view)
+        val session = (model.note.value as NoteState.Loaded).session
         val stroke =
-            edits.document.pages[0]
+            session.document.pages[0]
                 .layers
                 .last()
                 .elements
                 .last() as Element.Stroke
         assertEquals(Color.of(237, 83, 83), stroke.color)
         assertEquals(PenSize.THICK.width, stroke.width, 0.0)
-        assertTrue(edits.dirty)
+        assertTrue(session.dirty)
         // Remembered for next time.
         assertEquals(
             PenSize.THICK,
             AppViewModel(application)
                 .pens.pen.value.size,
         )
+    }
+
+    @Test
+    fun undoAndRedoAreSavedAndReopened() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        val before = model.elements().size
+        compose.onNodeWithContentDescription("Undo").assertIsNotEnabled()
+        write(view, downTime = 1000)
+        write(view, downTime = 2000)
+        assertEquals(before + 2, model.elements().size)
+
+        compose.onNodeWithContentDescription("Undo").performClick()
+        assertEquals(before + 1, model.elements().size)
+        compose.onNodeWithContentDescription("Undo").performClick()
+        assertEquals(before, model.elements().size)
+        compose.onNodeWithContentDescription("Undo").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Redo").performClick()
+        assertEquals(before + 1, model.elements().size)
+        val kept = model.elements().last()
+        compose.onNodeWithContentDescription("Redo").assertIsEnabled()
+
+        // Leaving saves; the note opens as it was left, with nothing to undo.
+        compose.runOnIdle { model.back() }
+        eventually { model.note.value == null }
+        compose.onNodeWithText("Lecture.xopp").performClick()
+        eventually { model.note.value is NoteState.Loaded }
+        assertEquals(before + 1, model.elements().size)
+        assertEquals(kept, model.elements().last())
+        compose.onNodeWithContentDescription("Undo").assertIsNotEnabled()
+        compose.onNodeWithContentDescription("Redo").assertIsNotEnabled()
     }
 
     private companion object {

@@ -8,14 +8,18 @@ import android.view.View
 import androidx.input.motionprediction.MotionEventPredictor
 import pm.asaf.inkpad.android.render.PageRenderer
 import pm.asaf.inkpad.android.render.RenderCaches
+import pm.asaf.inkpad.android.render.TileKey
 import pm.asaf.inkpad.android.render.TileRenderer
 import pm.asaf.inkpad.core.geometry.DocumentLayout
+import pm.asaf.inkpad.core.geometry.ElementDiff
 import pm.asaf.inkpad.core.geometry.StrokeGeometry
 import pm.asaf.inkpad.core.geometry.Viewport
 import pm.asaf.inkpad.core.geometry.intersects
 import pm.asaf.inkpad.core.model.Bounds
+import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.PageChange
 import pm.asaf.inkpad.core.model.PenSettings
 import kotlin.math.roundToInt
 
@@ -51,7 +55,7 @@ internal class Inking(
     var pen = PenSettings()
     var fingerDraws = false
     var wetInk: WetInk = WetInk.None
-    var onPageEdited: ((index: Int, page: Page, version: Int) -> Unit)? = null
+    var onEdit: ((Edit) -> Unit)? = null
 
     /** Renders committed strokes on the UI thread. */
     var renderer: PageRenderer? = null
@@ -157,8 +161,39 @@ internal class Inking(
         val state = host.state
         val bounds = StrokeGeometry.bounds(stroke)
         if (state == null || bounds == null) return
+        val before = state.renderer.page(index)
+        val page = before.withElementAdded(stroke)
+        val version = state.renderer.updatePage(index, page, bounds, onScreen(state, index))
+        pending.add(index, version, stroke, bounds)
+        wetFramesLeft = WET_INK_FRAMES
+        onEdit?.invoke(Edit(listOf(PageChange(index, before, page))))
+        host.pageChanged()
+    }
+
+    /**
+     * Shows [pages] (by index) in place of the current ones, e.g. on undo. Tiles touching what
+     * changed re-render; meanwhile the old ones stand in.
+     */
+    fun showPages(pages: Map<Int, Page>) {
+        val state = host.state ?: return
+        val measurer = renderer?.textMeasurer ?: return
+        for ((index, page) in pages) {
+            val changed = ElementDiff.changedBounds(state.renderer.page(index), page, measurer)
+            // Unchanged-looking pages too: the renderer has the document's pages.
+            state.renderer.updatePage(index, page, changed, onScreen(state, index))
+            pending.clear(index)
+        }
+        // Wet ink of a stroke just undone would still show it.
+        viewportChanged()
+        host.pageChanged()
+    }
+
+    /** Whether a tile of page [index] is on screen at the current zoom (then it stands in while stale). */
+    private fun onScreen(
+        state: ViewState,
+        index: Int,
+    ): (TileKey) -> Boolean {
         val viewport = state.viewport
-        val page = state.renderer.page(index).withElementAdded(stroke)
         val zoom = viewport.zoom.toFloat()
         val placed = state.layout.pageBounds(index)
         val visible = viewport.visible
@@ -169,16 +204,7 @@ internal class Inking(
                 visible.right - placed.left,
                 visible.bottom - placed.top,
             )
-        val version =
-            state.renderer.updatePage(
-                index,
-                page,
-                bounds,
-            ) { it.zoom == zoom && it.bounds.intersects(onScreen) }
-        pending.add(index, version, stroke, bounds)
-        wetFramesLeft = WET_INK_FRAMES
-        onPageEdited?.invoke(index, page, version)
-        host.pageChanged()
+        return { it.zoom == zoom && it.bounds.intersects(onScreen) }
     }
 
     private companion object {

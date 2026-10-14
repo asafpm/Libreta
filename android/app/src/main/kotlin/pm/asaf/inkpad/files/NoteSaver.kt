@@ -71,20 +71,20 @@ class NoteSaver(
 ) {
     fun save(
         file: NoteFile,
-        edits: NoteEdits,
+        session: NoteSession,
         files: DocumentFiles,
     ): SaveResult {
-        val document = edits.document
+        val document = session.document
         return when {
-            !edits.dirty -> SaveResult.Unchanged
+            !session.dirty -> SaveResult.Unchanged
             !file.writable -> SaveResult.ReadOnly
-            else -> write(file, edits, document, files)
+            else -> write(file, session, document, files)
         }
     }
 
     private fun write(
         file: NoteFile,
-        edits: NoteEdits,
+        session: NoteSession,
         document: Note,
         files: DocumentFiles,
     ): SaveResult =
@@ -110,7 +110,7 @@ class NoteSaver(
                         SaveResult.SavedAsCopy(copy.name)
                     }
                 }
-            edits.saved(document)
+            session.saved(document)
             result
         } catch (e: IOException) {
             Log.w(TAG, "Cannot save ${file.name}", e)

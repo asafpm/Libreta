@@ -36,7 +36,7 @@ object NoteLoader {
             val files = DocumentFiles.open(context, store, read, location)
             NoteState.Loaded(
                 file = NoteFile(id, name, location, read.container, version),
-                edits = NoteEdits(read.document),
+                session = NoteSession(read.document),
                 caches = RenderCaches.forDevice(context),
                 files = files,
                 folderNeeded = location == null && DocumentFiles.needsFolder(read),

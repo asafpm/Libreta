@@ -28,10 +28,10 @@ import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
-import pm.asaf.inkpad.files.NoteEdits
 import pm.asaf.inkpad.files.NoteFile
 import pm.asaf.inkpad.files.NoteLoader
 import pm.asaf.inkpad.files.NoteSaver
+import pm.asaf.inkpad.files.NoteSession
 import pm.asaf.inkpad.files.SaveResult
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
@@ -71,14 +71,14 @@ sealed interface NoteState {
     data class Loaded(
         val file: NoteFile,
         /** The document as edited so far. */
-        val edits: NoteEdits,
+        val session: NoteSession,
         /** Tiles and thumbnails, kept across rotation. */
         val caches: RenderCaches,
         val files: DocumentFiles,
         /** Its background files are outside it, but where it is was not granted. */
         val folderNeeded: Boolean,
     ) : NoteState {
-        val document: Document get() = edits.document
+        val document: Document get() = session.document
     }
 
     data class Failed(
@@ -220,7 +220,7 @@ class AppViewModel
             saving =
                 viewModelScope.launch {
                     previous?.join()
-                    val result = withContext(io) { saver.save(note.file, note.edits, note.files) }
+                    val result = withContext(io) { saver.save(note.file, note.session, note.files) }
                     when (result) {
                         is SaveResult.SavedAsCopy -> {
                             errorState.value =

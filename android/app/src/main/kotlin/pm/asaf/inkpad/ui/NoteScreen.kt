@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,7 @@ import androidx.graphics.lowlatency.LowLatencyCanvasView
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.android.render.RenderThreads
+import pm.asaf.inkpad.files.NoteSession
 import pm.asaf.inkpad.viewer.DocumentView
 import pm.asaf.inkpad.viewer.LowLatencyWetInk
 
@@ -65,6 +67,8 @@ fun NoteScreen(
                     ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                 },
                 actions = {
+                    val loaded = state as? NoteState.Loaded
+                    if (loaded != null) UndoButtons(loaded.session, view)
                     TextButton(
                         onClick = { view?.fitWidth() },
                         enabled = view != null,
@@ -93,6 +97,23 @@ fun NoteScreen(
             }
         }
     }
+}
+
+/** Undo and redo, shown in [view]. */
+@Composable
+private fun UndoButtons(
+    session: NoteSession,
+    view: DocumentView?,
+) {
+    val undo by session.undoState.collectAsState()
+    IconButton(
+        onClick = { session.undo()?.let { view?.showPages(it) } },
+        enabled = view != null && undo.canUndo,
+    ) { Icon(UndoIcon, stringResource(R.string.undo)) }
+    IconButton(
+        onClick = { session.redo()?.let { view?.showPages(it) } },
+        enabled = view != null && undo.canRedo,
+    ) { Icon(RedoIcon, stringResource(R.string.redo)) }
 }
 
 /** Why backgrounds are missing, if they are. */
@@ -137,9 +158,15 @@ private fun NoteCanvas(
         factory = { context ->
             val view =
                 DocumentView(context).apply {
-                    val edits = state.edits
-                    setDocument(edits.document.pages, state.caches, state.files::newRenderer, threads, edits.versions())
-                    onPageEdited = edits::pageEdited
+                    val session = state.session
+                    setDocument(
+                        session.document.pages,
+                        state.caches,
+                        state.files::newRenderer,
+                        threads,
+                        session.versions(),
+                    )
+                    onEdit = session::edited
                     position.get()?.let { restore(it) }
                 }
             val ink = LowLatencyCanvasView(context)
@@ -158,6 +185,7 @@ private fun NoteCanvas(
         onRelease = {
             document?.let { released ->
                 position.set(released.anchor)
+                state.session.keepVersions(released.versions)
                 released.close()
             }
             document = null

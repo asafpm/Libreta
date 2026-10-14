@@ -43,6 +43,11 @@ internal class PendingInk {
 
     fun clear() = strokes.clear()
 
+    /** Forgets the strokes of page [page]. */
+    fun clear(page: Int) {
+        strokes.removeAll { it.page == page }
+    }
+
     /**
      * Draws the pending strokes with [renderer] (at the page positions the tiles use), then
      * forgets those whose visible tiles at the current zoom are rendered with them.
