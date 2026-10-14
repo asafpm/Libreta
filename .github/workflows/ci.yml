@@ -26,10 +26,19 @@ jobs:
       # Also validates the Gradle wrapper checksum.
       - uses: gradle/actions/setup-gradle@v6
 
-      - run: scripts/ci.sh --no-daemon --stacktrace
+      - name: Build and test
+        shell: bash
+        run: scripts/ci.sh --no-daemon --stacktrace 2>&1 | tee ci.log
+
+      - name: Report failures
+        if: failure()
+        run: python3 scripts/ci-annotate.py ci.log
 
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: reports
-          path: '**/build/reports/'
+          path: |
+            ci.log
+            **/build/reports/
+            **/build/screenshot-diffs/
