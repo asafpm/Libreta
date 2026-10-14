@@ -40,6 +40,8 @@ Xournal++ live in `testdata/xournalpp/`.
   `src/core/control/xojfile/LoadHandler.cpp` and `SaveHandler.cpp`.
 - `core/format/src/commonTest/.../ColorCodecTest.kt`: expectations from
   `LoadHandlerHelper.cpp` and `test/unit_tests/control/LoadHandlerTest.cpp`.
+- `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from
+  `test/unit_tests/control/LoadHandlerTest.cpp`.
 
 ## Third-party libraries
 
