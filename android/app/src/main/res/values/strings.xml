@@ -1,4 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Inkpad</string>
+
+    <!-- Library -->
+    <string name="add_folder">Add a folder</string>
+    <string name="no_folders">Choose the folders where your notes are. Their notes and subfolders will show up here.</string>
+    <string name="new_note">New note</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="empty_folder">No notes here yet</string>
+    <string name="folder_unavailable">This folder can\'t be opened: %1$s</string>
+    <string name="folder">Folder</string>
+
+    <!-- Settings -->
+    <string name="library_folders">Library folders</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="remove">Remove</string>
+    <string name="sort_by">Sort notes by</string>
+    <string name="sort_modified">Last modified</string>
+    <string name="sort_name">Name</string>
+
+    <!-- New note -->
+    <string name="name">Name</string>
+    <string name="paper_size">Paper size</string>
+    <string name="portrait">Portrait</string>
+    <string name="landscape">Landscape</string>
+    <string name="create">Create</string>
+    <string name="cancel">Cancel</string>
+    <string name="paper_a4">A4</string>
+    <string name="paper_letter">Letter</string>
+    <string name="paper_a5">A5</string>
+    <string name="paper_legal">Legal</string>
+
+    <!-- Note -->
+    <string name="fit_width">Fit width</string>
+
+    <!-- Errors -->
+    <string name="error_create_note">Couldn\'t create %1$s</string>
+    <string name="error_read_note">Couldn\'t open %1$s</string>
+    <string name="error_not_a_note">%1$s isn\'t a Xournal++ note, or it is damaged</string>
 </resources>

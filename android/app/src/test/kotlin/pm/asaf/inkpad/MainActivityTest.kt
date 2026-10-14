@@ -15,7 +15,7 @@ class MainActivityTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun showsAppName() {
+    fun showsTheHomeScreen() {
         composeRule.onNodeWithText("Inkpad").assertExists()
     }
 }

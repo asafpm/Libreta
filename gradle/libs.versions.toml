@@ -36,6 +36,8 @@ detekt-gradlePlugin = { module = "dev.detekt:detekt-gradle-plugin", version.ref 
 # AndroidX / Compose
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-graphics-core = { module = "androidx.graphics:graphics-core", version.ref = "graphicsCore" }
 androidx-input-motionprediction = { module = "androidx.input:input-motionprediction", version.ref = "motionPrediction" }
@@ -47,6 +49,7 @@ compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview"
 compose-ui-test-junit4 = { module = "androidx.compose.ui:ui-test-junit4" }
 compose-ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 
 # Multiplatform
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
