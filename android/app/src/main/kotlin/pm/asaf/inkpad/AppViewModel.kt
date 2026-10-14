@@ -39,7 +39,7 @@ import pm.asaf.inkpad.library.Library
 import pm.asaf.inkpad.library.NewNoteCreator
 import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
-import pm.asaf.inkpad.settings.PenPreferences
+import pm.asaf.inkpad.settings.ToolPreferences
 import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.IOException
 
@@ -102,7 +102,7 @@ class AppViewModel
         private val store = SafDocumentStore(application.contentResolver)
         val library = Library(store, application.contentResolver, preferences, viewModelScope, io)
         val previews = PreviewCache(application, store)
-        val pens = PenPreferences(preferences)
+        val tools = ToolPreferences(preferences)
 
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
         val screens: StateFlow<List<Screen>> = stack.asStateFlow()

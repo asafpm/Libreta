@@ -35,16 +35,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
+import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.SortOrder
 
-/** The library folders (add, remove, reorder) and how notes are sorted. */
+/** The library folders (add, remove, reorder), how notes are sorted, and input. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     roots: List<LibraryRoot>,
     sortOrder: SortOrder,
     fingerDraws: Boolean,
+    stylusButton: StylusButton,
     actions: SettingsActions,
     onBack: () -> Unit,
 ) {
@@ -69,10 +71,10 @@ fun SettingsScreen(
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.sort_by))
-            SortOption(stringResource(R.string.sort_modified), sortOrder == SortOrder.MODIFIED) {
+            RadioOption(stringResource(R.string.sort_modified), sortOrder == SortOrder.MODIFIED) {
                 actions.sortBy(SortOrder.MODIFIED)
             }
-            SortOption(
+            RadioOption(
                 stringResource(R.string.sort_name),
                 sortOrder == SortOrder.NAME,
             ) { actions.sortBy(SortOrder.NAME) }
@@ -89,6 +91,16 @@ fun SettingsScreen(
                         onValueChange = actions.fingerDraws,
                     ),
             )
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.stylus))
+            Text(
+                stringResource(R.string.stylus_button),
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+            for ((button, label) in STYLUS_BUTTONS) {
+                RadioOption(stringResource(label), stylusButton == button) { actions.stylusButton(button) }
+            }
         }
     }
 }
@@ -134,7 +146,7 @@ private fun RootItem(
 }
 
 @Composable
-private fun SortOption(
+private fun RadioOption(
     label: String,
     selected: Boolean,
     onSelect: () -> Unit,
@@ -150,3 +162,10 @@ private fun SortOption(
         Text(label, modifier = Modifier.padding(start = 16.dp))
     }
 }
+
+private val STYLUS_BUTTONS =
+    listOf(
+        StylusButton.ERASER to R.string.button_erases,
+        StylusButton.HIGHLIGHTER to R.string.button_highlights,
+        StylusButton.NONE to R.string.button_nothing,
+    )

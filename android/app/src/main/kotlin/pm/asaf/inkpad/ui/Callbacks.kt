@@ -4,8 +4,11 @@ package pm.asaf.inkpad.ui
 
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.model.Color
-import pm.asaf.inkpad.core.model.PenSettings
+import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.StylusButton
+import pm.asaf.inkpad.core.model.Tool
+import pm.asaf.inkpad.core.model.ToolSettings
 import pm.asaf.inkpad.library.LibraryEntry
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.SortOrder
@@ -23,14 +26,23 @@ class SettingsActions(
     val move: (LibraryRoot, Int) -> Unit,
     val sortBy: (SortOrder) -> Unit,
     val fingerDraws: (Boolean) -> Unit,
+    val stylusButton: (StylusButton) -> Unit,
 )
 
-/** The pen and finger drawing, and how to change them. */
-class PenControls(
-    val pen: PenSettings,
+/** The tools and finger drawing, and how to change them. */
+class ToolControls(
+    val tools: ToolSettings,
     val fingerDraws: Boolean,
+    /** Custom colours picked, most recent first. */
+    val recentColors: List<Color>,
+    val onTool: (Tool) -> Unit,
+    /** Sets the chosen tool's colour. */
     val onColor: (Color) -> Unit,
+    /** A colour from the picker: used, and remembered among the recent ones. */
+    val onCustomColor: (Color) -> Unit,
+    /** Sets the chosen tool's width. */
     val onSize: (PenSize) -> Unit,
+    val onEraserType: (EraserType) -> Unit,
     val onFingerDraws: (Boolean) -> Unit,
 )
 

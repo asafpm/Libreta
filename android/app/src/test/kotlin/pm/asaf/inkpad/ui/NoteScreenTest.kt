@@ -12,12 +12,16 @@ import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +40,10 @@ import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.android.render.RenderThreads
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.Element
+import pm.asaf.inkpad.core.model.EraserSettings
+import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.LibraryRoots
@@ -159,9 +166,9 @@ class NoteScreenTest {
         val model = openLecture()
 
         // The toolbar scrolls on narrow screens.
-        compose.onNodeWithContentDescription("Pen colour: Red").performScrollTo().performClick()
-        compose.onNodeWithContentDescription("Pen width: Thick").performScrollTo().performClick()
-        assertEquals(Color.of(237, 83, 83), model.pens.pen.value.color)
+        compose.onNodeWithContentDescription("Colour: Red").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Width: Thick").performScrollTo().performClick()
+        assertEquals(Color.of(237, 83, 83), model.tools.tools.value.pen.color)
         // The flow reaches the view through the main thread.
         val view = checkNotNull(documentView(compose.activity.window.decorView))
         eventually { view.pen.size == PenSize.THICK }
@@ -180,7 +187,7 @@ class NoteScreenTest {
         assertEquals(
             PenSize.THICK,
             AppViewModel(application)
-                .pens.pen.value.size,
+                .tools.tools.value.pen.size,
         )
     }
 
@@ -213,6 +220,44 @@ class NoteScreenTest {
         assertEquals(kept, model.elements().last())
         compose.onNodeWithContentDescription("Undo").assertIsNotEnabled()
         compose.onNodeWithContentDescription("Redo").assertIsNotEnabled()
+    }
+
+    @Test
+    fun eachToolKeepsItsOwnSettings() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        compose.onNodeWithContentDescription("Highlighter").performClick()
+        compose.onNodeWithContentDescription("Colour: Bright yellow").performScrollTo().assertIsSelected()
+        compose.onNodeWithContentDescription("Width: Thick").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Eraser").performScrollTo().performClick()
+        compose.onNodeWithText("Whiteout").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Width: Very fine").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Pen").performScrollTo().performClick()
+
+        val tools = model.tools.tools.value
+        assertEquals(Tool.PEN, tools.tool)
+        assertEquals(PenSize.MEDIUM, tools.pen.size)
+        assertEquals(PenSize.THICK, tools.highlighter.size)
+        assertEquals(EraserSettings(EraserType.WHITEOUT, PenSize.VERY_FINE), tools.eraser)
+        compose.onNodeWithContentDescription("Width: Medium").performScrollTo().assertIsSelected()
+        // The view writes with them, and they are remembered.
+        eventually { view.tools == tools }
+        assertEquals(tools, AppViewModel(application).tools.tools.value)
+    }
+
+    @Test
+    fun pickedColoursAreUsedAndRemembered() {
+        val model = openLecture()
+        compose.onNodeWithContentDescription("Add a colour").performScrollTo().performClick()
+        compose.onNodeWithTag("hex").performTextReplacement("#123456")
+        compose.onNodeWithText("OK").performClick()
+        val picked = Color.of(0x12, 0x34, 0x56)
+        assertEquals(picked, model.tools.tools.value.pen.color)
+        compose.onNodeWithContentDescription("Colour: #123456").performScrollTo().assertIsSelected()
+        // Still offered after choosing another colour, and next time.
+        compose.onNodeWithContentDescription("Colour: Red").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Colour: #123456").performScrollTo().assertIsNotSelected()
+        assertEquals(listOf(picked), AppViewModel(application).tools.recentColors.value)
     }
 
     private companion object {

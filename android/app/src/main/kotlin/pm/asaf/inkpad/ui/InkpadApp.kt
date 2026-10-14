@@ -14,8 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.Screen
+import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.ToolSettings
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.library.LibraryRoot
+import pm.asaf.inkpad.settings.ToolPreferences
 
 /** The app's screens, driven by [model]. */
 @Composable
@@ -113,19 +116,22 @@ private fun Settings(
 ) {
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
-    val fingerDraws by model.pens.fingerDraws.collectAsStateWithLifecycle()
+    val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
+    val tools by model.tools.tools.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
         sortOrder = sortOrder,
         fingerDraws = fingerDraws,
+        stylusButton = tools.button,
         actions =
             SettingsActions(
                 addFolder,
                 library::removeRoot,
                 library::moveRoot,
                 library::setSortOrder,
-                model.pens::setFingerDraws,
+                model.tools::setFingerDraws,
+                model.tools::setButton,
             ),
         onBack = { model.back() },
     )
@@ -137,8 +143,9 @@ private fun Note(
     screen: Screen.Note,
 ) {
     val note by model.note.collectAsStateWithLifecycle()
-    val pen by model.pens.pen.collectAsStateWithLifecycle()
-    val fingerDraws by model.pens.fingerDraws.collectAsStateWithLifecycle()
+    val tools by model.tools.tools.collectAsStateWithLifecycle()
+    val recentColors by model.tools.recentColors.collectAsStateWithLifecycle()
+    val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model::addFolderForNote)
@@ -148,9 +155,29 @@ private fun Note(
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
-        pen = PenControls(pen, fingerDraws, model.pens::setColor, model.pens::setSize, model.pens::setFingerDraws),
+        tools = toolControls(model.tools, tools, recentColors, fingerDraws),
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
     )
 }
+
+private fun toolControls(
+    preferences: ToolPreferences,
+    tools: ToolSettings,
+    recentColors: List<Color>,
+    fingerDraws: Boolean,
+) = ToolControls(
+    tools = tools,
+    fingerDraws = fingerDraws,
+    recentColors = recentColors,
+    onTool = preferences::selectTool,
+    onColor = preferences::setColor,
+    onCustomColor = { color ->
+        preferences.setColor(color)
+        preferences.addRecentColor(color)
+    },
+    onSize = preferences::setSize,
+    onEraserType = preferences::setEraserType,
+    onFingerDraws = preferences::setFingerDraws,
+)

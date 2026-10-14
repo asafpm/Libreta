@@ -52,7 +52,7 @@ fun NoteScreen(
     state: NoteState?,
     threads: RenderThreads,
     position: ViewerPosition,
-    pen: PenControls,
+    tools: ToolControls,
     onAddFolder: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -89,9 +89,9 @@ fun NoteScreen(
 
                 is NoteState.Loaded -> {
                     Column(Modifier.fillMaxSize()) {
-                        PenToolbar(pen, Modifier.fillMaxWidth())
+                        ToolBar(tools, Modifier.fillMaxWidth())
                         FilesNotice(state, onAddFolder)
-                        NoteCanvas(state, threads, position, pen, { view = it }, Modifier.weight(1f).fillMaxWidth())
+                        NoteCanvas(state, threads, position, tools, { view = it }, Modifier.weight(1f).fillMaxWidth())
                     }
                 }
             }
@@ -149,7 +149,7 @@ private fun NoteCanvas(
     state: NoteState.Loaded,
     threads: RenderThreads,
     position: ViewerPosition,
-    pen: PenControls,
+    tools: ToolControls,
     onView: (DocumentView?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -179,8 +179,8 @@ private fun NoteCanvas(
             }
         },
         update = {
-            document?.pen = pen.pen
-            document?.fingerDraws = pen.fingerDraws
+            document?.tools = tools.tools
+            document?.fingerDraws = tools.fingerDraws
         },
         onRelease = {
             document?.let { released ->
