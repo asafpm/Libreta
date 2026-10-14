@@ -3,6 +3,7 @@
 package pm.asaf.inkpad.files
 
 import android.content.Context
+import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -27,9 +28,11 @@ import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.FileDomain
 import pm.asaf.inkpad.core.model.NewNote
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.LibraryRoot
+import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.File
 import kotlin.test.assertNotNull
 
@@ -43,12 +46,13 @@ class DocumentFilesTest {
     private val testData = File(checkNotNull(System.getProperty("inkpad.testdata")))
     private lateinit var directory: File
     private lateinit var root: FolderRef
+    private val store = SafDocumentStore(context.contentResolver)
 
     @Before
     fun setUp() {
         directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
-        root = FolderRef.rootOf(FakeDocumentsProvider.treeUri(), "Notes")
+        root = FolderRef(FakeDocumentsProvider.folderId(), "Notes")
     }
 
     /** Copies testdata [samples] into [folder] (relative to the root). */
@@ -60,14 +64,27 @@ class DocumentFilesTest {
     private fun read(path: String): XoppReadResult = File(directory, path).source().buffer().use { XoppReader.read(it) }
 
     /** The folders from the root to [folder], e.g. "Courses/Physics". */
-    private fun folders(folder: String): List<FolderRef> =
-        folder.split('/').filter { it.isNotEmpty() }.runningFold(root) { parent, name ->
-            FolderRef(parent.treeUri, "${parent.documentId}/$name", name)
-        }
+    private fun folders(folder: String): List<FolderRef> {
+        val names = folder.split('/').filter { it.isNotEmpty() }
+        return listOf(root) +
+            names.indices.map {
+                FolderRef(
+                    FakeDocumentsProvider.folderId(names.take(it + 1).joinToString("/")),
+                    names[it],
+                )
+            }
+    }
+
+    private fun documentIdOf(id: StoreId?): String? = id?.let { DocumentsContract.getDocumentId(Uri.parse(it.value)) }
 
     private fun open(path: String): DocumentFiles {
         val folder = path.substringBeforeLast('/', "")
-        return DocumentFiles.open(context, read(path), DocumentLocation(folders(folder), path.substringAfterLast('/')))
+        return DocumentFiles.open(
+            context,
+            store,
+            read(path),
+            DocumentLocation(folders(folder), path.substringAfterLast('/')),
+        )
     }
 
     private fun pixmap(read: XoppReadResult) = read.document.pages[0].background as Background.Pixmap
@@ -89,7 +106,7 @@ class DocumentFilesTest {
     fun findsAttachmentsInZipPackagesWithoutAFolder() {
         copy("New", "xournalpp/packaged_xopp/imgBackground/new.xopp")
         val read = read("New/new.xopp")
-        val files = DocumentFiles.open(context, read, location = null)
+        val files = DocumentFiles.open(context, store, read, location = null)
         assertEquals(emptyList<String>(), files.missing)
         assertNotNull(files.image(pixmap(read)))
         assertFalse(DocumentFiles.needsFolder(read))
@@ -107,7 +124,7 @@ class DocumentFilesTest {
         )
         assertEquals(
             listOf("bg_1.png"),
-            DocumentFiles.open(context, read("Elsewhere/old.xopp"), location = null).missing,
+            DocumentFiles.open(context, store, read("Elsewhere/old.xopp"), location = null).missing,
         )
     }
 
@@ -160,17 +177,11 @@ class DocumentFilesTest {
         )
         copy("CJK", "xournalpp/cjk/测试.xopp", "xournalpp/cjk/测试.pdf")
         val sidecar =
-            FileFinder(
-                context.contentResolver,
-                DocumentLocation(folders("Old"), "old.xopp"),
-            ).sidecar("bg.pdf")
-        assertEquals("root/Old/old.xopp.bg.pdf", sidecar?.let(DocumentsContract::getDocumentId))
+            FileFinder(store, DocumentLocation(folders("Old"), "old.xopp")).sidecar("bg.pdf")
+        assertEquals("root/Old/old.xopp.bg.pdf", documentIdOf(sidecar))
         val relative =
-            FileFinder(
-                context.contentResolver,
-                DocumentLocation(folders("CJK"), "测试.xopp"),
-            ).path("./././测试.pdf")
-        assertEquals("root/CJK/测试.pdf", relative?.let(DocumentsContract::getDocumentId))
+            FileFinder(store, DocumentLocation(folders("CJK"), "测试.xopp")).path("./././测试.pdf")
+        assertEquals("root/CJK/测试.pdf", documentIdOf(relative))
     }
 
     @Test
@@ -178,16 +189,19 @@ class DocumentFilesTest {
         copy("Courses/Physics", "physics.xopp")
         val roots = listOf(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         // As a file manager would send it: a plain document uri.
-        val uri =
-            DocumentsContract.buildDocumentUri(
-                FakeDocumentsProvider.AUTHORITY,
-                "root/Courses/Physics/physics.xopp",
+        val id =
+            StoreId(
+                DocumentsContract
+                    .buildDocumentUri(
+                        FakeDocumentsProvider.AUTHORITY,
+                        "root/Courses/Physics/physics.xopp",
+                    ).toString(),
             )
-        val location = assertNotNull(NoteLoader.locate(context.contentResolver, roots, uri, "physics.xopp"))
+        val location = assertNotNull(NoteLoader.locate(store, roots, id, "physics.xopp"))
         assertEquals(listOf("Notes", "Courses", "Physics"), location.folders.map { it.name })
-        assertEquals("root/Courses/Physics", location.folders.last().documentId)
+        assertEquals("root/Courses/Physics", documentIdOf(location.folders.last().id))
         // Not below any root.
         val elsewhere = listOf(LibraryRoot.Local(FakeDocumentsProvider.treeUri("Other"), "Other"))
-        assertNull(NoteLoader.locate(context.contentResolver, elsewhere, uri, "physics.xopp"))
+        assertNull(NoteLoader.locate(store, elsewhere, id, "physics.xopp"))
     }
 }

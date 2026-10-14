@@ -123,7 +123,7 @@ fun FolderScreen(
         },
     ) { padding ->
         LibraryGrid(Modifier.padding(padding)) {
-            folderItems(path.last().documentId, state, previews, actions)
+            folderItems(path.last().id.value, state, previews, actions)
         }
     }
 }

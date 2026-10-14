@@ -25,6 +25,7 @@ import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.files.NoteEdits
@@ -39,6 +40,7 @@ import pm.asaf.inkpad.library.NewNoteCreator
 import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
 import pm.asaf.inkpad.settings.PenPreferences
+import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.IOException
 
 /** A screen of the app; the back stack is a list of these. */
@@ -56,7 +58,7 @@ sealed interface Screen {
 
     /** A note; [location] is where its background files are looked for (null: not in the library). */
     data class Note(
-        val uri: Uri,
+        val id: StoreId,
         val name: String,
         val location: DocumentLocation?,
     ) : Screen
@@ -95,8 +97,11 @@ class AppViewModel
     ) : AndroidViewModel(application) {
         private val context: Context get() = getApplication()
         private val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
-        val library = Library(application.contentResolver, preferences, viewModelScope, io)
-        val previews = PreviewCache(application)
+
+        /** Where notes are: the folders granted through the Storage Access Framework. */
+        private val store = SafDocumentStore(application.contentResolver)
+        val library = Library(store, application.contentResolver, preferences, viewModelScope, io)
+        val previews = PreviewCache(application, store)
         val pens = PenPreferences(preferences)
 
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
@@ -105,12 +110,13 @@ class AppViewModel
         val newNotes =
             NewNoteFlow(
                 application,
+                store,
                 preferences,
                 viewModelScope,
                 io,
-                onCreated = { uri, name, path ->
+                onCreated = { file, path ->
                     library.refresh(path.last())
-                    open(Screen.Note(uri, name, DocumentLocation(path, name)))
+                    open(Screen.Note(file.id, file.name, DocumentLocation(path, file.name)))
                 },
                 onError = { errorState.value = it },
             )
@@ -121,7 +127,7 @@ class AppViewModel
         /** Where the open note was last shown, restored after rotation. */
         var noteAnchor: ViewportAnchor? = null
 
-        private val saver = NoteSaver(application)
+        private val saver = NoteSaver(application, store)
 
         /** The save in progress: a note is read only after it, in case it is the same file. */
         private var saving: Job? = null
@@ -167,16 +173,12 @@ class AppViewModel
         // The open note
 
         /** Opens a note from another app ("Open with"), finding it in the library if it is there. */
-        fun openExternal(uri: Uri) {
+        fun openExternal(id: StoreId) {
             viewModelScope.launch {
                 val screen =
                     withContext(io) {
-                        val name = NoteLoader.nameOf(context.contentResolver, uri)
-                        Screen.Note(
-                            uri,
-                            name,
-                            NoteLoader.locate(context.contentResolver, library.roots.value, uri, name),
-                        )
+                        val name = NoteLoader.nameOf(store, id)
+                        Screen.Note(id, name, NoteLoader.locate(store, library.roots.value, id, name))
                     }
                 if (stack.value.last() is Screen.Note) back()
                 open(screen)
@@ -188,7 +190,7 @@ class AppViewModel
             val note = stack.value.last() as? Screen.Note ?: return
             library.addRoot(treeUri) {
                 back()
-                openExternal(note.uri)
+                openExternal(note.id)
             }
         }
 
@@ -197,7 +199,7 @@ class AppViewModel
             noteState.value = NoteState.Loading
             viewModelScope.launch {
                 saving?.join()
-                val state = withContext(io) { NoteLoader.load(context, screen.uri, screen.name, screen.location) }
+                val state = withContext(io) { NoteLoader.load(context, store, screen.id, screen.name, screen.location) }
                 // Still the same note?
                 if (stack.value.lastOrNull() == screen) {
                     noteState.value = state

@@ -9,6 +9,7 @@ import android.net.Uri
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import pm.asaf.inkpad.store.SafDocumentStore
 
 /** A folder shown on the home screen, with everything below it. */
 sealed interface LibraryRoot {
@@ -22,7 +23,7 @@ sealed interface LibraryRoot {
     ) : LibraryRoot {
         override val id: String get() = treeUri.toString()
 
-        val folder: FolderRef get() = FolderRef.rootOf(treeUri, name)
+        val folder: FolderRef get() = FolderRef(SafDocumentStore.rootOf(treeUri), name)
     }
 }
 

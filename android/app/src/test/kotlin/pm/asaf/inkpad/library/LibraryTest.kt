@@ -2,7 +2,6 @@
 
 package pm.asaf.inkpad.library
 
-import android.content.ContentResolver
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +21,7 @@ import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.File
 import java.time.LocalDateTime
 
@@ -32,7 +32,7 @@ class LibraryTest {
     val temporary = TemporaryFolder()
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
-    private val resolver: ContentResolver = context.contentResolver
+    private val store = SafDocumentStore(context.contentResolver)
     private val testData = File(checkNotNull(System.getProperty("inkpad.testdata")))
     private lateinit var directory: File
     private lateinit var root: FolderRef
@@ -41,7 +41,7 @@ class LibraryTest {
     fun setUp() {
         directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
-        root = FolderRef.rootOf(FakeDocumentsProvider.treeUri(), "Notes")
+        root = FolderRef(FakeDocumentsProvider.folderId(), "Notes")
     }
 
     private fun copy(
@@ -64,17 +64,17 @@ class LibraryTest {
         File(directory, "readme.txt").writeText("not a note")
         File(directory, ".hidden.xopp").writeText("")
 
-        val byDate = FolderListing.list(resolver, root)
+        val byDate = FolderListing.list(store, root)
         assertEquals(listOf("Archive", "Courses", "Old.XOJ", "Physics.xopp", "algebra.xopp"), byDate.map { it.name })
         assertTrue(byDate[0] is LibraryEntry.Folder && byDate[2] is LibraryEntry.Document)
-        val byName = FolderListing.list(resolver, root, SortOrder.NAME)
+        val byName = FolderListing.list(store, root, SortOrder.NAME)
         assertEquals(listOf("Archive", "Courses", "algebra.xopp", "Old.XOJ", "Physics.xopp"), byName.map { it.name })
 
         val courses = (byDate[1] as LibraryEntry.Folder).folder
-        val inside = FolderListing.list(resolver, courses).single() as LibraryEntry.Document
+        val inside = FolderListing.list(store, courses).single() as LibraryEntry.Document
         assertEquals("Mechanics.xopp", inside.name)
         assertEquals(courses, inside.parent)
-        assertEquals(File(directory, "Courses/Mechanics.xopp").length(), inside.size)
+        assertEquals(File(directory, "Courses/Mechanics.xopp").length(), inside.version.size)
     }
 
     @Test
@@ -97,18 +97,18 @@ class LibraryTest {
     @Test
     fun suggestsXournalppNames() {
         val now = LocalDateTime.of(2026, 10, 14, 14, 30)
-        assertEquals("2026-10-14-Note-14-30.xopp", NewNoteCreator.suggestedName(resolver, root, now))
+        assertEquals("2026-10-14-Note-14-30.xopp", NewNoteCreator.suggestedName(store, root, now))
         File(directory, "2026-10-14-Note-14-30.xopp").writeText("")
-        assertEquals("2026-10-14-Note-14-30 (2).xopp", NewNoteCreator.suggestedName(resolver, root, now))
+        assertEquals("2026-10-14-Note-14-30 (2).xopp", NewNoteCreator.suggestedName(store, root, now))
         assertEquals("Lecture 3.xopp", NewNoteCreator.fileName(" Lecture 3 "))
         assertEquals("a-b.xoj", NewNoteCreator.fileName("a/b.xoj"))
     }
 
     @Test
     fun createsNotes() {
-        val uri =
+        val created =
             NewNoteCreator.create(
-                resolver,
+                store,
                 root,
                 "Lecture",
                 PaperSize.LETTER,
@@ -121,22 +121,23 @@ class LibraryTest {
         assertEquals(792.0 to 612.0, page.width to page.height)
         assertEquals(PageStyle.LINED, (page.background as Background.Solid).style)
         assertEquals("Inkpad test", document.creator)
-        assertEquals("Lecture.xopp", FolderListing.nameOf(resolver, uri))
+        assertEquals("Lecture.xopp", created.name)
+        assertEquals("Lecture.xopp", store.entry(created.id)?.name)
         // A taken name is changed by the provider.
         val second =
             NewNoteCreator.create(
-                resolver,
+                store,
                 root,
                 "Lecture.xopp",
                 PaperSize.A4,
                 landscape = false,
                 creator = "Inkpad test",
             )
-        assertEquals("Lecture (1).xopp", FolderListing.nameOf(resolver, second))
+        assertEquals("Lecture (1).xopp", second.name)
     }
 
     private fun document(name: String) =
-        FolderListing.list(resolver, root).filterIsInstance<LibraryEntry.Document>().single {
+        FolderListing.list(store, root).filterIsInstance<LibraryEntry.Document>().single {
             it.name ==
                 name
         }
@@ -147,23 +148,27 @@ class LibraryTest {
             copy("physics.xopp", "Physics.xopp", 1_000_000)
             val cacheDirectory = temporary.newFolder("previews")
             val io = StandardTestDispatcher(testScheduler)
-            val first = PreviewCache(context, cacheDirectory, io).previews(document("Physics.xopp")).toList()
+            val first = PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList()
             // Xournal++'s 99 x 128 preview, then page 1 at the thumbnail width.
             assertEquals(listOf(99, 384), first.map { it.width })
             // A new cache (the app restarted) finds the rendered one on disk.
-            val again = PreviewCache(context, cacheDirectory, io).previews(document("Physics.xopp")).toList()
+            val again = PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList()
             assertEquals(listOf(384), again.map { it.width })
             // A changed file gets a new preview.
             File(directory, "Physics.xopp").setLastModified(2_000_000)
-            assertEquals(2, PreviewCache(context, cacheDirectory, io).previews(document("Physics.xopp")).toList().size)
+            assertEquals(
+                2,
+                PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList().size,
+            )
         }
 
     @Test
     fun previewsWithoutAnEmbeddedOneOrUnreadable() =
         runTest {
-            NewNoteCreator.create(resolver, root, "New", PaperSize.A4, landscape = false, creator = "Inkpad test")
+            NewNoteCreator.create(store, root, "New", PaperSize.A4, landscape = false, creator = "Inkpad test")
             File(directory, "Broken.xopp").writeText("not a document")
-            val cache = PreviewCache(context, temporary.newFolder("previews"), StandardTestDispatcher(testScheduler))
+            val cache =
+                PreviewCache(context, store, temporary.newFolder("previews"), StandardTestDispatcher(testScheduler))
             val rendered = cache.previews(document("New.xopp")).toList().single()
             assertEquals(384 to 543, rendered.width to rendered.height)
             assertEquals(rendered, cache.cached(document("New.xopp")))

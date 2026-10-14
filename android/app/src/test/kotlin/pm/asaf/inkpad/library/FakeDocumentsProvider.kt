@@ -14,6 +14,7 @@ import android.provider.DocumentsContract.Document
 import android.provider.DocumentsContract.Root
 import android.provider.DocumentsProvider
 import org.robolectric.Robolectric
+import pm.asaf.inkpad.core.store.StoreId
 import java.io.File
 import java.io.FileNotFoundException
 
@@ -32,16 +33,23 @@ class FakeDocumentsProvider : DocumentsProvider() {
     override fun queryDocument(
         documentId: String,
         projection: Array<out String>?,
-    ): Cursor = MatrixCursor(projection ?: DEFAULT_COLUMNS).apply { addRow(this, documentId) }
+    ): Cursor {
+        // Like real providers: missing documents fail.
+        if (!fileOf(documentId).exists()) throw FileNotFoundException(documentId)
+        return MatrixCursor(projection ?: DEFAULT_COLUMNS).apply { addRow(this, documentId) }
+    }
 
     override fun queryChildDocuments(
         parentDocumentId: String,
         projection: Array<out String>?,
         sortOrder: String?,
-    ): Cursor =
-        MatrixCursor(projection ?: DEFAULT_COLUMNS).apply {
-            fileOf(parentDocumentId).listFiles()?.forEach { addRow(this, "$parentDocumentId/${it.name}") }
+    ): Cursor {
+        val folder = fileOf(parentDocumentId)
+        if (!folder.isDirectory) throw FileNotFoundException(parentDocumentId)
+        return MatrixCursor(projection ?: DEFAULT_COLUMNS).apply {
+            folder.listFiles()?.forEach { addRow(this, "$parentDocumentId/${it.name}") }
         }
+    }
 
     override fun openDocument(
         documentId: String,
@@ -147,6 +155,21 @@ class FakeDocumentsProvider : DocumentsProvider() {
                 }
             Robolectric.buildContentProvider(FakeDocumentsProvider::class.java).create(info)
         }
+
+        /** The folder at [path] below the root ("" for the root itself), in the root's tree. */
+        fun folderId(path: String = ""): StoreId = documentId(path)
+
+        /** The file at [path] below the root, in the root's tree. */
+        fun fileId(path: String): StoreId = documentId(path)
+
+        private fun documentId(path: String): StoreId =
+            StoreId(
+                DocumentsContract
+                    .buildDocumentUriUsingTree(
+                        treeUri(),
+                        if (path.isEmpty()) ROOT else "$ROOT/$path",
+                    ).toString(),
+            )
 
         /** The tree of [path] below the root ("" for the root itself). */
         fun treeUri(path: String = ""): Uri =

@@ -27,6 +27,7 @@ import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.LibraryEntry
+import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.File
 import kotlin.test.assertIs
 
@@ -38,7 +39,8 @@ class NoteSaverTest {
 
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val testData = File(checkNotNull(System.getProperty("inkpad.testdata")))
-    private val saver = NoteSaver(context)
+    private val store = SafDocumentStore(context.contentResolver)
+    private val saver = NoteSaver(context, store)
     private lateinit var directory: File
     private lateinit var root: FolderRef
 
@@ -54,7 +56,7 @@ class NoteSaverTest {
     fun setUp() {
         directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
-        root = FolderRef.rootOf(FakeDocumentsProvider.treeUri(), "Notes")
+        root = FolderRef(FakeDocumentsProvider.folderId(), "Notes")
     }
 
     /** Opens testdata [sample] copied into the library as [name]. */
@@ -64,11 +66,11 @@ class NoteSaverTest {
     ): NoteState.Loaded {
         File(testData, sample).copyTo(File(directory, name))
         val entry =
-            FolderListing.list(context.contentResolver, root).filterIsInstance<LibraryEntry.Document>().single {
+            FolderListing.list(store, root).filterIsInstance<LibraryEntry.Document>().single {
                 it.name ==
                     name
             }
-        return NoteLoader.load(context, entry.uri, name, DocumentLocation(listOf(root), name)) as NoteState.Loaded
+        return NoteLoader.load(context, store, entry.id, name, DocumentLocation(listOf(root), name)) as NoteState.Loaded
     }
 
     private fun NoteState.Loaded.write() {

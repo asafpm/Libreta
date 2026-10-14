@@ -62,16 +62,12 @@ private fun libraryActions(
     parent: Screen.Folder?,
 ) = LibraryActions(
     openFolder = { entry ->
-        val path =
-            parent?.path ?: model.library.roots.value
-                .filterIsInstance<LibraryRoot.Local>()
-                .filter { it.treeUri == entry.folder.treeUri }
-                .map { it.folder }
+        val path = parent?.path ?: listOf(entry.parent)
         model.open(Screen.Folder(path + entry.folder))
     },
     openDocument = { entry ->
         val folders = parent?.path ?: listOf(entry.parent)
-        model.open(Screen.Note(entry.uri, entry.name, DocumentLocation(folders, entry.name)))
+        model.open(Screen.Note(entry.id, entry.name, DocumentLocation(folders, entry.name)))
     },
 )
 
@@ -154,7 +150,7 @@ private fun Note(
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
         pen = PenControls(pen, fingerDraws, model.pens::setColor, model.pens::setSize, model.pens::setFingerDraws),
         // The picker starts next to the note, where the provider supports it.
-        onAddFolder = { pickFolder.launch(screen.uri) },
+        onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
     )
 }

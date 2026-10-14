@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.IOException
+import pm.asaf.inkpad.core.store.DocumentStore
+import pm.asaf.inkpad.core.store.StoreException
+import pm.asaf.inkpad.store.SafDocumentStore
 
 /** The contents of a folder as last loaded. */
 sealed interface FolderState {
@@ -33,6 +35,8 @@ sealed interface FolderState {
  * listed on [io], in [scope].
  */
 class Library(
+    private val store: DocumentStore,
+    /** For folder permissions, which belong to the Storage Access Framework. */
     private val resolver: ContentResolver,
     private val preferences: SharedPreferences,
     private val scope: CoroutineScope,
@@ -58,11 +62,9 @@ class Library(
             val state =
                 withContext(io) {
                     try {
-                        FolderState.Loaded(FolderListing.list(resolver, folder, order.value))
-                    } catch (e: IOException) {
+                        FolderState.Loaded(FolderListing.list(store, folder, order.value))
+                    } catch (e: StoreException) {
                         FolderState.Failed(e.message ?: e.toString())
-                    } catch (e: SecurityException) {
-                        FolderState.Failed(e.message ?: e.toString()) // access was withdrawn
                     }
                 }
             folderStates.update { it + (folder to state) }
@@ -84,7 +86,7 @@ class Library(
             val root =
                 withContext(io) {
                     LibraryRoots.keepAccess(resolver, treeUri)
-                    val name = FolderListing.nameOf(resolver, FolderRef.rootOf(treeUri, "").uri)
+                    val name = store.entry(SafDocumentStore.rootOf(treeUri))?.name
                     LibraryRoot.Local(treeUri, name ?: treeUri.lastPathSegment.orEmpty())
                 }
             configured.add(root)

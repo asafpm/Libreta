@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.ui.InkpadApp
 
 class MainActivity : ComponentActivity() {
@@ -40,6 +41,6 @@ class MainActivity : ComponentActivity() {
     /** "Open with" from another app. */
     private fun openFrom(intent: Intent) {
         val uri = intent.data
-        if (intent.action == Intent.ACTION_VIEW && uri != null) model.openExternal(uri)
+        if (intent.action == Intent.ACTION_VIEW && uri != null) model.openExternal(StoreId(uri.toString()))
     }
 }

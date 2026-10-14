@@ -2,31 +2,25 @@
 
 package pm.asaf.inkpad.library
 
-import android.content.ContentResolver
 import android.content.Context
-import android.net.Uri
-import android.provider.DocumentsContract
-import okio.sink
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.format.XoppWriter
 import pm.asaf.inkpad.core.model.NewNote
 import pm.asaf.inkpad.core.model.PaperSize
-import java.io.IOException
-import java.io.OutputStream
+import pm.asaf.inkpad.core.store.DocumentStore
+import pm.asaf.inkpad.core.store.StoreEntry
+import pm.asaf.inkpad.core.store.StoreException
 import java.time.LocalDateTime
 
 /** Creates new notes in library folders. */
 object NewNoteCreator {
-    /** Xournal++ files have no registered type; this keeps providers from changing the extension. */
-    private const val MIME_TYPE = "application/octet-stream"
-
     /** Xournal++'s default name for a note made [now], not clashing with [folder]'s files. */
     fun suggestedName(
-        resolver: ContentResolver,
+        store: DocumentStore,
         folder: FolderRef,
         now: LocalDateTime = LocalDateTime.now(),
     ): String {
-        val names = runCatching { FolderListing.list(resolver, folder).map { it.name } }
+        val names = runCatching { FolderListing.list(store, folder).map { it.name } }
         val existing = names.getOrDefault(emptyList()).toSet()
         return NewNote.suggestedName(now.year, now.monthValue, now.dayOfMonth, now.hour, now.minute, existing)
     }
@@ -44,29 +38,24 @@ object NewNoteCreator {
     }
 
     /**
-     * Creates a note named [name] in [folder] with one page of [paper] and returns its uri.
-     * The provider may change the name if it is taken.
+     * Creates a note named [name] in [folder] with one page of [paper]. The store may change
+     * the name if it is taken.
      */
     fun create(
-        resolver: ContentResolver,
+        store: DocumentStore,
         folder: FolderRef,
         name: String,
         paper: PaperSize,
         landscape: Boolean,
         creator: String,
-    ): Uri {
-        val uri =
-            DocumentsContract.createDocument(resolver, folder.uri, MIME_TYPE, fileName(name))
-                ?: throw IOException("Cannot create $name in ${folder.name}")
+    ): StoreEntry.File {
+        val file = store.create(folder.id, fileName(name))
         try {
-            XoppWriter.write(NewNote.document(paper, landscape, creator), resolver.openForWriting(uri).sink())
-        } catch (e: IOException) {
-            runCatching { DocumentsContract.deleteDocument(resolver, uri) }
+            store.write(file.id, XoppWriter.toByteString(NewNote.document(paper, landscape, creator)), expected = null)
+        } catch (e: StoreException) {
+            runCatching { store.delete(file.id) }
             throw e
         }
-        return uri
+        return file
     }
-
-    private fun ContentResolver.openForWriting(uri: Uri): OutputStream =
-        openOutputStream(uri, "wt") ?: throw IOException("Cannot write $uri")
 }

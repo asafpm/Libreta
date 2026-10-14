@@ -6,10 +6,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
-import android.net.Uri
 import android.util.Log
 import android.util.LruCache
 import okio.ByteString
+import okio.buffer
+import okio.sink
 import pm.asaf.inkpad.android.render.AndroidPdfRasterizer
 import pm.asaf.inkpad.android.render.BackgroundSource
 import pm.asaf.inkpad.android.render.PageRenderer
@@ -19,6 +20,8 @@ import pm.asaf.inkpad.core.format.XoppReadResult
 import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.FileDomain
+import pm.asaf.inkpad.core.store.DocumentStore
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.library.FolderRef
 import java.io.Closeable
 import java.io.File
@@ -45,6 +48,7 @@ data class DocumentLocation(
  */
 class DocumentFiles private constructor(
     private val context: Context,
+    private val store: DocumentStore,
     private val document: Document,
     private val images: Map<String, FileSource>,
     private val pdf: PdfBackgroundSource?,
@@ -94,13 +98,11 @@ class DocumentFiles private constructor(
                 BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             }
 
-            is FileSource.Content -> {
+            is FileSource.Stored -> {
                 try {
-                    context.contentResolver.openInputStream(source.uri)?.use { BitmapFactory.decodeStream(it) }
+                    store.read(source.id).buffer().use { BitmapFactory.decodeStream(it.inputStream()) }
                 } catch (e: IOException) {
-                    null.also { Log.w(TAG, "Cannot read ${source.uri}", e) }
-                } catch (e: SecurityException) {
-                    null.also { Log.w(TAG, "No access to ${source.uri}", e) }
+                    null.also { Log.w(TAG, "Cannot read ${source.id}", e) }
                 }
             }
         }
@@ -111,8 +113,8 @@ class DocumentFiles private constructor(
             val bytes: ByteString,
         ) : FileSource
 
-        data class Content(
-            val uri: Uri,
+        data class Stored(
+            val id: StoreId,
         ) : FileSource
     }
 
@@ -161,10 +163,11 @@ class DocumentFiles private constructor(
          */
         fun open(
             context: Context,
+            store: DocumentStore,
             read: XoppReadResult,
             location: DocumentLocation?,
         ): DocumentFiles {
-            val finder = FileFinder(context.contentResolver, location)
+            val finder = FileFinder(store, location)
             val images = HashMap<String, FileSource>()
             val missing = ArrayList<String>()
             var pdf: Pair<PdfBackgroundSource, File>? = null
@@ -172,11 +175,11 @@ class DocumentFiles private constructor(
                 val source = locate(read, finder, reference)
                 when {
                     source == null -> missing += reference.filename
-                    reference.pdf -> pdf = pdf ?: openPdf(context, source)
+                    reference.pdf -> pdf = pdf ?: openPdf(context, store, source)
                     else -> images["${reference.domain}:${reference.filename}"] = source
                 }
             }
-            return DocumentFiles(context, read.document, images, pdf?.first, pdf?.second, missing)
+            return DocumentFiles(context, store, read.document, images, pdf?.first, pdf?.second, missing)
         }
 
         private fun locate(
@@ -187,16 +190,17 @@ class DocumentFiles private constructor(
             if (read.container == XoppContainer.ZIP) {
                 read.attachments[reference.filename]?.let { FileSource.Bytes(it) }
             } else {
-                val uri =
+                val id =
                     when (reference.domain) {
                         FileDomain.ATTACH -> finder.sidecar(reference.filename)
                         else -> finder.path(reference.filename)
                     }
-                uri?.let { FileSource.Content(it) }
+                id?.let { FileSource.Stored(it) }
             }
 
         private fun openPdf(
             context: Context,
+            store: DocumentStore,
             source: FileSource,
         ): Pair<PdfBackgroundSource, File>? {
             val directory = File(context.cacheDir, "pdf-backgrounds").apply { mkdirs() }
@@ -207,18 +211,12 @@ class DocumentFiles private constructor(
                         copy.writeBytes(source.bytes.toByteArray())
                     }
 
-                    is FileSource.Content -> {
-                        val input =
-                            context.contentResolver.openInputStream(source.uri) ?: throw IOException("No stream")
-                        input.use { stream -> copy.outputStream().use { stream.copyTo(it) } }
+                    is FileSource.Stored -> {
+                        store.read(source.id).use { input -> copy.sink().buffer().use { it.writeAll(input) } }
                     }
                 }
                 PdfBackgroundSource(copy) to copy
             } catch (e: IOException) {
-                Log.w(TAG, "Cannot open the background PDF", e)
-                copy.delete()
-                null
-            } catch (e: SecurityException) {
                 Log.w(TAG, "Cannot open the background PDF", e)
                 copy.delete()
                 null

@@ -4,7 +4,6 @@ package pm.asaf.inkpad.library
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +14,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.core.store.DocumentStore
+import pm.asaf.inkpad.core.store.StoreEntry
 
 /** The new-note dialog for the last folder of [path] (from a library root), with a suggested [name]. */
 data class NewNoteRequest(
@@ -28,15 +29,16 @@ data class NewNoteRequest(
 
 /**
  * Creating a note: the dialog's suggestions ([request]), then the file. Paper size and
- * orientation are remembered in [preferences]. [onCreated] gets the new note's uri, name and
+ * orientation are remembered in [preferences]. [onCreated] gets the new note's file and
  * folder path; [onError] a message.
  */
 class NewNoteFlow(
     private val context: Context,
+    private val store: DocumentStore,
     private val preferences: SharedPreferences,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
-    private val onCreated: (uri: Uri, name: String, path: List<FolderRef>) -> Unit,
+    private val onCreated: (file: StoreEntry.File, path: List<FolderRef>) -> Unit,
     private val onError: (String) -> Unit,
 ) {
     private val state = MutableStateFlow<NewNoteRequest?>(null)
@@ -47,7 +49,7 @@ class NewNoteFlow(
     /** Opens the dialog for the last folder of [path]. */
     fun start(path: List<FolderRef>) {
         scope.launch {
-            val name = withContext(io) { NewNoteCreator.suggestedName(context.contentResolver, path.last()) }
+            val name = withContext(io) { NewNoteCreator.suggestedName(store, path.last()) }
             val paper = PaperSize.entries.getOrNull(preferences.getInt(PAPER_KEY, 0)) ?: PaperSize.A4
             state.value = NewNoteRequest(path, name, paper, preferences.getBoolean(LANDSCAPE_KEY, false))
         }
@@ -71,24 +73,21 @@ class NewNoteFlow(
             .putBoolean(LANDSCAPE_KEY, landscape)
             .apply()
         scope.launch {
-            val resolver = context.contentResolver
             val created =
                 withContext(io) {
                     runCatching {
-                        val uri =
-                            NewNoteCreator.create(
-                                resolver,
-                                request.folder,
-                                name,
-                                paper,
-                                landscape,
-                                NewNoteCreator.creator(context),
-                            )
-                        uri to (FolderListing.nameOf(resolver, uri) ?: NewNoteCreator.fileName(name))
+                        NewNoteCreator.create(
+                            store,
+                            request.folder,
+                            name,
+                            paper,
+                            landscape,
+                            NewNoteCreator.creator(context),
+                        )
                     }
                 }
             created
-                .onSuccess { (uri, fileName) -> onCreated(uri, fileName, request.path) }
+                .onSuccess { file -> onCreated(file, request.path) }
                 .onFailure { e ->
                     Log.w(TAG, "Cannot create $name", e)
                     onError(context.getString(R.string.error_create_note, name))

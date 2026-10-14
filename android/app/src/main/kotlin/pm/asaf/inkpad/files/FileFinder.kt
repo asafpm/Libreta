@@ -2,30 +2,24 @@
 
 package pm.asaf.inkpad.files
 
-import android.content.ContentResolver
-import android.net.Uri
-import android.provider.DocumentsContract
-import android.provider.DocumentsContract.Document
+import pm.asaf.inkpad.core.store.DocumentStore
+import pm.asaf.inkpad.core.store.StoreEntry
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.library.FolderRef
 
 /**
- * Finds files referenced by a document at [location] through the Storage Access Framework,
- * the way Xournal++ resolves them on disk (docs/xopp-format.md §4). Folder listings are
- * cached, so use one finder per document opening.
+ * Finds files referenced by a document at [location] in its [store], the way Xournal++
+ * resolves them on disk (docs/xopp-format.md §4). Folder listings are cached, so use one
+ * finder per document opening.
  */
 internal class FileFinder(
-    private val resolver: ContentResolver,
+    private val store: DocumentStore,
     private val location: DocumentLocation?,
 ) {
-    private data class Child(
-        val documentId: String,
-        val directory: Boolean,
-    )
-
-    private val listings = HashMap<FolderRef, Map<String, Child>>()
+    private val listings = HashMap<FolderRef, Map<String, StoreEntry>>()
 
     /** `<document name>.<filename>` next to the document: gzip `attach` files. */
-    fun sidecar(filename: String): Uri? {
+    fun sidecar(filename: String): StoreId? {
         val location = location ?: return null
         return fileIn(location.folders.last(), "${location.name}.$filename")
     }
@@ -35,7 +29,7 @@ internal class FileFinder(
      * (`..`) as far as the library root; anything else (desktop paths, paths leaving the root)
      * falls back to a file of the same name next to the document.
      */
-    fun path(path: String): Uri? {
+    fun path(path: String): StoreId? {
         val location = location ?: return null
         val parts = path.split('/', '\\').filter { it.isNotEmpty() && it != "." }
         val relative = !path.startsWith("/") && !path.startsWith("\\") && !WINDOWS_DRIVE.matches(path)
@@ -47,7 +41,7 @@ internal class FileFinder(
     private fun follow(
         start: List<FolderRef>,
         parts: List<String>,
-    ): Uri? {
+    ): StoreId? {
         val folders =
             parts.dropLast(1).fold<String, List<FolderRef>?>(start) { folders, part ->
                 folders?.let {
@@ -65,38 +59,18 @@ internal class FileFinder(
         if (part == "..") {
             folders.dropLast(1).ifEmpty { null }
         } else {
-            children(folders.last())[part]
-                ?.takeIf { it.directory }
-                ?.let { folders + FolderRef(folders.last().treeUri, it.documentId, part) }
+            (children(folders.last())[part] as? StoreEntry.Folder)?.let { folders + FolderRef(it.id, part) }
         }
 
     private fun fileIn(
         folder: FolderRef,
         name: String,
-    ): Uri? =
-        children(folder)[name]
-            ?.takeIf { !it.directory }
-            ?.let { DocumentsContract.buildDocumentUriUsingTree(folder.treeUri, it.documentId) }
+    ): StoreId? = (children(folder)[name] as? StoreEntry.File)?.id
 
-    private fun children(folder: FolderRef): Map<String, Child> =
+    /** The entries of [folder] by name; none if it can't be listed. */
+    private fun children(folder: FolderRef): Map<String, StoreEntry> =
         listings.getOrPut(folder) {
-            val uri = DocumentsContract.buildChildDocumentsUriUsingTree(folder.treeUri, folder.documentId)
-            val columns = arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME, Document.COLUMN_MIME_TYPE)
-            val children = HashMap<String, Child>()
-            runCatching {
-                resolver.query(uri, columns, null, null)?.use { cursor ->
-                    while (cursor.moveToNext()) {
-                        val id = cursor.getString(0)
-                        val name = cursor.getString(1)
-                        if (id != null &&
-                            name != null
-                        ) {
-                            children[name] = Child(id, cursor.getString(2) == Document.MIME_TYPE_DIR)
-                        }
-                    }
-                }
-            }
-            children
+            runCatching { store.list(folder.id).associateBy { it.name } }.getOrDefault(emptyMap())
         }
 
     private companion object {

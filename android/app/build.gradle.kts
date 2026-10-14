@@ -9,6 +9,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:format"))
     implementation(project(":core:geometry"))
+    implementation(project(":core:store"))
     implementation(project(":android:render"))
 
     implementation(libs.androidx.core.ktx)

@@ -2,7 +2,6 @@
 
 package pm.asaf.inkpad.library
 
-import android.content.ContentResolver
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -15,29 +14,29 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okio.ByteString.Companion.encodeUtf8
-import okio.source
+import okio.Source
 import pm.asaf.inkpad.android.render.BitmapLru
 import pm.asaf.inkpad.android.render.TileRenderer
 import pm.asaf.inkpad.core.format.XoppFormatException
 import pm.asaf.inkpad.core.format.XoppPreview
 import pm.asaf.inkpad.core.format.XoppReader
+import pm.asaf.inkpad.core.store.DocumentStore
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
 import java.io.File
 import java.io.IOException
-import java.io.InputStream
 
 /**
  * Previews of library documents: page 1 rendered at the thumbnail width, kept in memory and
- * on disk (JPEG: pages are opaque) per version of the file (uri, modification time, size). Until it is rendered, the
- * small preview Xournal++ embeds in files is shown.
+ * on disk (JPEG: pages are opaque) per version of the file. Until it is rendered, the small
+ * preview Xournal++ embeds in files is shown.
  */
 class PreviewCache(
     context: Context,
+    private val store: DocumentStore,
     private val directory: File = File(context.cacheDir, "previews"),
     private val io: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(2),
 ) {
-    private val resolver: ContentResolver = context.contentResolver
     private val memory = BitmapLru<String>(MEMORY_BYTES)
 
     private val context: Context = context.applicationContext
@@ -69,20 +68,20 @@ class PreviewCache(
             }
         }.flowOn(io)
 
-    private fun keyOf(document: LibraryEntry.Document) = "${document.uri}|${document.modified}|${document.size}"
+    private fun keyOf(document: LibraryEntry.Document) = "${document.id.value}|${document.version}"
 
     private fun decode(file: File): Bitmap? = if (file.isFile) BitmapFactory.decodeFile(file.path) else null
 
     private fun embedded(document: LibraryEntry.Document): Bitmap? =
-        readOrNull(document) { stream ->
-            XoppPreview.read(stream.source())?.toByteArray()?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+        readOrNull(document) { source ->
+            XoppPreview.read(source)?.toByteArray()?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
         }
 
     private suspend fun render(document: LibraryEntry.Document): Bitmap? {
-        val read = readOrNull(document) { XoppReader.read(it.source()) }
+        val read = readOrNull(document) { XoppReader.read(it) }
         val page = read?.document?.pages?.firstOrNull() ?: return null
         // Background files next to the note are found; paths leaving its folder are not.
-        val files = DocumentFiles.open(context, read, DocumentLocation(listOf(document.parent), document.name))
+        val files = DocumentFiles.open(context, store, read, DocumentLocation(listOf(document.parent), document.name))
         return try {
             rendering.withLock { TileRenderer.renderThumbnail(files.newRenderer(), page) }
         } finally {
@@ -92,16 +91,14 @@ class PreviewCache(
 
     private fun <T> readOrNull(
         document: LibraryEntry.Document,
-        read: (InputStream) -> T?,
+        read: (Source) -> T?,
     ): T? =
         try {
-            resolver.openInputStream(document.uri)?.use(read)
+            store.read(document.id).use(read)
         } catch (e: IOException) {
             null.also { logFailure(document, e) }
         } catch (e: XoppFormatException) {
             null.also { logFailure(document, e) }
-        } catch (e: SecurityException) {
-            null.also { logFailure(document, e) } // access withdrawn
         }
 
     private fun logFailure(

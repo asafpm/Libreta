@@ -30,6 +30,7 @@ import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.Screen
 import pm.asaf.inkpad.android.render.RenderThreads
+import pm.asaf.inkpad.core.store.StoreId
 import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.LibraryRoots
@@ -152,7 +153,7 @@ class InkpadAppTest {
         File(testData, "$sample/old.xopp.bg_1.png").copyTo(File(directory, "Shared/old.xopp.bg_1.png"))
         val model = show()
         val uri = DocumentsContract.buildDocumentUri(FakeDocumentsProvider.AUTHORITY, "root/Shared/old.xopp")
-        compose.runOnIdle { model.openExternal(uri) }
+        compose.runOnIdle { model.openExternal(StoreId(uri.toString())) }
         eventually { model.note.value is NoteState.Loaded }
         // Outside the library its background can't be found.
         assertTrue((model.note.value as NoteState.Loaded).folderNeeded)
