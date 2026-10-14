@@ -10,6 +10,8 @@ indent_size = 4
 
 [*.{kt,kts}]
 ktlint_code_style = ktlint_official
+# Same limit as detekt's MaxLineLength, so the two tools agree.
+max_line_length = 120
 ktlint_function_naming_ignore_when_annotated_with = Composable
 
 [*.{yml,yaml,json,toml}]
