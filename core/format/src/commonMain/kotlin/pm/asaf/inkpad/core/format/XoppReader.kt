@@ -5,6 +5,7 @@
 package pm.asaf.inkpad.core.format
 
 import okio.Buffer
+import okio.BufferedSource
 import okio.ByteString
 import okio.GzipSource
 import okio.IOException
@@ -17,16 +18,23 @@ object XoppReader {
     private const val VERSION = "META-INF/version"
     private val versionPattern = Regex("""current=(\d+)\r?\nmin=(\d+)""")
 
-    /** Reads a whole document from [source], which is consumed and closed. */
-    fun read(source: Source): XoppReadResult = read(source.buffer().use { it.readByteString() })
+    /**
+     * Reads a whole document from [source], which is consumed and closed. Gzip and plain XML
+     * are parsed as they are read.
+     *
+     * @throws XoppFormatException if it is not a readable document.
+     */
+    fun read(source: Source): XoppReadResult =
+        source.buffer().use { input ->
+            when {
+                input.startsWith(GZIP_MAGIC) -> decode(GzipSource(input).buffer(), XoppContainer.GZIP)
+                input.startsWith(ZIP_MAGIC) -> readPackage(input.readByteString())
+                else -> decode(input, XoppContainer.PLAIN_XML)
+            }
+        }
 
     /** @throws XoppFormatException if [bytes] is not a readable document. */
-    fun read(bytes: ByteString): XoppReadResult =
-        when {
-            bytes.startsWith(GZIP_MAGIC) -> decode(gunzip(bytes), XoppContainer.GZIP)
-            bytes.startsWith(ZIP_MAGIC) -> readPackage(bytes)
-            else -> decode(bytes.utf8(), XoppContainer.PLAIN_XML)
-        }
+    fun read(bytes: ByteString): XoppReadResult = read(Buffer().write(bytes))
 
     private fun readPackage(bytes: ByteString): XoppReadResult {
         val entries = ZipArchive.read(bytes)
@@ -40,26 +48,28 @@ object XoppReader {
                 ?.toIntOrNull()
                 ?: throw XoppFormatException("Zip package without a valid $VERSION")
         val attachments = entries.filterKeys { it != CONTENT }
-        return decode(content.utf8(), XoppContainer.ZIP, attachments, version)
+        return decode(Buffer().write(content), XoppContainer.ZIP, attachments, version)
     }
 
     private fun decode(
-        xml: String,
+        xml: BufferedSource,
         container: XoppContainer,
         attachments: Map<String, ByteString> = emptyMap(),
         packageFileVersion: Int? = null,
     ): XoppReadResult {
         val context = DecodeContext(attachments, isPackage = container == XoppContainer.ZIP)
-        val document = DocumentCodec.decode(XmlTree.parse(xml), context, packageFileVersion)
+        val tree =
+            try {
+                XmlTree.parse(xml)
+            } catch (e: IOException) {
+                throw XoppFormatException("Corrupt ${container.name.lowercase()} data: ${e.message}", e)
+            }
+        val document = DocumentCodec.decode(tree, context, packageFileVersion)
         return XoppReadResult(document, context.warnings.toList(), container, attachments)
     }
 
-    private fun gunzip(bytes: ByteString): String =
-        try {
-            GzipSource(Buffer().write(bytes)).buffer().use { it.readUtf8() }
-        } catch (e: IOException) {
-            throw XoppFormatException("Corrupt gzip data: ${e.message}", e)
-        }
+    private fun BufferedSource.startsWith(prefix: ByteString): Boolean =
+        request(prefix.size.toLong()) && rangeEquals(0, prefix)
 
     private val GZIP_MAGIC = ByteString.of(0x1f, 0x8b.toByte())
     private val ZIP_MAGIC = ByteString.of(0x50, 0x4b) // "PK"

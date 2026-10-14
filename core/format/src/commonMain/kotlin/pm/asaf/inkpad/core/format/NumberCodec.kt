@@ -23,7 +23,7 @@ internal object NumberCodec {
 
     fun formatDoubleList(values: DoubleArray): String = values.joinToString(separator = " ") { formatDouble(it) }
 
-    fun parseDouble(text: String): Double? = parseDouble(text, 0, text.length)
+    fun parseDouble(text: String): Double? = parseDouble(text, 0, text.length, DecimalScanner(text))
 
     /** Parses an integer, accepting the `ll` suffix some Xournal++ 1.0/1.1 builds wrote. */
     fun parseLong(text: String): Long? {
@@ -35,7 +35,9 @@ internal object NumberCodec {
 
     /** Parses whitespace-separated doubles; null if any token is malformed. */
     fun parseDoubleList(text: String): DoubleArray? {
-        var values = DoubleArray(text.length / 2 + 1)
+        // Counting first allocates exactly one array: strokes hold most of a file's numbers.
+        val values = DoubleArray(countTokens(text))
+        val scanner = DecimalScanner(text)
         var count = 0
         var index = 0
         while (index < text.length) {
@@ -43,21 +45,23 @@ internal object NumberCodec {
             if (index == text.length) break
             val start = index
             while (index < text.length && !text[index].isXmlSpace()) index++
-            val value = parseDouble(text, start, index) ?: return null
-            if (count == values.size) values = values.copyOf(count * 2)
-            values[count++] = value
+            values[count++] = parseDouble(text, start, index, scanner) ?: return null
         }
-        return values.copyOf(count)
+        return values
     }
 
     private fun parseDouble(
         text: String,
         start: Int,
         end: Int,
-    ): Double? {
-        nonFinite(text, start, end)?.let { return it }
-        return if (isDecimal(text, start, end)) text.substring(start, end).toDouble() else null
-    }
+        scanner: DecimalScanner,
+    ): Double? =
+        // Nearly every number in a file is a short plain decimal, which the scanner reads
+        // without allocating (on Android, substring and toDouble are JNI calls, costly for
+        // millions of coordinates).
+        scanner.parse(start, end)
+            ?: nonFinite(text, start, end)
+            ?: if (isDecimal(text, start, end)) text.substring(start, end).toDouble() else null
 
     /** `[+-]? digits [. digits] [(e|E) [+-]? digits]`, with at least one mantissa digit. */
     private fun isDecimal(
@@ -152,3 +156,15 @@ internal object NumberCodec {
 
 /** XML whitespace (space, tab, CR, LF). */
 internal fun Char.isXmlSpace(): Boolean = this == ' ' || this == '\n' || this == '\t' || this == '\r'
+
+/** The number of whitespace-separated tokens in [text]. */
+private fun countTokens(text: String): Int {
+    var count = 0
+    var inToken = false
+    for (char in text) {
+        val space = char.isXmlSpace()
+        if (!space && !inToken) count++
+        inToken = !space
+    }
+    return count
+}

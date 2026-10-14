@@ -120,4 +120,45 @@ class NumberCodecTest {
         assertEquals("1.41 0.4 0.42", NumberCodec.formatDoubleList(doubleArrayOf(1.41, 0.4, 0.42)))
         assertEquals("", NumberCodec.formatDoubleList(doubleArrayOf()))
     }
+
+    @Test
+    fun fastPathParsesExactlyLikeToDouble() {
+        val forms =
+            listOf(
+                "0",
+                "-0",
+                "+0",
+                "0.0",
+                "-0.0",
+                "5.",
+                ".5",
+                "-.5",
+                "+12.25",
+                "007.50",
+                "0.000000000000000000001",
+                "0.0000000000000000000000000123",
+                "123456789012345",
+                "1234567890123456",
+                "99999999999999.9",
+                "0.1",
+                "0.2",
+                "0.3",
+                "1.1",
+                "2.675",
+                "841.88976378",
+                "595.27559055",
+                "1e5",
+                "1.5E-3",
+            )
+        for (form in forms) assertEquals(form.toDouble().toRawBits(), NumberCodec.parseDouble(form)?.toRawBits(), form)
+        val random = Random(7)
+        repeat(200_000) {
+            val digits = random.nextInt(1, 18)
+            val raw = (1..digits).map { '0' + random.nextInt(10) }.joinToString("")
+            val point = random.nextInt(0, digits + 1)
+            val sign = listOf("", "-", "+")[random.nextInt(3)]
+            val form = sign + raw.substring(0, point) + "." + raw.substring(point)
+            assertEquals(form.toDouble().toRawBits(), NumberCodec.parseDouble(form)?.toRawBits(), form)
+        }
+    }
 }

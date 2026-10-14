@@ -5,10 +5,13 @@
 package pm.asaf.inkpad.core.format
 
 import nl.adaptivity.xmlutil.EventType
+import nl.adaptivity.xmlutil.ExperimentalXmlUtilApi
 import nl.adaptivity.xmlutil.XmlException
 import nl.adaptivity.xmlutil.XmlReader
+import nl.adaptivity.xmlutil.core.KtXmlReader
 import nl.adaptivity.xmlutil.xmlStreaming
 import okio.BufferedSink
+import okio.BufferedSource
 import pm.asaf.inkpad.core.model.ForeignElement
 import pm.asaf.inkpad.core.model.ForeignNode
 import pm.asaf.inkpad.core.model.ForeignText
@@ -25,17 +28,30 @@ internal object XmlTree {
     const val DECLARATION = "<?xml version=\"1.0\" standalone=\"no\"?>\n"
     private const val BYTE_ORDER_MARK = '\uFEFF'
 
-    fun parse(xml: String): ForeignElement {
-        val text = xml.removePrefix(BYTE_ORDER_MARK.toString())
+    fun parse(xml: String): ForeignElement =
+        build {
+            TreeBuilder(
+                xmlStreaming.newGenericReader(xml.removePrefix(BYTE_ORDER_MARK.toString()), expandEntities = true),
+            )
+        }
+
+    /**
+     * Parses the UTF-8 XML in [source] as it is read, without holding it whole. xmlutil's
+     * common API takes only whole strings, hence its (experimental) reader directly.
+     */
+    @OptIn(ExperimentalXmlUtilApi::class)
+    fun parse(source: BufferedSource): ForeignElement =
+        build { TreeBuilder(KtXmlReader(Utf8SourceReader(source), expandEntities = true)) }
+
+    private inline fun build(builder: () -> TreeBuilder): ForeignElement =
         // xmlutil reports malformed input with XmlException, but also with
         // IllegalStateException/IllegalArgumentException (e.g. "Unexpected EOF").
-        return runCatching { TreeBuilder(xmlStreaming.newGenericReader(text, expandEntities = true)).build() }
+        runCatching { builder().build() }
             .getOrElse { error ->
                 val malformed =
                     error is XmlException || error is IllegalStateException || error is IllegalArgumentException
                 throw if (malformed) XoppFormatException("Malformed XML: ${error.message}", error) else error
             }
-    }
 
     /** Writes the XML declaration and [root]. */
     fun write(
@@ -124,13 +140,27 @@ internal object XmlTree {
             val attributes: Map<String, String>,
         ) {
             val children = mutableListOf<ForeignNode>()
-            val pendingText = StringBuilder()
+
+            // Usually an element's text comes in one piece (stroke coordinates are most of a
+            // file), which is then kept as it is, without copying.
+            private var pendingText: String? = null
+            private var pendingParts: StringBuilder? = null
+
+            fun appendText(text: String) {
+                val parts = pendingParts
+                val pending = pendingText
+                when {
+                    parts != null -> parts.append(text)
+                    pending == null -> pendingText = text
+                    else -> pendingParts = StringBuilder(pending).append(text).also { pendingText = null }
+                }
+            }
 
             fun flushText() {
-                if (pendingText.isNotEmpty()) {
-                    children += ForeignText(pendingText.toString())
-                    pendingText.clear()
-                }
+                val text = pendingParts?.toString() ?: pendingText
+                if (!text.isNullOrEmpty()) children += ForeignText(text)
+                pendingText = null
+                pendingParts = null
             }
 
             fun close(): ForeignElement {
@@ -161,7 +191,7 @@ internal object XmlTree {
                     }
 
                     EventType.TEXT, EventType.CDSECT, EventType.IGNORABLE_WHITESPACE, EventType.ENTITY_REF -> {
-                        stack.lastOrNull()?.pendingText?.append(reader.text)
+                        stack.lastOrNull()?.appendText(reader.text)
                     }
 
                     else -> {
