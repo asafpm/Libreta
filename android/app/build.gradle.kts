@@ -14,4 +14,19 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.kotlinx.coroutines.test)
+}
+
+val testData: Directory = layout.settingsDirectory.dir("testdata")
+
+tasks.withType<Test>().configureEach {
+    // Robolectric native graphics needs more than the default 512 MB on SDK 35+.
+    maxHeapSize = "3g"
+    systemProperty("inkpad.testdata", testData.asFile.absolutePath)
+    inputs
+        .dir(testData)
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+        .withPropertyName("testdata")
 }

@@ -10,3 +10,8 @@ style:
   MagicNumber:
     # Enum entries name their values already (paper sizes, …).
     ignoreEnums: true
+
+complexity:
+  TooManyFunctions:
+    # Framework callbacks (View.onDraw, onTouchEvent, …) are not a design choice.
+    ignoreOverridden: true
