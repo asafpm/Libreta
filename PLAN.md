@@ -140,6 +140,7 @@ re-render only the tiles they touch (page versions). Pulled forward from Phase 5
 saved when leaving them or the app (whole file, fresh preview; a file changed elsewhere gets a
 conflict copy; Xournal++ 1.0 zip packages stay read only), and a pen toolbar with Xournal++'s
 palette and widths. Finger mode: Settings → "Draw with finger".
+Still open: the hands-on S Pen check (latency, palm rejection, pressure feel, fingers).
 
 ### Phase 5 — Editing tools
 Undo/redo (command stack in core:model), stroke eraser, whiteout/partial
@@ -152,6 +153,20 @@ Saving large notes: `NumberCodec.formatDouble` goes through `Double.toString`
 and substrings, JNI calls on Android; profile saving 100 pages on the device
 the way Phase 3 profiled reading.
 ✅ Edits survive save → reopen; undo and eraser tests in commonTest.
+Done: `:core:store` (`DocumentStore`; `SafDocumentStore` is the only SAF code). Undo/redo is an
+`EditHistory` of page changes (200 steps, dirty tracking), shown by re-rendering what changed.
+Erasers port Xournal++'s `ErasableStroke`/`intersectWithPaddedBox` (its tests too): standard
+cuts strokes on the top layer, delete-stroke removes them, whiteout paints white eraser
+strokes; one undo step per gesture, erased areas redrawn at once (`ErasingDeviceTest`: frames
+p95 7 ms, erased ink gone when the eraser lifts). The highlighter is drawn by the page view
+while written, multiplied as on the page (docs/rendering.md §4). Tool bar: pen, highlighter
+and eraser, each with its own colour and width, a HSV picker with recent colours; Settings
+choose what holding the stylus button does (erase by default; the eraser end always erases).
+Autosave 5 s after the last change, at least every minute, and on leaving; a private backup
+of each note before its first overwrite in a session (20 per note, 500 MB; restoring later).
+Saving 104 pages: 8.4 s → 2.1 s (allocation-free number writing, new coordinates kept to
+8 digits like Xournal++, zlib level 2 compressing in parallel; files 11% larger).
+`testdata/inkpad-edits.xopp` renders the same in Xournal++ (render cross-check).
 
 ### Phase 6 — Pages & layers
 Add/delete/reorder pages, background chooser, layer panel
