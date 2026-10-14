@@ -3,3 +3,12 @@
 plugins {
     alias(libs.plugins.inkpad.kmp.library)
 }
+
+kotlin {
+    sourceSets {
+        commonMain.dependencies {
+            // ByteString: immutable encoded image/PDF bytes with content equality.
+            api(libs.okio)
+        }
+    }
+}

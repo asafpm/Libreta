@@ -30,6 +30,10 @@ Xournal++ live in `testdata/xournalpp/`.
   `test/files/` and `development/documentation/` (see the README there).
 - `docs/xopp-format.md`: format specification describing Xournal++'s loader
   and saver, with source references.
+- `core/format/src/commonMain/.../ColorCodec.kt`: colour-name tables from
+  `src/core/control/xojfile/LoadHandlerHelper.cpp`.
+- `core/format/src/commonTest/.../ColorCodecTest.kt`: expectations from
+  `LoadHandlerHelper.cpp` and `test/unit_tests/control/LoadHandlerTest.cpp`.
 
 ## Third-party libraries
 

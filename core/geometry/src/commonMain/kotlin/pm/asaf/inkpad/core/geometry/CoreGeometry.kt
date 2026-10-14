@@ -2,10 +2,12 @@
 
 package pm.asaf.inkpad.core.geometry
 
-import pm.asaf.inkpad.core.model.CoreModel
+import pm.asaf.inkpad.core.model.Color
 
-/** Placeholder until this module gets real code. */
+/** Placeholder until Phase 2 adds geometry code. */
 object CoreGeometry {
     const val NAME: String = "core:geometry"
-    val modelName: String = CoreModel.NAME
+
+    /** Proves that the dependency on :core:model resolves. */
+    val modelBlack: Color = Color.BLACK
 }

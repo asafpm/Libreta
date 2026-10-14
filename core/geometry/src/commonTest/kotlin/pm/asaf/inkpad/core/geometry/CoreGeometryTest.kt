@@ -8,6 +8,6 @@ import kotlin.test.assertEquals
 class CoreGeometryTest {
     @Test
     fun seesCoreModel() {
-        assertEquals("core:model", CoreGeometry.modelName)
+        assertEquals(0x000000ffu, CoreGeometry.modelBlack.rgba)
     }
 }
