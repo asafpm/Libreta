@@ -22,8 +22,8 @@ import kotlin.math.roundToInt
 /**
  * Writing on a [DocumentView]: input ([InkInput]), wet ink while a stroke is written, and
  * committing it to its page, where it is drawn on top ([PendingInk]) until the page's tiles
- * show it. The wet ink goes a couple of frames after the committed stroke is drawn, so the
- * stroke never flickers.
+ * show it. Its wet ink goes once the page has drawn it for a few frames, so it never
+ * flickers; at once if the view moves.
  */
 internal class Inking(
     view: View,
@@ -91,8 +91,8 @@ internal class Inking(
         predictor?.record(event)
     }
 
-    /** A stroke starts: the previous one's wet ink goes now (it is drawn by then). */
-    fun strokeStarted() {
+    /** The view moved: wet ink of finished strokes would be out of place. */
+    fun viewportChanged() {
         if (wetFramesLeft > 0) {
             wetFramesLeft = 0
             wetInk.clear()
@@ -182,7 +182,7 @@ internal class Inking(
     }
 
     private companion object {
-        /** Frames the committed stroke is drawn before its wet ink goes. */
-        const val WET_INK_FRAMES = 2
+        /** Frames the page draws a committed stroke before its wet ink goes (frames take a few to show). */
+        const val WET_INK_FRAMES = 4
     }
 }

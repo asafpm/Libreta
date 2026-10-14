@@ -196,6 +196,7 @@ class DocumentView
             val next = change(content.navigator, current)
             if (next != current) {
                 viewport = next
+                inking.viewportChanged()
                 requestRendering()
                 invalidate()
             }
@@ -235,7 +236,6 @@ class DocumentView
                     cancel.recycle()
                 }
                 scroller.forceFinished(true)
-                inking.strokeStarted()
                 // Every input event as it comes, not once per frame.
                 requestUnbufferedDispatch(event)
             }

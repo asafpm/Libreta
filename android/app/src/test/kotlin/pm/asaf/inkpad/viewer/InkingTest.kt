@@ -41,6 +41,8 @@ class InkingTest {
     /** Records what would be drawn as wet ink. */
     private class RecordingWetInk : WetInk {
         val segments = ArrayList<WetSegment>()
+        var commits = 0
+        var cancels = 0
         var clears = 0
 
         override fun update(
@@ -49,6 +51,14 @@ class InkingTest {
             prediction: List<WetSegment>,
         ) {
             this.segments += segments
+        }
+
+        override fun commit() {
+            commits++
+        }
+
+        override fun cancel() {
+            cancels++
         }
 
         override fun clear() {
@@ -194,10 +204,12 @@ class InkingTest {
         assertClose((500 - pageLeft) / viewport.zoom, stroke.points.x(stroke.points.size - 1))
         // Pressure 0.5 everywhere: half the nominal width.
         assertTrue(checkNotNull(stroke.segmentWidths).toDoubleArray().all { abs(it - PenSize.THICK.width / 2) < 1e-6 })
-        // Wet ink was drawn, and goes once the page has drawn the stroke.
+        // Wet ink was drawn, committed on lifting, and goes once the page has drawn the stroke.
         assertTrue(wetInk.segments.isNotEmpty())
+        assertEquals(1, wetInk.commits)
         assertEquals(0, wetInk.clears)
-        drawFrame()
+        repeat(3) { drawFrame() }
+        assertEquals(0, wetInk.clears)
         drawFrame()
         assertEquals(1, wetInk.clears)
     }
@@ -246,7 +258,7 @@ class InkingTest {
         send(MotionEvent.ACTION_MOVE, stylus(400f, 400f))
         send(MotionEvent.ACTION_CANCEL, stylus(400f, 400f))
         assertTrue(edits.isEmpty())
-        assertEquals(1, wetInk.clears)
+        assertEquals(1, wetInk.cancels)
         // Also when the system flags the pointer as cancelled (e.g. a palm).
         send(MotionEvent.ACTION_DOWN, stylus(300f, 400f))
         send(MotionEvent.ACTION_MOVE, stylus(400f, 400f))

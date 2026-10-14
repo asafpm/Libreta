@@ -211,20 +211,21 @@ internal class InkInput(
     ) {
         writing = null
         val pressure = if (stroke.byFinger) null else event.getPressure(index).toDouble()
+        host.wetInk.commit()
         host.commit(stroke.page.page, stroke.builder.finish(pressure))
         if (!event.isSequenceEnd()) ignoring = true
     }
 
     private fun cancel(event: MotionEvent) {
         writing = null
-        host.wetInk.clear()
+        host.wetInk.cancel()
         ignoring = !event.isSequenceEnd()
     }
 
     /** A second finger: the stroke was the start of a pinch or a two-finger pan. */
     private fun handOver(event: MotionEvent) {
         writing = null
-        host.wetInk.clear()
+        host.wetInk.cancel()
         host.startGesture(event)
     }
 
