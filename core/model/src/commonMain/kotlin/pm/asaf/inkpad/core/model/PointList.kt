@@ -18,6 +18,15 @@ class PointList private constructor(
     /** A copy of the interleaved coordinates. */
     fun toInterleavedArray(): DoubleArray = coordinates.copyOf()
 
+    /** Points [fromIndex] (inclusive) to [toIndex] (exclusive). */
+    fun subList(
+        fromIndex: Int,
+        toIndex: Int,
+    ): PointList {
+        require(fromIndex in 0..toIndex && toIndex <= size) { "invalid range $fromIndex..$toIndex of $size points" }
+        return PointList(coordinates.copyOfRange(2 * fromIndex, 2 * toIndex))
+    }
+
     override fun equals(other: Any?): Boolean = other is PointList && coordinates.bitwiseEquals(other.coordinates)
 
     override fun hashCode(): Int = coordinates.bitwiseHashCode()

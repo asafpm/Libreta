@@ -40,6 +40,14 @@ Xournal++ live in `testdata/xournalpp/`.
   `src/core/control/xojfile/LoadHandler.cpp` and `SaveHandler.cpp`.
 - `core/format/src/commonTest/.../ColorCodecTest.kt`: expectations from
   `LoadHandlerHelper.cpp` and `test/unit_tests/control/LoadHandlerTest.cpp`.
+- `docs/rendering.md`: rendering specification describing Xournal++'s view
+  code, with source references.
+- `core/geometry/src/commonMain/.../PressureRepair.kt`, `StrokeGeometry.kt`,
+  `StrokeStyle.kt`: pressure rules of `LoadHandler.cpp`, bounding boxes of
+  `model/Stroke.cpp`, dash patterns of `model/StrokeStyle.cpp` and stroke
+  opacity/blending of `view/StrokeView.cpp`.
+- `core/geometry/src/commonTest/.../PressureRepairTest.kt`: test case ported from
+  `LoadHandlerTest.cpp`.
 - `core/format/src/commonTest/.../XournalppLoadTest.kt`: test cases ported from
   `test/unit_tests/control/LoadHandlerTest.cpp`.
 
