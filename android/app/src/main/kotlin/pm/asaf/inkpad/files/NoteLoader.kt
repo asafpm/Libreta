@@ -31,10 +31,13 @@ object NoteLoader {
         location: DocumentLocation?,
     ): NoteState =
         try {
+            // Before reading: a change after this is someone else's.
+            val stamp = FileStamp.of(context.contentResolver, uri)
             val stream = context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException(uri.toString())
             val read = stream.source().use { XoppReader.read(it) }
             val files = DocumentFiles.open(context, read, location)
             NoteState.Loaded(
+                file = NoteFile(uri, name, location, read.container, stamp),
                 edits = NoteEdits(read.document),
                 caches = RenderCaches.forDevice(context),
                 files = files,

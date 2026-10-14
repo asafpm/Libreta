@@ -102,17 +102,17 @@ private fun FilesNotice(
     onAddFolder: () -> Unit,
 ) {
     val missing = state.files.missing
-    if (!state.folderNeeded && missing.isEmpty()) return
+    if (!state.folderNeeded && missing.isEmpty() && state.file.writable) return
     Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             val message =
-                if (state.folderNeeded) {
-                    stringResource(R.string.folder_needed)
-                } else {
-                    stringResource(R.string.missing_files, missing.joinToString())
+                when {
+                    !state.file.writable -> stringResource(R.string.read_only_package)
+                    state.folderNeeded -> stringResource(R.string.folder_needed)
+                    else -> stringResource(R.string.missing_files, missing.joinToString())
                 }
             Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             if (state.folderNeeded) {

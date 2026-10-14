@@ -26,6 +26,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Leaving the app (or turning the screen off) saves the open note. */
+    override fun onStop() {
+        super.onStop()
+        model.saveNote()
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         openFrom(intent)

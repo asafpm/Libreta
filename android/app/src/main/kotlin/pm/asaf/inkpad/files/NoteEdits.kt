@@ -12,7 +12,7 @@ import pm.asaf.inkpad.core.model.Page
 class NoteEdits(
     initial: Document,
 ) {
-    var document: Document = initial
+    @Volatile var document: Document = initial
         private set
 
     /** Changed since read or last saved. */

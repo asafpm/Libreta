@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,11 +28,15 @@ import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.files.NoteEdits
+import pm.asaf.inkpad.files.NoteFile
 import pm.asaf.inkpad.files.NoteLoader
+import pm.asaf.inkpad.files.NoteSaver
+import pm.asaf.inkpad.files.SaveResult
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.Library
 import pm.asaf.inkpad.library.NewNoteCreator
+import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
 import pm.asaf.inkpad.settings.PenPreferences
 import java.io.IOException
@@ -62,6 +67,7 @@ sealed interface NoteState {
     data object Loading : NoteState
 
     data class Loaded(
+        val file: NoteFile,
         /** The document as edited so far. */
         val edits: NoteEdits,
         /** Tiles and thumbnails, kept across rotation. */
@@ -76,16 +82,6 @@ sealed interface NoteState {
     data class Failed(
         val message: String,
     ) : NoteState
-}
-
-/** The new-note dialog for the last folder of [path] (from a library root), with a suggested [name]. */
-data class NewNoteRequest(
-    val path: List<FolderRef>,
-    val name: String,
-    val paper: PaperSize,
-    val landscape: Boolean,
-) {
-    val folder: FolderRef get() = path.last()
 }
 
 /** The app's state: navigation, the library and the open note. */
@@ -106,14 +102,29 @@ class AppViewModel
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
         val screens: StateFlow<List<Screen>> = stack.asStateFlow()
 
-        private val newNoteState = MutableStateFlow<NewNoteRequest?>(null)
-        val newNote: StateFlow<NewNoteRequest?> = newNoteState.asStateFlow()
+        val newNotes =
+            NewNoteFlow(
+                application,
+                preferences,
+                viewModelScope,
+                io,
+                onCreated = { uri, name, path ->
+                    library.refresh(path.last())
+                    open(Screen.Note(uri, name, DocumentLocation(path, name)))
+                },
+                onError = { errorState.value = it },
+            )
 
         private val noteState = MutableStateFlow<NoteState?>(null)
         val note: StateFlow<NoteState?> = noteState.asStateFlow()
 
         /** Where the open note was last shown, restored after rotation. */
         var noteAnchor: ViewportAnchor? = null
+
+        private val saver = NoteSaver(application)
+
+        /** The save in progress: a note is read only after it, in case it is the same file. */
+        private var saving: Job? = null
 
         private val errorState = MutableStateFlow<String?>(null)
 
@@ -153,59 +164,6 @@ class AppViewModel
 
         // New notes
 
-        fun startNewNote(path: List<FolderRef>) {
-            viewModelScope.launch {
-                val name = withContext(io) { NewNoteCreator.suggestedName(context.contentResolver, path.last()) }
-                val paper = PaperSize.entries.getOrNull(preferences.getInt(PAPER_KEY, 0)) ?: PaperSize.A4
-                newNoteState.value = NewNoteRequest(path, name, paper, preferences.getBoolean(LANDSCAPE_KEY, false))
-            }
-        }
-
-        fun cancelNewNote() {
-            newNoteState.value = null
-        }
-
-        /** Creates the note and opens it. */
-        fun createNote(
-            name: String,
-            paper: PaperSize,
-            landscape: Boolean,
-        ) {
-            val request = newNoteState.value ?: return
-            newNoteState.value = null
-            preferences
-                .edit()
-                .putInt(PAPER_KEY, paper.ordinal)
-                .putBoolean(LANDSCAPE_KEY, landscape)
-                .apply()
-            viewModelScope.launch {
-                val resolver = context.contentResolver
-                val created =
-                    withContext(io) {
-                        runCatching {
-                            val uri =
-                                NewNoteCreator.create(
-                                    resolver,
-                                    request.folder,
-                                    name,
-                                    paper,
-                                    landscape,
-                                    NewNoteCreator.creator(context),
-                                )
-                            uri to (FolderListing.nameOf(resolver, uri) ?: NewNoteCreator.fileName(name))
-                        }
-                    }
-                created
-                    .onSuccess { (uri, fileName) ->
-                        library.refresh(request.folder)
-                        open(Screen.Note(uri, fileName, DocumentLocation(request.path, fileName)))
-                    }.onFailure { e ->
-                        Log.w(TAG, "Cannot create $name", e)
-                        errorState.value = context.getString(R.string.error_create_note, name)
-                    }
-            }
-        }
-
         // The open note
 
         /** Opens a note from another app ("Open with"), finding it in the library if it is there. */
@@ -238,6 +196,7 @@ class AppViewModel
             noteAnchor = null
             noteState.value = NoteState.Loading
             viewModelScope.launch {
+                saving?.join()
                 val state = withContext(io) { NoteLoader.load(context, screen.uri, screen.name, screen.location) }
                 // Still the same note?
                 if (stack.value.lastOrNull() == screen) {
@@ -248,20 +207,57 @@ class AppViewModel
             }
         }
 
+        /** Saves the open note if it changed, then calls [then] on the main thread. */
+        fun saveNote(then: () -> Unit = {}) {
+            val note = noteState.value as? NoteState.Loaded
+            if (note == null) {
+                then()
+                return
+            }
+            val previous = saving
+            saving =
+                viewModelScope.launch {
+                    previous?.join()
+                    val result = withContext(io) { saver.save(note.file, note.edits, note.files) }
+                    when (result) {
+                        is SaveResult.SavedAsCopy -> {
+                            errorState.value =
+                                context.getString(R.string.saved_as_copy, result.name)
+                        }
+
+                        is SaveResult.Failed -> {
+                            errorState.value =
+                                context.getString(R.string.error_save_note, note.file.name)
+                        }
+
+                        else -> {
+                            Unit
+                        }
+                    }
+                    if (result is SaveResult.Saved || result is SaveResult.SavedAsCopy) {
+                        note.file.location?.let { library.refresh(it.folders.last()) }
+                    }
+                    then()
+                }
+        }
+
+        /** Leaves the open note: it is saved, then its files are released. */
         private fun closeNote() {
-            (noteState.value as? NoteState.Loaded)?.let {
-                it.caches.clear()
-                it.files.close()
+            val note = noteState.value as? NoteState.Loaded
+            saveNote {
+                note?.caches?.clear()
+                note?.files?.close()
             }
             noteState.value = null
             noteAnchor = null
         }
 
-        override fun onCleared() = closeNote()
+        // Saved when the app stopped (MainActivity.onStop); the scope is gone now.
+        override fun onCleared() {
+            (noteState.value as? NoteState.Loaded)?.files?.close()
+        }
 
         private companion object {
             const val TAG = "Inkpad"
-            const val PAPER_KEY = "paper"
-            const val LANDSCAPE_KEY = "landscape"
         }
     }

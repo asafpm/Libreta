@@ -29,9 +29,9 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import pm.asaf.inkpad.NewNoteRequest
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.library.NewNoteRequest
 
 /** Name, paper size and orientation of a new note, starting from [request]'s suggestions. */
 @Composable
