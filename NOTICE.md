@@ -34,6 +34,10 @@ Xournal++ live in `testdata/xournalpp/`.
   `src/core/control/xojfile/LoadHandlerHelper.cpp`.
 - `core/format/src/commonMain/.../XmlTree.kt`: output layout and escaping of
   `src/core/control/xml/XmlNode.cpp`, `TextAttribute.cpp`, `XmlTextNode.cpp`.
+- `core/format/src/commonMain/.../DocumentCodec.kt`, `BackgroundCodec.kt`,
+  `ElementCodec.kt`, `StrokeCodec.kt`, `XoppReader.kt`: element/attribute
+  names, write order and value rules of
+  `src/core/control/xojfile/LoadHandler.cpp` and `SaveHandler.cpp`.
 - `core/format/src/commonTest/.../ColorCodecTest.kt`: expectations from
   `LoadHandlerHelper.cpp` and `test/unit_tests/control/LoadHandlerTest.cpp`.
 
