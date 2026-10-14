@@ -26,7 +26,10 @@ Xournal++ live in `testdata/xournalpp/`.
 
 ### Files derived from Xournal++
 
-_None yet._
+- `testdata/xournalpp/`: test documents copied unchanged from Xournal++'s
+  `test/files/` and `development/documentation/` (see the README there).
+- `docs/xopp-format.md`: format specification describing Xournal++'s loader
+  and saver, with source references.
 
 ## Third-party libraries
 
