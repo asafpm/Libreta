@@ -24,6 +24,9 @@ class FontDescriptionTest {
                 "Times New Roman Semibold" to FontDescription(SERIF, bold = true, italic = false),
                 "Sans Bold 12" to FontDescription(SANS, bold = true, italic = false),
                 "Serif Light" to FontDescription(SERIF, bold = false, italic = false),
+                "C059" to FontDescription(SERIF, bold = false, italic = false), // xournalpp/development/README-Eraser…
+                "P052 Bold Italic" to FontDescription(SERIF, bold = true, italic = true),
+                "Nimbus Mono PS" to FontDescription(MONO, bold = false, italic = false),
                 "" to FontDescription(SANS, bold = false, italic = false),
             )
         for ((name, description) in expected) assertEquals(description, FontDescription.parse(name), name)

@@ -42,6 +42,9 @@ val screenshotDiffs: Provider<Directory> = layout.buildDirectory.dir("screenshot
 val recordScreenshots: Boolean = providers.gradleProperty("inkpad.recordScreenshots").orNull.toBoolean()
 val testData: Directory = layout.settingsDirectory.dir("testdata")
 
+// Set by scripts/render-crosscheck.sh: where RenderExportTest writes rendered sample pages.
+val renderExportDir: String? = providers.gradleProperty("inkpad.renderExportDir").orNull
+
 tasks.withType<Test>().configureEach {
     // Robolectric native graphics needs more than the default 512 MB on SDK 35+.
     maxHeapSize = "3g"
@@ -49,6 +52,7 @@ tasks.withType<Test>().configureEach {
     systemProperty("inkpad.screenshotDiffs", screenshotDiffs.get().asFile.absolutePath)
     systemProperty("inkpad.recordScreenshots", recordScreenshots.toString())
     systemProperty("inkpad.testdata", testData.asFile.absolutePath)
+    renderExportDir?.let { systemProperty("inkpad.renderExportDir", it) }
     inputs.property("recordScreenshots", recordScreenshots)
     inputs
         .files(screenshots.asFileTree)

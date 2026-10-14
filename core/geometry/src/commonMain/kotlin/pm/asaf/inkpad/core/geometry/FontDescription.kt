@@ -48,8 +48,35 @@ data class FontDescription(
                 "roman",
                 "small-caps",
             )
-        private val monoHints = listOf("mono", "courier", "consol", "code", "typewriter")
-        private val serifHints = listOf("roman", "times", "georgia", "palatino", "garamond", "cambria", "antiqua")
+        private val monoHints =
+            listOf("mono", "courier", "consol", "code", "typewriter", "inconsolata", "menlo", "hack", "cousine")
+
+        /** Serif families whose names do not say "serif" (e.g. URW's C059 = Century Schoolbook). */
+        private val serifHints =
+            listOf(
+                "roman",
+                "times",
+                "georgia",
+                "palatino",
+                "garamond",
+                "cambria",
+                "antiqua",
+                "c059",
+                "p052",
+                "century",
+                "schoolbook",
+                "bookman",
+                "libertine",
+                "computer modern",
+                "cmu",
+                "baskerville",
+                "caslon",
+                "charter",
+                "tinos",
+                "utopia",
+                "didot",
+                "bodoni",
+            )
 
         fun parse(name: String): FontDescription {
             val words =
