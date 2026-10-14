@@ -11,6 +11,9 @@ val Bounds.height: Double get() = bottom - top
 fun Bounds.intersects(other: Bounds): Boolean =
     left < other.right && other.left < right && top < other.bottom && other.top < bottom
 
+/** These bounds grown by [margin] on every side. */
+fun Bounds.expandedBy(margin: Double): Bounds = Bounds(left - margin, top - margin, right + margin, bottom + margin)
+
 fun Bounds.union(other: Bounds): Bounds =
     Bounds(minOf(left, other.left), minOf(top, other.top), maxOf(right, other.right), maxOf(bottom, other.bottom))
 

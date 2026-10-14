@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import pm.asaf.inkpad.android.render.RenderCaches
+import pm.asaf.inkpad.android.render.ThumbnailKey
 import pm.asaf.inkpad.android.render.TileKey
 import pm.asaf.inkpad.core.geometry.DocumentLayout
 import pm.asaf.inkpad.core.geometry.TileGrid
@@ -42,11 +43,13 @@ internal class DocumentPainter {
         val clip: Bounds,
     )
 
+    /** Draws the visible pages; [version] gives each page's current version. */
     fun draw(
         canvas: Canvas,
         layout: DocumentLayout,
         caches: RenderCaches,
         viewport: Viewport,
+        version: (Int) -> Int,
     ) {
         canvas.drawColor(BACKGROUND)
         val visible = viewport.visible
@@ -68,7 +71,7 @@ internal class DocumentPainter {
                             visible.bottom - bounds.top,
                         ),
                 )
-            drawPage(canvas, caches, index, placement)
+            drawPage(canvas, caches, index, version(index), placement)
         }
     }
 
@@ -76,6 +79,7 @@ internal class DocumentPainter {
         canvas: Canvas,
         caches: RenderCaches,
         index: Int,
+        version: Int,
         page: Placement,
     ) {
         target.set(
@@ -85,7 +89,7 @@ internal class DocumentPainter {
             page.top + (page.height * page.zoom).toFloat(),
         )
         canvas.drawRect(target, pagePaint)
-        caches.thumbnails[index]?.let { canvas.drawBitmap(it, null, target, bitmapPaint) }
+        caches.thumbnails.newest(ThumbnailKey(index, version))?.let { canvas.drawBitmap(it, null, target, bitmapPaint) }
 
         val zoom = page.zoom.toFloat()
         otherZooms.clear()
@@ -95,8 +99,10 @@ internal class DocumentPainter {
         otherZooms.clear()
 
         for (tile in TileGrid.tilesCovering(page.width, page.height, page.zoom, page.clip)) {
-            val key = TileKey(index, zoom, tile.x, tile.y)
-            caches.tiles[key]?.let { drawTile(canvas, key, it, page) }
+            // A stale tile stands in until the edited page is rendered again.
+            caches.tiles.newest(TileKey(index, version, zoom, tile.x, tile.y))?.let { (key, bitmap) ->
+                drawTile(canvas, key, bitmap, page)
+            }
         }
     }
 

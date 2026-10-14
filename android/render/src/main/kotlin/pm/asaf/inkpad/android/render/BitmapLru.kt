@@ -49,6 +49,14 @@ class BitmapLru<K : Any>(
         for ((key, bitmap) in entries) if (filter(key)) block(key, bitmap)
     }
 
+    /** Takes the bitmap of [key] out of the cache without evicting it (e.g. to store it under another key). */
+    @Synchronized
+    fun take(key: K): Bitmap? = entries.remove(key)?.also { bytes -= it.allocationByteCount }
+
+    /** The keys matching [filter]. */
+    @Synchronized
+    fun keys(filter: (K) -> Boolean): List<K> = entries.keys.filter(filter)
+
     /** Removes the entries whose key matches [filter]. */
     @Synchronized
     fun removeIf(filter: (K) -> Boolean) {

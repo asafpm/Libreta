@@ -18,7 +18,11 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.GraphicsMode
 import pm.asaf.inkpad.core.geometry.TileGrid
 import pm.asaf.inkpad.core.model.Bounds
+import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.PointList
+import pm.asaf.inkpad.core.model.StrokeTool
 import kotlin.math.abs
 import kotlin.math.ceil
 
@@ -118,9 +122,9 @@ class TileRenderingTest {
         val tileBytes = TileGrid.SIZE * TileGrid.SIZE * 4L
         val cache = TileCache(maxBytes = 2 * tileBytes)
         val first = cache.obtain()
-        cache.put(TileKey(0, 1f, 0, 0), first)
-        cache.put(TileKey(0, 1f, 1, 0), cache.obtain())
-        cache.put(TileKey(0, 1f, 2, 0), cache.obtain())
+        cache.put(TileKey(0, 0, 1f, 0, 0), first)
+        cache.put(TileKey(0, 0, 1f, 1, 0), cache.obtain())
+        cache.put(TileKey(0, 0, 1f, 2, 0), cache.obtain())
         assertEquals(2 * tileBytes, cache.sizeBytes)
         assertSame(first, cache.obtain())
     }
@@ -153,8 +157,8 @@ class TileRenderingTest {
             renderer.request(tiles + RenderJob.ThumbnailJob(0))
             testScheduler.advanceUntilIdle()
             assertEquals(tiles.size, caches.tiles.size)
-            assertTrue(tiles.all { it.key in caches.tiles })
-            assertEquals(Thumbnails.WIDTH, caches.thumbnails[0]?.width)
+            assertTrue(tiles.all { it.key(0) in caches.tiles })
+            assertEquals(Thumbnails.WIDTH, caches.thumbnails[ThumbnailKey(0, 0)]?.width)
             assertEquals(tiles.size + 1, notified)
             // Done jobs are not rendered again.
             renderer.request(tiles)
@@ -174,7 +178,59 @@ class TileRenderingTest {
             renderer.request(atZoom1)
             renderer.request(atZoom2 + RenderJob.TileJob(5, 2f, atZoom2[0].tile)) // no page 6: ignored
             testScheduler.advanceUntilIdle()
-            assertEquals(atZoom2.map { it.key }.toSet(), buildSet { caches.tiles.forEachOf(0) { key, _ -> add(key) } })
+            assertEquals(
+                atZoom2.map { it.key(0) }.toSet(),
+                buildSet { caches.tiles.forEachOf(0) { key, _ -> add(key) } },
+            )
+            renderer.close()
+        }
+
+    @Test
+    fun editsKeepTilesAwayFromTheChange() {
+        val cache = TileCache(Long.MAX_VALUE)
+        // 512 px tiles at zoom 1: tile (0, 0) covers 0-512 pt, tile (1, 0) 512-1024 pt.
+        val near = TileKey(0, 0, 1f, 0, 0)
+        val far = TileKey(0, 0, 1f, 1, 0)
+        val elsewhere = TileKey(0, 0, 2f, 0, 0)
+        for (key in listOf(near, far, elsewhere)) cache.put(key, cache.obtain())
+        val changed = Bounds(100.0, 100.0, 120.0, 120.0)
+        cache.pageChanged(0, version = 0, changed) { it.zoom == 1f }
+        // Away from the change: same pixels, now the current version.
+        assertTrue(far.at(1) in cache && far !in cache)
+        // Touching it, on screen: stale, standing in for the new tile.
+        assertEquals(near, cache.newest(near.at(1))?.first)
+        assertTrue(cache.hasStale(0, 1, changed))
+        // Touching it, not on screen: dropped.
+        assertTrue(elsewhere !in cache && elsewhere.at(1) !in cache)
+        // The re-rendered tile replaces the stale one.
+        cache.put(near.at(1), cache.obtain())
+        assertEquals(near.at(1), cache.newest(near.at(1))?.first)
+        assertTrue(near !in cache)
+        assertTrue(!cache.hasStale(0, 1, changed))
+    }
+
+    @Test
+    fun anEditedPageReRendersOnlyTheTilesItChanged() =
+        runTest {
+            val page = TestDocuments.load("physics.xopp").pages[0]
+            val caches = caches()
+            var rendered = 0
+            val renderer = newTileRenderer(listOf(page), caches) { rendered++ }
+            val jobs = page.allTiles(1f).map { RenderJob.TileJob(0, 1f, it) }
+            renderer.request(jobs)
+            testScheduler.advanceUntilIdle()
+            assertEquals(jobs.size, rendered)
+
+            val dot = Element.Stroke(StrokeTool.PEN, Color.of(0, 0, 0), 2.0, PointList.of(100.0, 100.0, 101.0, 101.0))
+            val version = renderer.updatePage(0, page.withElementAdded(dot), Bounds(98.0, 98.0, 103.0, 103.0)) { true }
+            assertEquals(1, version)
+            assertEquals(1, renderer.version(0))
+            renderer.request(jobs)
+            testScheduler.advanceUntilIdle()
+            // Only tile (0, 0) touches the dot.
+            assertEquals(jobs.size + 1, rendered)
+            assertTrue(jobs.all { it.key(1) in caches.tiles })
+            assertTrue(!caches.tiles.hasStale(0, 1, Bounds(0.0, 0.0, page.width, page.height)))
             renderer.close()
         }
 }

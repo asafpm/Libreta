@@ -141,7 +141,7 @@ class DocumentView
             } else {
                 // Compose hosts views without clipping them: stay off the bars around.
                 canvas.clipRect(0, 0, width, height)
-                painter.draw(canvas, content.layout, content.caches, viewport)
+                painter.draw(canvas, content.layout, content.caches, viewport, content.renderer::version)
             }
         }
 

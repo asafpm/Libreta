@@ -29,7 +29,8 @@ sealed interface RenderJob {
         val zoom: Float,
         val tile: Tile,
     ) : RenderJob {
-        val key: TileKey get() = TileKey(page, zoom, tile.x, tile.y)
+        /** Its tile at [version] of the page. */
+        fun key(version: Int): TileKey = TileKey(page, version, zoom, tile.x, tile.y)
     }
 
     /** The whole of [page] at [Thumbnails.WIDTH] pixels wide. */
@@ -51,22 +52,34 @@ data class RenderThreads(
 
 /**
  * Renders tiles and thumbnails of [pages] into [caches] in the background, in the order last
- * [request]ed, calling [onRendered] on the results thread after each one is stored.
+ * [request]ed, calling [onRendered] on the results thread after each one is stored. Pages can
+ * be replaced as they are edited ([updatePage]); each replacement is a new version.
  *
  * Each worker has its own [PageRenderer] from [newRenderer] (renderers are not thread-safe),
  * so the [BackgroundSource] they share must be.
  */
 class TileRenderer(
-    private val pages: List<Page>,
+    pages: List<Page>,
     private val caches: RenderCaches,
     newRenderer: () -> PageRenderer,
     private val onRendered: () -> Unit,
     private val threads: RenderThreads = RenderThreads(),
 ) : Closeable {
+    /** A job with the page as it was when the job started. */
+    private class Work(
+        val job: RenderJob,
+        val page: Page,
+        val version: Int,
+    )
+
     private val scope = CoroutineScope(SupervisorJob() + threads.results)
     private val wakeups = Channel<Unit>(threads.workers)
     private val inFlight = mutableSetOf<RenderJob>()
     private var queue = ArrayDeque<RenderJob>()
+    private val pages = pages.toMutableList()
+    private val versions = IntArray(pages.size)
+
+    val pageCount: Int get() = pages.size
 
     init {
         repeat(threads.workers) {
@@ -74,13 +87,41 @@ class TileRenderer(
         }
     }
 
+    /** The current version of page [index]; it grows by one with each [updatePage]. */
+    @Synchronized
+    fun version(index: Int): Int = versions[index]
+
+    @Synchronized
+    fun page(index: Int): Page = pages[index]
+
+    /**
+     * Replaces page [index], which changed within [changed] (page units). Tiles away from the
+     * change are kept; those touching it are stale until re-rendered, and kept meanwhile only
+     * if [keepStale] (see [TileCache.pageChanged]). Call on the results thread. Returns the
+     * new version.
+     */
+    fun updatePage(
+        index: Int,
+        page: Page,
+        changed: Bounds,
+        keepStale: (TileKey) -> Boolean,
+    ): Int {
+        val old =
+            synchronized(this) {
+                pages[index] = page
+                versions[index]++
+            }
+        caches.tiles.pageChanged(index, old, changed, keepStale)
+        return old + 1
+    }
+
     /**
      * Replaces the pending work with [jobs], most important first. Pending jobs not in [jobs]
      * are dropped; jobs already rendered or being rendered are skipped.
      */
     fun request(jobs: List<RenderJob>) {
-        val pending = jobs.filterTo(ArrayDeque()) { it.page in pages.indices && !isDone(it) }
         synchronized(this) {
+            val pending = jobs.filterTo(ArrayDeque()) { it.page in pages.indices && !isDone(it) }
             pending.removeAll(inFlight)
             queue = pending
         }
@@ -92,14 +133,18 @@ class TileRenderer(
 
     private suspend fun work(renderer: PageRenderer) {
         while (true) {
-            val job = next()
-            if (job == null) {
+            val work = next()
+            if (work == null) {
                 wakeups.receive()
             } else {
-                val bitmap = render(renderer, job)
+                val bitmap = render(renderer, work)
                 withContext(threads.results) {
-                    store(job, bitmap)
-                    synchronized(this@TileRenderer) { inFlight.remove(job) }
+                    store(work, bitmap)
+                    synchronized(this@TileRenderer) {
+                        inFlight.remove(work.job)
+                        // Edited meanwhile: what was stored is stale already, render it again.
+                        if (!isDone(work.job)) queue.addFirst(work.job)
+                    }
                     onRendered()
                 }
             }
@@ -107,37 +152,52 @@ class TileRenderer(
     }
 
     @Synchronized
-    private fun next(): RenderJob? {
+    private fun next(): Work? {
         while (true) {
             val job = queue.removeFirstOrNull() ?: return null
-            if (!isDone(job)) return job.also { inFlight.add(it) }
+            if (!isDone(job)) {
+                inFlight.add(job)
+                return Work(job, pages[job.page], versions[job.page])
+            }
         }
     }
 
+    /** Whether [job] is rendered at the page's current version. Call while synchronized. */
     private fun isDone(job: RenderJob): Boolean =
         when (job) {
-            is RenderJob.TileJob -> job.key in caches.tiles
-            is RenderJob.ThumbnailJob -> job.page in caches.thumbnails
+            is RenderJob.TileJob -> job.key(versions[job.page]) in caches.tiles
+            is RenderJob.ThumbnailJob -> ThumbnailKey(job.page, versions[job.page]) in caches.thumbnails
         }
 
     private fun render(
         renderer: PageRenderer,
-        job: RenderJob,
-    ): Bitmap {
-        val page = pages[job.page]
-        return when (job) {
-            is RenderJob.TileJob -> caches.tiles.obtain().also { renderTile(renderer, page, job.zoom, job.tile, it) }
-            is RenderJob.ThumbnailJob -> renderThumbnail(renderer, page)
+        work: Work,
+    ): Bitmap =
+        when (val job = work.job) {
+            is RenderJob.TileJob -> {
+                caches.tiles.obtain().also {
+                    renderTile(
+                        renderer,
+                        work.page,
+                        job.zoom,
+                        job.tile,
+                        it,
+                    )
+                }
+            }
+
+            is RenderJob.ThumbnailJob -> {
+                renderThumbnail(renderer, work.page)
+            }
         }
-    }
 
     private fun store(
-        job: RenderJob,
+        work: Work,
         bitmap: Bitmap,
     ) {
-        when (job) {
-            is RenderJob.TileJob -> caches.tiles.put(job.key, bitmap)
-            is RenderJob.ThumbnailJob -> caches.thumbnails.put(job.page, bitmap)
+        when (val job = work.job) {
+            is RenderJob.TileJob -> caches.tiles.put(job.key(work.version), bitmap)
+            is RenderJob.ThumbnailJob -> caches.thumbnails.put(ThumbnailKey(job.page, work.version), bitmap)
         }
     }
 
