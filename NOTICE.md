@@ -72,6 +72,8 @@ Xournal++ live in `testdata/xournalpp/`.
   `src/core/gui/inputdevices/PenInputHandler.cpp`.
 - `core/model/src/commonMain/.../PenSettings.kt`: pen widths and colour of
   `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
+- `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of
+  `src/core/control/jobs/SaveJob.cpp`.
 
 ## Fonts
 

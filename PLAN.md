@@ -131,6 +131,15 @@ Input rules: stylus draws; finger pans/zooms (configurable); handle
 TOOL_TYPE_ERASER and stylus button; drop strokes on ACTION_CANCEL /
 FLAG_CANCELED (palm rejection).
 ✅ Unit tests for stroke building/smoothing; manual latency check.
+Done: `StrokeBuilder` ports Xournal++'s StrokeHandler (Xournal++'s default stabilizer is
+off, so there is no smoothing yet; its stabilizers can be ported later). Wet ink is drawn into
+a front buffer (androidx.graphics `LowLatencyCanvasView`) with `MotionEventPredictor`, and
+finished strokes stay there until the page has drawn them, so they never flicker
+(`InkingDeviceTest`: 0 of 270 screenshots miss a stroke; frames p95 11 ms while writing). Edits
+re-render only the tiles they touch (page versions). Pulled forward from Phase 5: notes are
+saved when leaving them or the app (whole file, fresh preview; a file changed elsewhere gets a
+conflict copy; Xournal++ 1.0 zip packages stay read only), and a pen toolbar with Xournal++'s
+palette and widths. Finger mode: Settings → "Draw with finger".
 
 ### Phase 5 — Editing tools
 Undo/redo (command stack in core:model), stroke eraser, whiteout/partial
