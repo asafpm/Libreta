@@ -26,6 +26,7 @@ import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
+import pm.asaf.inkpad.files.NoteEdits
 import pm.asaf.inkpad.files.NoteLoader
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
@@ -60,13 +61,16 @@ sealed interface NoteState {
     data object Loading : NoteState
 
     data class Loaded(
-        val document: Document,
+        /** The document as edited so far. */
+        val edits: NoteEdits,
         /** Tiles and thumbnails, kept across rotation. */
         val caches: RenderCaches,
         val files: DocumentFiles,
         /** Its background files are outside it, but where it is was not granted. */
         val folderNeeded: Boolean,
-    ) : NoteState
+    ) : NoteState {
+        val document: Document get() = edits.document
+    }
 
     data class Failed(
         val message: String,

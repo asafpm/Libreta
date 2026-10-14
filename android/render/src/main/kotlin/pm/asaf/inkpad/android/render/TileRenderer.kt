@@ -64,6 +64,8 @@ class TileRenderer(
     newRenderer: () -> PageRenderer,
     private val onRendered: () -> Unit,
     private val threads: RenderThreads = RenderThreads(),
+    /** The pages' versions, when [caches] already hold tiles of earlier ones (e.g. after rotation). */
+    versions: IntArray = IntArray(pages.size),
 ) : Closeable {
     /** A job with the page as it was when the job started. */
     private class Work(
@@ -77,7 +79,7 @@ class TileRenderer(
     private val inFlight = mutableSetOf<RenderJob>()
     private var queue = ArrayDeque<RenderJob>()
     private val pages = pages.toMutableList()
-    private val versions = IntArray(pages.size)
+    private val versions = versions.copyOf()
 
     val pageCount: Int get() = pages.size
 

@@ -58,6 +58,24 @@ class PageRenderer(
         }
     }
 
+    /**
+     * Draws [elements] alone, without a background, with page coordinates scaled by [zoom]:
+     * e.g. a stroke just written, until the page's tiles show it.
+     */
+    fun renderElements(
+        elements: List<Element>,
+        canvas: Canvas,
+        zoom: Float,
+    ) {
+        val saved = canvas.save()
+        try {
+            canvas.scale(zoom, zoom)
+            for (element in elements) paintElement(canvas, element, zoom)
+        } finally {
+            canvas.restoreToCount(saved)
+        }
+    }
+
     private fun paintElement(
         canvas: Canvas,
         element: Element,

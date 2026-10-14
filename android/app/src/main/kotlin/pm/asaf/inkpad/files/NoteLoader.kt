@@ -35,7 +35,7 @@ object NoteLoader {
             val read = stream.source().use { XoppReader.read(it) }
             val files = DocumentFiles.open(context, read, location)
             NoteState.Loaded(
-                document = read.document,
+                edits = NoteEdits(read.document),
                 caches = RenderCaches.forDevice(context),
                 files = files,
                 folderNeeded = location == null && DocumentFiles.needsFolder(read),

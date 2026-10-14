@@ -20,13 +20,14 @@ import pm.asaf.inkpad.core.geometry.Viewport
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.geometry.ViewportNavigator
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.PenSettings
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
  * Shows a document's pages in a vertical strip, with pinch zoom, panning, flinging and
- * double-tap zoom. Pages are rendered in the background ([TileRenderer]); drawing only copies
- * the cached bitmaps ([DocumentPainter]).
+ * double-tap zoom, and lets the stylus write on them ([Inking]). Pages are rendered in the
+ * background ([TileRenderer]); drawing only copies the cached bitmaps ([DocumentPainter]).
  */
 class DocumentView
     @JvmOverloads
@@ -51,21 +52,94 @@ class DocumentView
 
         private var pendingAnchor: ViewportAnchor? = null
         private var scaling = false
+        private var gestureActive = false
         private val scroller = OverScroller(context)
         private val painter = DocumentPainter()
 
+        private val inking =
+            Inking(
+                this,
+                object : Inking.Host {
+                    override val state: Inking.ViewState?
+                        get() {
+                            val content = content ?: return null
+                            return viewport?.let {
+                                Inking.ViewState(
+                                    content.layout,
+                                    content.renderer,
+                                    content.caches,
+                                    it,
+                                )
+                            }
+                        }
+
+                    override fun pageChanged() {
+                        requestRendering()
+                        invalidate()
+                    }
+
+                    override fun startGesture(event: MotionEvent) {
+                        val down =
+                            MotionEvent.obtain(
+                                event.downTime,
+                                event.eventTime,
+                                MotionEvent.ACTION_DOWN,
+                                event.getX(0),
+                                event.getY(0),
+                                0,
+                            )
+                        feedGestures(down)
+                        down.recycle()
+                        feedGestures(event)
+                    }
+                },
+            )
+
+        /** The pen new strokes are written with. */
+        var pen: PenSettings
+            get() = inking.pen
+            set(value) {
+                inking.pen = value
+            }
+
+        /** Whether fingers write too (then two fingers pan and zoom). */
+        var fingerDraws: Boolean
+            get() = inking.fingerDraws
+            set(value) {
+                inking.fingerDraws = value
+            }
+
+        /** Where the stroke being written is shown before it is committed. */
+        var wetInk: WetInk
+            get() = inking.wetInk
+            set(value) {
+                inking.wetInk = value
+            }
+
+        /** Called with each page as a stroke is added to it, and the page's new version. */
+        var onPageEdited: ((index: Int, page: Page, version: Int) -> Unit)?
+            get() = inking.onPageEdited
+            set(value) {
+                inking.onPageEdited = value
+            }
+
         /**
-         * Shows [pages], rendered into [caches] by renderers from [newRenderer]. The previous
-         * document's renderer is closed.
+         * Shows [pages], rendered into [caches] by renderers from [newRenderer]. [versions] are
+         * the pages' edit versions if [caches] were used before. The previous document's
+         * renderer is closed.
          */
         fun setDocument(
             pages: List<Page>,
             caches: RenderCaches,
             newRenderer: () -> PageRenderer,
             threads: RenderThreads = RenderThreads(),
+            versions: IntArray = IntArray(pages.size),
         ) {
             content?.renderer?.close()
-            content = Content(pages, caches, TileRenderer(pages, caches, newRenderer, { invalidate() }, threads))
+            inking.reset()
+            inking.renderer = newRenderer()
+            content =
+                Content(pages, caches, TileRenderer(pages, caches, newRenderer, { invalidate() }, threads, versions))
             viewport = null
             scroller.forceFinished(true)
             showViewport()
@@ -142,10 +216,38 @@ class DocumentView
                 // Compose hosts views without clipping them: stay off the bars around.
                 canvas.clipRect(0, 0, width, height)
                 painter.draw(canvas, content.layout, content.caches, viewport, content.renderer::version)
+                if (inking.draw(canvas)) postInvalidateOnAnimation()
             }
         }
 
-        // Gestures
+        // Touch
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            inking.record(event)
+            val wasWriting = inking.input.isWriting
+            if (!inking.input.onTouchEvent(event)) {
+                feedGestures(event)
+            } else if (inking.input.isWriting && !wasWriting) {
+                // The stylus took over a finger gesture: end it.
+                if (gestureActive) {
+                    val cancel = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
+                    feedGestures(cancel)
+                    cancel.recycle()
+                }
+                scroller.forceFinished(true)
+                inking.strokeStarted()
+                // Every input event as it comes, not once per frame.
+                requestUnbufferedDispatch(event)
+            }
+            return true
+        }
+
+        private fun feedGestures(event: MotionEvent) {
+            scaleDetector.onTouchEvent(event)
+            gestureDetector.onTouchEvent(event)
+            gestureActive =
+                event.actionMasked != MotionEvent.ACTION_UP && event.actionMasked != MotionEvent.ACTION_CANCEL
+        }
 
         private val scaleDetector =
             ScaleGestureDetector(
@@ -210,8 +312,13 @@ class DocumentView
                         return true
                     }
 
+                    /** Fit width ↔ [DOUBLE_TAP_ZOOM] × fit width, around the tapped point. */
                     override fun onDoubleTap(e: MotionEvent): Boolean {
-                        toggleZoom(e.x, e.y)
+                        zoomTo(e.x, e.y) { navigator ->
+                            val fit = navigator.fitWidthZoom(width.toDouble())
+                            val current = viewport?.zoom ?: fit
+                            if (abs(current - fit) / fit < FIT_TOLERANCE) fit * DOUBLE_TAP_ZOOM else fit
+                        }
                         return true
                     }
 
@@ -219,23 +326,7 @@ class DocumentView
                 },
             )
 
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            scaleDetector.onTouchEvent(event)
-            gestureDetector.onTouchEvent(event)
-            return true
-        }
-
         override fun performClick(): Boolean = super.performClick()
-
-        /** Fit width ↔ [DOUBLE_TAP_ZOOM] × fit width, around the tapped point. */
-        private fun toggleZoom(
-            x: Float,
-            y: Float,
-        ) = zoomTo(x, y) { navigator ->
-            val fit = navigator.fitWidthZoom(width.toDouble())
-            val current = viewport?.zoom ?: fit
-            if (abs(current - fit) / fit < FIT_TOLERANCE) fit * DOUBLE_TAP_ZOOM else fit
-        }
 
         private inline fun zoomTo(
             focusX: Float,

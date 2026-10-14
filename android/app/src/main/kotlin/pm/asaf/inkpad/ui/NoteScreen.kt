@@ -2,6 +2,7 @@
 
 package pm.asaf.inkpad.ui
 
+import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,10 +32,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.graphics.lowlatency.LowLatencyCanvasView
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.android.render.RenderThreads
 import pm.asaf.inkpad.viewer.DocumentView
+import pm.asaf.inkpad.viewer.LowLatencyWetInk
 
 /**
  * A note, shown in a [DocumentView], with a notice when its background files could not be
@@ -82,21 +85,7 @@ fun NoteScreen(
                 is NoteState.Loaded -> {
                     Column(Modifier.fillMaxSize()) {
                         FilesNotice(state, onAddFolder)
-                        AndroidView(
-                            factory = { context ->
-                                DocumentView(context).apply {
-                                    setDocument(state.document.pages, state.caches, state.files::newRenderer, threads)
-                                    position.get()?.let { restore(it) }
-                                    view = this
-                                }
-                            },
-                            onRelease = { released ->
-                                position.set(released.anchor)
-                                released.close()
-                                view = null
-                            },
-                            modifier = Modifier.weight(1f).fillMaxWidth(),
-                        )
+                        NoteCanvas(state, threads, position, { view = it }, Modifier.weight(1f).fillMaxWidth())
                     }
                 }
             }
@@ -129,4 +118,44 @@ private fun FilesNotice(
             }
         }
     }
+}
+
+/** The pages, with wet ink in a front buffer above them; [onView] gets the view (null when gone). */
+@Composable
+private fun NoteCanvas(
+    state: NoteState.Loaded,
+    threads: RenderThreads,
+    position: ViewerPosition,
+    onView: (DocumentView?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var document by remember { mutableStateOf<DocumentView?>(null) }
+    AndroidView(
+        factory = { context ->
+            val view =
+                DocumentView(context).apply {
+                    val edits = state.edits
+                    setDocument(edits.document.pages, state.caches, state.files::newRenderer, threads, edits.versions())
+                    onPageEdited = edits::pageEdited
+                    position.get()?.let { restore(it) }
+                }
+            val ink = LowLatencyCanvasView(context)
+            view.wetInk = LowLatencyWetInk(ink)
+            document = view
+            onView(view)
+            FrameLayout(context).apply {
+                addView(view)
+                addView(ink)
+            }
+        },
+        onRelease = {
+            document?.let { released ->
+                position.set(released.anchor)
+                released.close()
+            }
+            document = null
+            onView(null)
+        },
+        modifier = modifier,
+    )
 }

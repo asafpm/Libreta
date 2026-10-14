@@ -18,6 +18,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.compose.material.icons.core)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.graphics.core)
+    implementation(libs.androidx.input.motionprediction)
 
     testImplementation(libs.kotlinx.coroutines.test)
 
