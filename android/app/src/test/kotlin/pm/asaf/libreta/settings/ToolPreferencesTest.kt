@@ -9,7 +9,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import pm.asaf.libreta.core.model.Color
+import pm.asaf.libreta.core.model.DrawingType
 import pm.asaf.libreta.core.model.PenSize
+import pm.asaf.libreta.core.model.TextSettings
+import pm.asaf.libreta.core.model.Tool
+import pm.asaf.libreta.core.model.ToolSettings
 
 @RunWith(AndroidJUnit4::class)
 class ToolPreferencesTest {
@@ -19,6 +24,23 @@ class ToolPreferencesTest {
     @Before
     fun setUp() {
         preferences.edit().clear().commit()
+    }
+
+    @Test
+    fun drawingTypesAndTextSettingsAreKept() {
+        val tools = ToolPreferences(preferences)
+        tools.change { it.copy(drawingType = DrawingType.ELLIPSE) }
+        tools.selectTool(Tool.TEXT)
+        tools.setColor(Color.of(200, 0, 0))
+        tools.change { it.copy(text = it.text.copy(font = "Serif Bold", size = 18.0)) }
+        val expected = TextSettings("Serif Bold", 18.0, Color.of(200, 0, 0))
+        assertEquals(expected, tools.tools.value.text)
+        // Text's colour is its own: the pen keeps its colour.
+        assertEquals(ToolSettings().pen, tools.tools.value.pen)
+        val again = ToolPreferences(preferences).tools.value
+        assertEquals(DrawingType.ELLIPSE, again.drawingType)
+        assertEquals(Tool.TEXT, again.tool)
+        assertEquals(expected, again.text)
     }
 
     @Test

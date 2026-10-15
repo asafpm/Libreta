@@ -88,6 +88,10 @@ fun ToolBar(
                 Tool.SELECT -> {
                     SelectOptions(controls, onRestyle) { picking = true }
                 }
+
+                Tool.TEXT -> {
+                    Unit
+                }
             }
             if (controls.fingerButton) {
                 Separator()

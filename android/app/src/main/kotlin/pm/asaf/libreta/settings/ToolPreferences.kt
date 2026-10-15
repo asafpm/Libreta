@@ -14,6 +14,7 @@ import pm.asaf.libreta.core.model.PenSettings
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.SelectMode
 import pm.asaf.libreta.core.model.StylusButton
+import pm.asaf.libreta.core.model.TextSettings
 import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.ToolSettings
 
@@ -53,6 +54,8 @@ class ToolPreferences(
 
                 Tool.PEN, Tool.ERASER -> it.copy(pen = it.pen.copy(color = color))
 
+                Tool.TEXT -> it.copy(text = it.text.copy(color = color))
+
                 // The selection's colour changes instead.
                 Tool.SELECT -> it
             }
@@ -65,9 +68,12 @@ class ToolPreferences(
                 Tool.PEN -> it.copy(pen = it.pen.copy(size = size))
                 Tool.HIGHLIGHTER -> it.copy(highlighter = it.highlighter.copy(size = size))
                 Tool.ERASER -> it.copy(eraser = it.eraser.copy(size = size))
-                Tool.SELECT -> it
+                Tool.SELECT, Tool.TEXT -> it
             }
         }
+
+    /** Changes the settings in a way that needs nothing more, e.g. the drawing type or text's font. */
+    fun change(change: (ToolSettings) -> ToolSettings) = update(change)
 
     fun setEraserType(type: EraserType) = update { it.copy(eraser = it.eraser.copy(type = type)) }
 
@@ -123,7 +129,14 @@ class ToolPreferences(
             .putString(Keys.ERASER_SIZE, tools.eraser.size.name)
             .putString(Keys.BUTTON, tools.button.name)
             .putString(Keys.SELECT_MODE, tools.selectMode.name)
-            .apply()
+            .putString(Keys.DRAWING_TYPE, tools.drawingType.name)
+            .putString(Keys.TEXT_FONT, tools.text.font)
+            .putString(Keys.TEXT_SIZE, tools.text.size.toString())
+            .putLong(
+                Keys.TEXT_COLOR,
+                tools.text.color.rgba
+                    .toLong(),
+            ).apply()
     }
 }
 
@@ -144,6 +157,13 @@ private fun SharedPreferences.readTools(): ToolSettings {
             ),
         button = enumOf(Keys.BUTTON, defaults.button),
         selectMode = enumOf(Keys.SELECT_MODE, defaults.selectMode),
+        drawingType = enumOf(Keys.DRAWING_TYPE, defaults.drawingType),
+        text =
+            TextSettings(
+                getString(Keys.TEXT_FONT, null) ?: defaults.text.font,
+                getString(Keys.TEXT_SIZE, null)?.toDoubleOrNull() ?: defaults.text.size,
+                color(Keys.TEXT_COLOR) ?: defaults.text.color,
+            ),
     )
 }
 
@@ -180,6 +200,10 @@ private object Keys {
     const val ERASER_SIZE = "eraser.size"
     const val BUTTON = "stylus.button"
     const val SELECT_MODE = "select.mode"
+    const val DRAWING_TYPE = "drawing.type"
+    const val TEXT_FONT = "text.font"
+    const val TEXT_SIZE = "text.size"
+    const val TEXT_COLOR = "text.color"
     const val FINGER = "finger.draws"
     const val FINGER_BUTTON = "toolbar.fingerButton"
     const val SIZES = "sizes.visible"

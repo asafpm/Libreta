@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Pen, highlighter and eraser widths, default colours and eraser types from Xournal++ v1.3.8
-// src/core/control/ToolHandler.cpp, the palette from palettes/xournalpp.gpl, © Xournal++
-// contributors.
+// src/core/control/ToolHandler.cpp, drawing types from src/core/control/ToolEnums.h, the text
+// default from src/core/control/settings/Settings.cpp, the palette from palettes/xournalpp.gpl,
+// © Xournal++ contributors.
 
 package pm.asaf.libreta.core.model
 
@@ -61,7 +62,23 @@ data class HighlighterSettings(
 }
 
 /** The tool chosen in the toolbar. */
-enum class Tool { PEN, HIGHLIGHTER, ERASER, SELECT }
+enum class Tool { PEN, HIGHLIGHTER, ERASER, SELECT, TEXT }
+
+/**
+ * What the pen and the highlighter draw (Xournal++'s drawing types): freehand strokes, or a
+ * shape dragged from where the stroke starts to where the pen is.
+ */
+enum class DrawingType { FREEHAND, LINE, RECTANGLE, ELLIPSE, ARROW, DOUBLE_ARROW, COORDINATE_SYSTEM }
+
+/**
+ * New text: Xournal++'s default is "Sans 12" in black. [font] is a font description such as
+ * "Sans Bold"; [size] is in points.
+ */
+data class TextSettings(
+    val font: String = "Sans",
+    val size: Double = 12.0,
+    val color: Color = Color.BLACK,
+)
 
 /** How the selection tool encloses what it selects (Xournal++'s rectangle and region select). */
 enum class SelectMode { RECTANGLE, LASSO }
@@ -77,6 +94,8 @@ data class ToolSettings(
     val eraser: EraserSettings = EraserSettings(),
     val button: StylusButton = StylusButton.ERASER,
     val selectMode: SelectMode = SelectMode.RECTANGLE,
+    val drawingType: DrawingType = DrawingType.FREEHAND,
+    val text: TextSettings = TextSettings(),
 )
 
 object Palette {
