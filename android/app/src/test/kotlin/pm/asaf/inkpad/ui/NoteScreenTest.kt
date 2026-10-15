@@ -285,6 +285,21 @@ class NoteScreenTest {
         )
     }
 
+    @Test
+    fun theToolbarOffersTheWidthsChosen() {
+        val model = openLecture()
+        compose.runOnIdle {
+            model.tools.setSizeVisible(PenSize.VERY_FINE, false)
+            model.tools.setSizeVisible(PenSize.MEDIUM, false)
+        }
+        val widths = compose.onAllNodes(hasContentDescription("Width:", substring = true)).fetchSemanticsNodes()
+        val names = widths.map { it.config[SemanticsProperties.ContentDescription].single().removePrefix("Width: ") }
+        // Medium stays while the pen uses it.
+        assertEquals(listOf("Fine", "Medium", "Thick", "Very thick"), names)
+        compose.onNodeWithContentDescription("Width: Thick").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Width: Medium").assertDoesNotExist()
+    }
+
     private companion object {
         const val TIMEOUT = 10_000L
     }

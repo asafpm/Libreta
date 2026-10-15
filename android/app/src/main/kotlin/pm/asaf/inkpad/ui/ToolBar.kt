@@ -115,7 +115,10 @@ private fun ToolButton(
     }
 }
 
-/** The fixed colours, recent ones and the current one if it is neither, then widths, for the pen or highlighter. */
+/**
+ * The fixed colours, recent ones and the current one if it is neither, then the widths
+ * offered (and the current one), for the pen or highlighter.
+ */
 @Composable
 private fun RowScope.InkOptions(
     color: InkColor,
@@ -129,12 +132,12 @@ private fun RowScope.InkOptions(
     }
     IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
     Separator()
-    for (option in PenSize.entries) {
+    for (option in PenSize.entries.filter { it in controls.visibleSizes || it == size }) {
         WidthOption(option, color.toCompose(), CircleShape, selected = option == size) { controls.onSize(option) }
     }
 }
 
-/** The eraser's type and size. */
+/** The eraser's type and the sizes offered. */
 @Composable
 private fun RowScope.EraserOptions(controls: ToolControls) {
     val eraser = controls.tools.eraser
@@ -146,7 +149,7 @@ private fun RowScope.EraserOptions(controls: ToolControls) {
         )
     }
     Separator()
-    for (option in PenSize.entries) {
+    for (option in PenSize.entries.filter { it in controls.visibleSizes || it == eraser.size }) {
         val shape = RoundedCornerShape(2.dp)
         WidthOption(option, MaterialTheme.colorScheme.onSurfaceVariant, shape, selected = option == eraser.size) {
             controls.onSize(option)
@@ -202,7 +205,8 @@ private fun WidthOption(
     }
 }
 
-private val PenSize.label: Int
+/** The name of a width. */
+internal val PenSize.label: Int
     get() =
         when (this) {
             PenSize.VERY_FINE -> R.string.width_very_fine

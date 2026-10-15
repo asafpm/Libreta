@@ -61,6 +61,7 @@
     <string name="fewer">Fewer: %1$s</string>
     <string name="more">More: %1$s</string>
     <string name="edit_color">Change colour %1$s</string>
+    <string name="stroke_widths">Widths in the toolbar</string>
     <string name="stylus">Stylus</string>
     <string name="stylus_button">Holding the side button</string>
     <string name="button_erases">Erases</string>

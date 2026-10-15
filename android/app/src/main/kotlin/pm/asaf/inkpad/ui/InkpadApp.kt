@@ -15,6 +15,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.Screen
 import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.ToolSettings
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.library.LibraryRoot
@@ -121,13 +122,14 @@ private fun Settings(
     val tools by model.tools.tools.collectAsStateWithLifecycle()
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
     val recentLimit by model.colors.recentLimit.collectAsStateWithLifecycle()
+    val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
         sortOrder = sortOrder,
         fingerDraws = fingerDraws,
         stylusButton = tools.button,
-        colors = ColorSettings(fixedColors, recentLimit),
+        toolbar = ToolbarSettings(fixedColors, recentLimit, visibleSizes),
         actions =
             SettingsActions(
                 addFolder,
@@ -139,6 +141,7 @@ private fun Settings(
                 model.colors::setFixedCount,
                 model.colors::setFixedColor,
                 model.colors::setRecentLimit,
+                model.tools::setSizeVisible,
             ),
         onBack = { model.back() },
     )
@@ -153,6 +156,7 @@ private fun Note(
     val tools by model.tools.tools.collectAsStateWithLifecycle()
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
     val recentColors by model.colors.recentColors.collectAsStateWithLifecycle()
+    val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -163,7 +167,7 @@ private fun Note(
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
-        tools = toolControls(model.tools, model.colors, tools, fixedColors, recentColors, fingerDraws),
+        tools = toolControls(model.tools, model.colors, tools, fixedColors, recentColors, visibleSizes, fingerDraws),
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
@@ -176,12 +180,14 @@ private fun toolControls(
     tools: ToolSettings,
     fixedColors: List<Color>,
     recentColors: List<Color>,
+    visibleSizes: Set<PenSize>,
     fingerDraws: Boolean,
 ) = ToolControls(
     tools = tools,
     fixedColors = fixedColors,
     fingerDraws = fingerDraws,
     recentColors = recentColors,
+    visibleSizes = visibleSizes,
     onTool = preferences::selectTool,
     onColor = preferences::setColor,
     onCustomColor = { color ->

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -35,11 +36,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
+import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.SortOrder
 
-/** The library folders (add, remove, reorder), how notes are sorted, input, toolbar colours and the stylus. */
+/**
+ * The library folders (add, remove, reorder), how notes are sorted, input, the toolbar's
+ * colours and widths, and the stylus.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -47,7 +52,7 @@ fun SettingsScreen(
     sortOrder: SortOrder,
     fingerDraws: Boolean,
     stylusButton: StylusButton,
-    colors: ColorSettings,
+    toolbar: ToolbarSettings,
     actions: SettingsActions,
     onBack: () -> Unit,
 ) {
@@ -94,18 +99,54 @@ fun SettingsScreen(
             )
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.colors))
-            ColorSettingsSection(colors, actions)
+            ColorSettingsSection(toolbar, actions)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.stroke_widths))
+            WidthChoices(toolbar.sizes, actions.sizeVisible)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.stylus))
-            Text(
-                stringResource(R.string.stylus_button),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-            )
-            for ((button, label) in STYLUS_BUTTONS) {
-                RadioOption(stringResource(label), stylusButton == button) { actions.stylusButton(button) }
-            }
+            ButtonChoices(stylusButton, actions.stylusButton)
         }
+    }
+}
+
+/** What holding the stylus button does. */
+@Composable
+private fun ButtonChoices(
+    button: StylusButton,
+    onChange: (StylusButton) -> Unit,
+) {
+    Text(
+        stringResource(R.string.stylus_button),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    for ((choice, label) in STYLUS_BUTTONS) {
+        RadioOption(stringResource(label), button == choice) { onChange(choice) }
+    }
+}
+
+/** A checkbox per width: whether the toolbar offers it. */
+@Composable
+private fun WidthChoices(
+    sizes: Set<PenSize>,
+    onChange: (PenSize, Boolean) -> Unit,
+) {
+    for (size in PenSize.entries) {
+        val shown = size in sizes
+        // At least one width stays.
+        val enabled = !shown || sizes.size > 1
+        ListItem(
+            headlineContent = { Text(stringResource(size.label)) },
+            leadingContent = { Checkbox(checked = shown, onCheckedChange = null, enabled = enabled) },
+            modifier =
+                Modifier.toggleable(
+                    value = shown,
+                    enabled = enabled,
+                    role = Role.Checkbox,
+                    onValueChange = { onChange(size, it) },
+                ),
+        )
     }
 }
 

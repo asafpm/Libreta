@@ -18,13 +18,18 @@ import pm.asaf.inkpad.core.model.ToolSettings
 
 /**
  * The tools as last used (the chosen one, and each one's colour and width), the stylus
- * button and how fingers act, remembered in [preferences].
+ * button, the widths the toolbar offers and how fingers act, remembered in [preferences].
  */
 class ToolPreferences(
     private val preferences: SharedPreferences,
 ) {
     private val toolState = MutableStateFlow(preferences.readTools())
     val tools: StateFlow<ToolSettings> = toolState.asStateFlow()
+
+    private val sizesState = MutableStateFlow(preferences.readSizes())
+
+    /** The widths the toolbar offers, for every tool (never none). */
+    val visibleSizes: StateFlow<Set<PenSize>> = sizesState.asStateFlow()
 
     private val fingerState = MutableStateFlow(preferences.getBoolean(Keys.FINGER, false))
 
@@ -55,6 +60,22 @@ class ToolPreferences(
     fun setEraserType(type: EraserType) = update { it.copy(eraser = it.eraser.copy(type = type)) }
 
     fun setButton(button: StylusButton) = update { it.copy(button = button) }
+
+    /** Shows width [size] in the toolbar, or hides it unless it is the last one shown. */
+    fun setSizeVisible(
+        size: PenSize,
+        visible: Boolean,
+    ) {
+        val sizes = if (visible) sizesState.value + size else sizesState.value - size
+        if (sizes.isEmpty()) return
+        sizesState.value = sizes
+        preferences
+            .edit()
+            .putString(
+                Keys.SIZES,
+                PenSize.entries.filter { it in sizes }.joinToString(",") { it.name },
+            ).apply()
+    }
 
     fun setFingerDraws(draws: Boolean) {
         fingerState.value = draws
@@ -109,6 +130,15 @@ private fun SharedPreferences.color(key: String): Color? =
             it >= 0
         }?.let { Color(it.toUInt()) }
 
+/** The widths stored as shown, all by default. */
+private fun SharedPreferences.readSizes(): Set<PenSize> =
+    getString(Keys.SIZES, null)
+        ?.split(',')
+        ?.mapNotNull { name -> PenSize.entries.firstOrNull { it.name == name } }
+        ?.toSet()
+        ?.takeIf { it.isNotEmpty() }
+        ?: PenSize.entries.toSet()
+
 private inline fun <reified T : Enum<T>> SharedPreferences.enumOf(
     key: String,
     default: T,
@@ -127,4 +157,5 @@ private object Keys {
     const val ERASER_SIZE = "eraser.size"
     const val BUTTON = "stylus.button"
     const val FINGER = "finger.draws"
+    const val SIZES = "sizes.visible"
 }

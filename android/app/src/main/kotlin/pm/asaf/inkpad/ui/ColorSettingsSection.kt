@@ -36,7 +36,7 @@ import pm.asaf.inkpad.settings.ColorPreferences
 /** How many fixed colours the toolbar offers and which, and how many recent colours it keeps. */
 @Composable
 fun ColorSettingsSection(
-    colors: ColorSettings,
+    colors: ToolbarSettings,
     actions: SettingsActions,
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }

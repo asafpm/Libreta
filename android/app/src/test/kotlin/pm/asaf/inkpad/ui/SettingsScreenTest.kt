@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,6 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.Palette
+import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.SortOrder
 
@@ -32,7 +35,7 @@ class SettingsScreenTest {
 
     private val chosen = ArrayList<Any>()
 
-    private fun show(colors: ColorSettings = ColorSettings(Palette.DEFAULT_FIXED, 3)) {
+    private fun show(colors: ToolbarSettings = ToolbarSettings(Palette.DEFAULT_FIXED, 3)) {
         var shown by mutableStateOf(colors)
         compose.setContent {
             MaterialTheme {
@@ -41,7 +44,7 @@ class SettingsScreenTest {
                     sortOrder = SortOrder.MODIFIED,
                     fingerDraws = false,
                     stylusButton = StylusButton.ERASER,
-                    colors = shown,
+                    toolbar = shown,
                     actions =
                         SettingsActions(
                             {},
@@ -54,7 +57,21 @@ class SettingsScreenTest {
                             fixedColor = { index, color -> chosen += "fixed $index ${color.hex()}" },
                             recentLimit = {
                                 chosen += "recent $it"
-                                shown = ColorSettings(shown.fixed, it)
+                                shown = ToolbarSettings(shown.fixed, it, shown.sizes)
+                            },
+                            sizeVisible = { size, visible ->
+                                chosen += "$size $visible"
+                                shown =
+                                    ToolbarSettings(
+                                        shown.fixed,
+                                        shown.recentLimit,
+                                        if (visible) {
+                                            shown.sizes + size
+                                        } else {
+                                            shown.sizes -
+                                                size
+                                        },
+                                    )
                             },
                         ),
                     onBack = {},
@@ -84,8 +101,31 @@ class SettingsScreenTest {
     }
 
     @Test
+    fun choosesTheWidthsInTheToolbar() {
+        show(ToolbarSettings(Palette.DEFAULT_FIXED, 3, setOf(PenSize.FINE, PenSize.THICK)))
+        compose
+            .onNodeWithText("Medium")
+            .performScrollTo()
+            .assertIsOff()
+            .performClick()
+        compose
+            .onNodeWithText("Fine")
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        compose.onNodeWithText("Medium").performScrollTo().performClick()
+        // The last one shown can't be hidden.
+        compose
+            .onNodeWithText("Thick")
+            .performScrollTo()
+            .assertIsOn()
+            .assertIsNotEnabled()
+        assertEquals(listOf("MEDIUM true", "FINE false", "MEDIUM false"), chosen)
+    }
+
+    @Test
     fun limitsTheRecentColours() {
-        show(ColorSettings(listOf(Color.of(0, 0, 0)), 1))
+        show(ToolbarSettings(listOf(Color.of(0, 0, 0)), 1))
         // At least one fixed colour.
         compose.onNodeWithContentDescription("Fewer: Fixed colours").performScrollTo().assertIsNotEnabled()
         compose.onNodeWithContentDescription("Fewer: Recent colours to keep").performScrollTo().performClick()
