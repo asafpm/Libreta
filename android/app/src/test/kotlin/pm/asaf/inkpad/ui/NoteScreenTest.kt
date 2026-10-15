@@ -376,6 +376,16 @@ class NoteScreenTest {
         assertEquals(view.layerViews, session.layers.value)
     }
 
+    @Test
+    fun theFingerButtonCanBeLeftOut() {
+        val model = openLecture()
+        compose.onNodeWithText("Draw with finger").performScrollTo().performClick()
+        assertEquals(true, model.tools.fingerDraws.value)
+        compose.runOnIdle { model.tools.setFingerButton(false) }
+        compose.onNodeWithText("Draw with finger").assertDoesNotExist()
+        assertEquals(false, model.tools.fingerDraws.value)
+    }
+
     private companion object {
         const val TIMEOUT = 10_000L
     }

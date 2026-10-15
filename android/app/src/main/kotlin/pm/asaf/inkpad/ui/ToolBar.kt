@@ -81,12 +81,14 @@ fun ToolBar(
                     EraserOptions(controls)
                 }
             }
-            Separator()
-            FilterChip(
-                selected = controls.fingerDraws,
-                onClick = { controls.onFingerDraws(!controls.fingerDraws) },
-                label = { Text(stringResource(R.string.draw_with_finger)) },
-            )
+            if (controls.fingerButton) {
+                Separator()
+                FilterChip(
+                    selected = controls.fingerDraws,
+                    onClick = { controls.onFingerDraws(!controls.fingerDraws) },
+                    label = { Text(stringResource(R.string.draw_with_finger)) },
+                )
+            }
             Spacer(Modifier.width(6.dp))
         }
     }
@@ -201,8 +203,18 @@ private fun WidthOption(
                 .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
                 .semantics { contentDescription = description },
     ) {
-        Box(Modifier.size(DOT_SIZES[size.ordinal].dp).background(color, shape))
+        WidthDot(size, color, shape)
     }
+}
+
+/** A width as the toolbar shows it: a dot (or square) growing with the size. */
+@Composable
+internal fun WidthDot(
+    size: PenSize,
+    color: Color,
+    shape: Shape = CircleShape,
+) {
+    Box(Modifier.size(DOT_SIZES[size.ordinal].dp).background(color, shape))
 }
 
 /** The name of a width. */

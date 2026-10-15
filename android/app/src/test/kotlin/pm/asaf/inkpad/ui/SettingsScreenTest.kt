@@ -46,7 +46,7 @@ class SettingsScreenTest {
                 SettingsScreen(
                     roots = emptyList(),
                     sortOrder = SortOrder.MODIFIED,
-                    fingerDraws = false,
+                    fingerButton = true,
                     stylusButton = StylusButton.ERASER,
                     toolbar = shown,
                     newPages = template,
@@ -56,7 +56,7 @@ class SettingsScreenTest {
                             {},
                             { _, _ -> },
                             {},
-                            {},
+                            { chosen += "finger button $it" },
                             { chosen += it },
                             fixedCount = { chosen += "fixed $it" },
                             fixedColor = { index, color -> chosen += "fixed $index ${color.hex()}" },
@@ -113,19 +113,19 @@ class SettingsScreenTest {
     fun choosesTheWidthsInTheToolbar() {
         show(ToolbarSettings(Palette.DEFAULT_FIXED, 3, setOf(PenSize.FINE, PenSize.THICK)))
         compose
-            .onNodeWithText("Medium")
+            .onNodeWithContentDescription("Medium")
             .performScrollTo()
             .assertIsOff()
             .performClick()
         compose
-            .onNodeWithText("Fine")
+            .onNodeWithContentDescription("Fine")
             .performScrollTo()
             .assertIsOn()
             .performClick()
-        compose.onNodeWithText("Medium").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Medium").performScrollTo().performClick()
         // The last one shown can't be hidden.
         compose
-            .onNodeWithText("Thick")
+            .onNodeWithContentDescription("Thick")
             .performScrollTo()
             .assertIsOn()
             .assertIsNotEnabled()
@@ -148,6 +148,17 @@ class SettingsScreenTest {
             NewPageTemplate(false, PaperSize.LETTER, landscape = true, PageStyle.GRAPH, Color.of(0xff, 0xff, 0x80)),
             chosen.last(),
         )
+    }
+
+    @Test
+    fun choosesWhetherTheToolbarHasTheFingerButton() {
+        show()
+        compose
+            .onNodeWithText("“Draw with finger” in the toolbar")
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        assertEquals(listOf("finger button false"), chosen)
     }
 
     @Test

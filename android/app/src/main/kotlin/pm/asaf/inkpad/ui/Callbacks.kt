@@ -26,7 +26,8 @@ class SettingsActions(
     val remove: (LibraryRoot) -> Unit,
     val move: (LibraryRoot, Int) -> Unit,
     val sortBy: (SortOrder) -> Unit,
-    val fingerDraws: (Boolean) -> Unit,
+    /** Shows or hides the toolbar's "Draw with finger" button. */
+    val fingerButton: (Boolean) -> Unit,
     val stylusButton: (StylusButton) -> Unit,
     /** How many fixed colours the toolbar offers. */
     val fixedCount: (Int) -> Unit,
@@ -54,6 +55,8 @@ class ToolbarSettings(
 class ToolControls(
     val tools: ToolSettings,
     val fingerDraws: Boolean,
+    /** Whether the toolbar has the "Draw with finger" button (Settings). */
+    val fingerButton: Boolean,
     /** The colours always offered (Settings). */
     val fixedColors: List<Color>,
     /** Custom colours picked, most recent first. */

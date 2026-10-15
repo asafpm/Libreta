@@ -18,7 +18,8 @@ import pm.asaf.inkpad.core.model.ToolSettings
 
 /**
  * The tools as last used (the chosen one, and each one's colour and width), the stylus
- * button, the widths the toolbar offers and how fingers act, remembered in [preferences].
+ * button, the widths and finger button the toolbar offers, and how fingers act, remembered in
+ * [preferences].
  */
 class ToolPreferences(
     private val preferences: SharedPreferences,
@@ -35,6 +36,11 @@ class ToolPreferences(
 
     /** Whether fingers write (otherwise they pan and zoom). */
     val fingerDraws: StateFlow<Boolean> = fingerState.asStateFlow()
+
+    private val fingerButtonState = MutableStateFlow(preferences.getBoolean(Keys.FINGER_BUTTON, true))
+
+    /** Whether the toolbar has the "Draw with finger" button. */
+    val fingerButton: StateFlow<Boolean> = fingerButtonState.asStateFlow()
 
     fun selectTool(tool: Tool) = update { it.copy(tool = tool) }
 
@@ -75,6 +81,13 @@ class ToolPreferences(
                 Keys.SIZES,
                 PenSize.entries.filter { it in sizes }.joinToString(",") { it.name },
             ).apply()
+    }
+
+    /** Shows the "Draw with finger" button, or hides it: then fingers no longer draw (it couldn't be undone). */
+    fun setFingerButton(shown: Boolean) {
+        fingerButtonState.value = shown
+        preferences.edit().putBoolean(Keys.FINGER_BUTTON, shown).apply()
+        if (!shown) setFingerDraws(false)
     }
 
     fun setFingerDraws(draws: Boolean) {
@@ -157,5 +170,6 @@ private object Keys {
     const val ERASER_SIZE = "eraser.size"
     const val BUTTON = "stylus.button"
     const val FINGER = "finger.draws"
+    const val FINGER_BUTTON = "toolbar.fingerButton"
     const val SIZES = "sizes.visible"
 }

@@ -78,7 +78,8 @@
     <string name="hide_layer">Hide %1$s</string>
     <string name="write_on_layer">Write on %1$s</string>
     <string name="draw_with_finger">Draw with finger</string>
-    <string name="draw_with_finger_summary">Otherwise fingers scroll and zoom, and only the stylus writes</string>
+    <string name="finger_button">“Draw with finger” in the toolbar</string>
+    <string name="finger_button_summary">A button that lets fingers write; without it, fingers scroll and zoom, and only the stylus writes</string>
     <string name="input">Input</string>
     <string name="tool_pen">Pen</string>
     <string name="tool_highlighter">Highlighter</string>
@@ -100,7 +101,7 @@
     <string name="fewer">Fewer: %1$s</string>
     <string name="more">More: %1$s</string>
     <string name="edit_color">Change colour %1$s</string>
-    <string name="stroke_widths">Widths in the toolbar</string>
+    <string name="stroke_widths">Stroke width</string>
     <string name="new_pages">New pages</string>
     <string name="copy_current_page">Copy the page before</string>
     <string name="copy_current_page_summary">New pages get the size and background of the page they follow, as in Xournal++</string>

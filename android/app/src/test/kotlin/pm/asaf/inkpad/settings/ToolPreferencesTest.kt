@@ -40,4 +40,16 @@ class ToolPreferencesTest {
         tools.setSizeVisible(PenSize.FINE, true)
         assertEquals(setOf(PenSize.FINE, PenSize.THICK), ToolPreferences(preferences).visibleSizes.value)
     }
+
+    @Test
+    fun hidingTheFingerButtonStopsFingerDrawing() {
+        val tools = ToolPreferences(preferences)
+        assertEquals(true, tools.fingerButton.value)
+        tools.setFingerDraws(true)
+        tools.setFingerButton(false)
+        assertEquals(false, tools.fingerDraws.value)
+        val again = ToolPreferences(preferences)
+        assertEquals(false, again.fingerButton.value)
+        assertEquals(false, again.fingerDraws.value)
+    }
 }

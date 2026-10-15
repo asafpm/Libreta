@@ -2,10 +2,15 @@
 
 package pm.asaf.inkpad.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
@@ -34,6 +39,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.NewPageTemplate
@@ -51,7 +58,7 @@ import pm.asaf.inkpad.library.SortOrder
 fun SettingsScreen(
     roots: List<LibraryRoot>,
     sortOrder: SortOrder,
-    fingerDraws: Boolean,
+    fingerButton: Boolean,
     stylusButton: StylusButton,
     toolbar: ToolbarSettings,
     newPages: NewPageTemplate,
@@ -89,14 +96,14 @@ fun SettingsScreen(
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.input))
             ListItem(
-                headlineContent = { Text(stringResource(R.string.draw_with_finger)) },
-                supportingContent = { Text(stringResource(R.string.draw_with_finger_summary)) },
-                trailingContent = { Switch(checked = fingerDraws, onCheckedChange = null) },
+                headlineContent = { Text(stringResource(R.string.finger_button)) },
+                supportingContent = { Text(stringResource(R.string.finger_button_summary)) },
+                trailingContent = { Switch(checked = fingerButton, onCheckedChange = null) },
                 modifier =
                     Modifier.toggleable(
-                        value = fingerDraws,
+                        value = fingerButton,
                         role = Role.Switch,
-                        onValueChange = actions.fingerDraws,
+                        onValueChange = actions.fingerButton,
                     ),
             )
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
@@ -137,21 +144,29 @@ private fun WidthChoices(
     sizes: Set<PenSize>,
     onChange: (PenSize, Boolean) -> Unit,
 ) {
-    for (size in PenSize.entries) {
-        val shown = size in sizes
-        // At least one width stays.
-        val enabled = !shown || sizes.size > 1
-        ListItem(
-            headlineContent = { Text(stringResource(size.label)) },
-            leadingContent = { Checkbox(checked = shown, onCheckedChange = null, enabled = enabled) },
-            modifier =
-                Modifier.toggleable(
-                    value = shown,
-                    enabled = enabled,
-                    role = Role.Checkbox,
-                    onValueChange = { onChange(size, it) },
-                ),
-        )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        for (size in PenSize.entries) {
+            val shown = size in sizes
+            // At least one width stays.
+            val enabled = !shown || sizes.size > 1
+            val label = stringResource(size.label)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier =
+                    Modifier
+                        .toggleable(value = shown, enabled = enabled, role = Role.Checkbox) { onChange(size, it) }
+                        .semantics { contentDescription = label },
+            ) {
+                Checkbox(checked = shown, onCheckedChange = null, enabled = enabled)
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.size(DOT_BOX.dp), contentAlignment = Alignment.Center) {
+                    WidthDot(size, MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        }
     }
 }
 
@@ -219,3 +234,6 @@ private val STYLUS_BUTTONS =
         StylusButton.HIGHLIGHTER to R.string.button_highlights,
         StylusButton.NONE to R.string.button_nothing,
     )
+
+/** Room for the largest width dot. */
+private const val DOT_BOX = 24

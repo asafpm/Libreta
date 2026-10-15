@@ -118,7 +118,7 @@ private fun Settings(
 ) {
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
-    val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
+    val fingerButton by model.tools.fingerButton.collectAsStateWithLifecycle()
     val tools by model.tools.tools.collectAsStateWithLifecycle()
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
     val recentLimit by model.colors.recentLimit.collectAsStateWithLifecycle()
@@ -128,7 +128,7 @@ private fun Settings(
     SettingsScreen(
         roots = roots,
         sortOrder = sortOrder,
-        fingerDraws = fingerDraws,
+        fingerButton = fingerButton,
         stylusButton = tools.button,
         toolbar = ToolbarSettings(fixedColors, recentLimit, visibleSizes),
         newPages = newPages,
@@ -138,7 +138,7 @@ private fun Settings(
                 library::removeRoot,
                 library::moveRoot,
                 library::setSortOrder,
-                model.tools::setFingerDraws,
+                model.tools::setFingerButton,
                 model.tools::setButton,
                 model.colors::setFixedCount,
                 model.colors::setFixedColor,
@@ -161,6 +161,7 @@ private fun Note(
     val recentColors by model.colors.recentColors.collectAsStateWithLifecycle()
     val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
+    val fingerButton by model.tools.fingerButton.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -171,7 +172,17 @@ private fun Note(
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
-        tools = toolControls(model.tools, model.colors, tools, fixedColors, recentColors, visibleSizes, fingerDraws),
+        tools =
+            toolControls(
+                model.tools,
+                model.colors,
+                tools,
+                fixedColors,
+                recentColors,
+                visibleSizes,
+                fingerDraws,
+                fingerButton,
+            ),
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
@@ -187,10 +198,12 @@ private fun toolControls(
     recentColors: List<Color>,
     visibleSizes: Set<PenSize>,
     fingerDraws: Boolean,
+    fingerButton: Boolean,
 ) = ToolControls(
     tools = tools,
     fixedColors = fixedColors,
     fingerDraws = fingerDraws,
+    fingerButton = fingerButton,
     recentColors = recentColors,
     visibleSizes = visibleSizes,
     onTool = preferences::selectTool,
