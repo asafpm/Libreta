@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 plugins {
-    alias(libs.plugins.inkpad.android.application)
-    alias(libs.plugins.inkpad.android.compose)
+    alias(libs.plugins.libreta.android.application)
+    alias(libs.plugins.libreta.android.compose)
 }
 
 dependencies {
@@ -37,14 +37,14 @@ android {
     buildTypes {
         // Release settings with the debug key, to measure speed on a device as users get it
         // (debuggable builds run much slower):
-        //   ./gradlew :android:app:connectedBenchmarkAndroidTest -Pinkpad.testBuildType=benchmark
+        //   ./gradlew :android:app:connectedBenchmarkAndroidTest -Plibreta.testBuildType=benchmark
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }
     }
-    testBuildType = providers.gradleProperty("inkpad.testBuildType").getOrElse("debug")
+    testBuildType = providers.gradleProperty("libreta.testBuildType").getOrElse("debug")
 }
 
 dependencies {
@@ -67,7 +67,7 @@ androidComponents {
 tasks.withType<Test>().configureEach {
     // Robolectric native graphics needs more than the default 512 MB on SDK 35+.
     maxHeapSize = "3g"
-    systemProperty("inkpad.testdata", testData.asFile.absolutePath)
+    systemProperty("libreta.testdata", testData.asFile.absolutePath)
     inputs
         .dir(testData)
         .withPathSensitivity(PathSensitivity.RELATIVE)

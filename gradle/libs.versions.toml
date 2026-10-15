@@ -79,7 +79,7 @@ ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 
 # Convention plugins (build-logic)
-inkpad-kmp-library = { id = "inkpad.kmp.library" }
-inkpad-android-library = { id = "inkpad.android.library" }
-inkpad-android-application = { id = "inkpad.android.application" }
-inkpad-android-compose = { id = "inkpad.android.compose" }
+libreta-kmp-library = { id = "libreta.kmp.library" }
+libreta-android-library = { id = "libreta.android.library" }
+libreta-android-application = { id = "libreta.android.application" }
+libreta-android-compose = { id = "libreta.android.compose" }

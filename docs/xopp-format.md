@@ -6,8 +6,8 @@ to its source in the form `File.cpp:line`. Paths are relative to
 `src/core/control/xojfile/` unless they say otherwise. It also uses the sample
 files in `testdata/` and Xournal++'s own test files (`testdata/xournalpp/`).
 
-Paragraphs marked **Inkpad** record where Inkpad deliberately differs from
-Xournal++. These decisions follow from Inkpad's rule that anything it doesn't
+Paragraphs marked **Libreta** record where Libreta deliberately differs from
+Xournal++. These decisions follow from Libreta's rule that anything it doesn't
 understand must survive a load/save cycle unchanged. Xournal++ itself drops
 unknown content and normalises some values when it saves.
 
@@ -37,7 +37,7 @@ through zlib, which accepts both gzip and plain XML. Saving always writes gzip
   `<audio fn=…/>` files.
 - `thumbnails/thumbnail.png`: preview image; Xournal++ ignores it when loading.
 
-**Inkpad:** reads all three containers and writes gzip only, as Xournal++ does.
+**Libreta:** reads all three containers and writes gzip only, as Xournal++ does.
 When a zip is read, its attachments are returned alongside the document, keyed
 by path. Image attachments become the image's data.
 It compresses at zlib level 2 rather than the default 6, which Xournal++
@@ -65,7 +65,7 @@ larger (25.6 MB instead of 23.0 MB). Any level reads the same.
   strings `{.\n}`, `{.\r}` and `{.\r\n}`, and they must survive a round trip
   (`LoadHandlerTest.cpp:446-482`).
 
-**Inkpad:**
+**Libreta:**
 - Uses the same layout and the same escaping, and also escapes `\t` in
   attributes as `&#9;`. A literal tab inside an attribute would be read back as
   a space, because XML parsers normalise attribute whitespace.
@@ -87,14 +87,14 @@ larger (25.6 MB instead of 23.0 MB). Any level reads the same.
   `packaged_xopp/stroke/width_recovery.xopp` contains `nan` and `-nan` in
   pressure lists.
 
-**Inkpad:** writes the **shortest decimal that parses back to exactly the same
+**Libreta:** writes the **shortest decimal that parses back to exactly the same
 double**, never using an exponent, written as `-0` for negative zero, and as
 `nan`/`-nan`/`inf`/`-inf` for non-finite values.
 - This gives exactly the same text as `%.8g` for every value with at most 8
   significant digits. That covers everything Xournal++ 1.2 and later writes.
 - It keeps higher-precision values from older files, such as `461.01539741`,
   where `%.8g` would round them.
-- Coordinates created by Inkpad itself are rounded to 8 significant digits
+- Coordinates created by Libreta itself are rounded to 8 significant digits
   when strokes are built or cut by the eraser, so that files stay as compact
   as Xournal++'s.
 
@@ -133,7 +133,7 @@ double**, never using an exponent, written as `-0` for negative zero, and as
   strokes and texts refer to through their `fn` attribute.
 - **Any other child:** warned about and ignored.
 
-**Inkpad:** keeps `title` and `preview` (as bytes). Unknown root-level
+**Libreta:** keeps `title` and `preview` (as bytes). Unknown root-level
 children are kept verbatim and written after the pages. `<audio>` is the one
 exception: it is never kept in the document.
 - In a zip package, the audio data is returned with the other attachments.
@@ -183,11 +183,11 @@ in `pdfBackground/*.xopp` and `relativePaths.xopp`). Relative paths such as
 
 Any other `type` fails the load (`LoadHandler.cpp:527-529`).
 
-**Inkpad:** models `solid`, `pdf` and `pixmap` with every field shown above as
+**Libreta:** models `solid`, `pdf` and `pixmap` with every field shown above as
 optional. The style is kept as a string, so values like `:copy` survive. An
 unknown `type` is kept verbatim.
 
-When pages are inserted, deleted or moved, Inkpad keeps these references valid:
+When pages are inserted, deleted or moved, Libreta keeps these references valid:
 - **The PDF file:** `domain` and `filename` move to whichever PDF page comes first.
 - **Cloned images:** a `clone` background points at its source page's new index.
   If the source no longer comes before it, or is gone, the page takes the
@@ -233,7 +233,7 @@ whitespace (a trailing space occurs).
   points and split the stroke (`fixNullPressureValues`, `LoadHandler.cpp:932-998`;
   test `width_recovery.xopp`).
 
-**Inkpad:** keeps every attribute, including the alpha byte, `ts`/`fn` exactly
+**Libreta:** keeps every attribute, including the alpha byte, `ts`/`fn` exactly
 as present, and the width list exactly as written: NaN, negative values and
 the original count all survive.
 - Repairing invalid pressure values the way Xournal++ does is left to
@@ -259,7 +259,7 @@ the original count all survive.
   30-byte chunks (`control/xml/XmlImageNode.cpp:27-56`). The result is ordinary
   base64.
 
-**Inkpad:** keeps the original encoded bytes (PNG or JPEG) and writes them back
+**Libreta:** keeps the original encoded bytes (PNG or JPEG) and writes them back
 unchanged as standard base64. Converting JPEG to PNG for compatibility with
 very old readers is not done.
 
@@ -272,7 +272,7 @@ very old readers is not done.
 
 ### `<timestamp ts fn>` (old Xournal audio)
 Inside a layer, it applies to the next stroke (`LoadHandler.cpp:762-771, 648-652`).
-**Inkpad:** kept verbatim, in its position.
+**Libreta:** kept verbatim, in its position.
 
 ## 6. Colours — `LoadHandlerHelper.cpp:31-98`
 
@@ -301,12 +301,12 @@ Background colour names are **different** (`parseBackgroundColor`):
 | yellow | `ffff80` |
 | white, or anything else | parsed as above, defaulting to `ffffff` |
 
-**Inkpad:** colour names are converted to `#rrggbbff` when read, so files are
+**Libreta:** colour names are converted to `#rrggbbff` when read, so files are
 saved with hex colours, as Xournal++ does.
 
-## 7. Behaviour Inkpad does not copy
+## 7. Behaviour Libreta does not copy
 
-These are things Xournal++ normalises or drops when it saves. Inkpad keeps
+These are things Xournal++ normalises or drops when it saves. Libreta keeps
 them:
 - unknown elements and attributes
 - the alpha byte in colours

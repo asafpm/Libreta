@@ -9,9 +9,9 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import pm.asaf.inkpad.buildlogic.CommonPurityCheck
-import pm.asaf.inkpad.buildlogic.InkpadBuild
-import pm.asaf.inkpad.buildlogic.inkpadNamespace
+import pm.asaf.libreta.buildlogic.CommonPurityCheck
+import pm.asaf.libreta.buildlogic.LibretaBuild
+import pm.asaf.libreta.buildlogic.libretaNamespace
 
 /**
  * Shared (KMP) module: Android + JVM targets. The JVM target exists only for fast
@@ -26,13 +26,13 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
 
             extensions.configure<KotlinMultiplatformExtension> {
                 jvm {
-                    compilerOptions { jvmTarget.set(InkpadBuild.jvmTarget) }
+                    compilerOptions { jvmTarget.set(LibretaBuild.jvmTarget) }
                 }
                 targets.withType<KotlinMultiplatformAndroidLibraryTarget>().configureEach {
-                    namespace = inkpadNamespace()
-                    compileSdk = InkpadBuild.COMPILE_SDK
-                    minSdk = InkpadBuild.MIN_SDK
-                    compilerOptions { jvmTarget.set(InkpadBuild.jvmTarget) }
+                    namespace = libretaNamespace()
+                    compileSdk = LibretaBuild.COMPILE_SDK
+                    minSdk = LibretaBuild.MIN_SDK
+                    compilerOptions { jvmTarget.set(LibretaBuild.jvmTarget) }
                     withHostTest { }
                 }
                 sourceSets.getByName("commonTest").dependencies {
@@ -44,8 +44,8 @@ class KmpLibraryConventionPlugin : Plugin<Project> {
             // would default to the daemon's JDK.
             plugins.withType<JavaBasePlugin> {
                 extensions.configure<JavaPluginExtension> {
-                    sourceCompatibility = InkpadBuild.javaVersion
-                    targetCompatibility = InkpadBuild.javaVersion
+                    sourceCompatibility = LibretaBuild.javaVersion
+                    targetCompatibility = LibretaBuild.javaVersion
                 }
             }
 

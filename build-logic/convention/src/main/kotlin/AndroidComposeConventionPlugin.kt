@@ -6,8 +6,8 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
-import pm.asaf.inkpad.buildlogic.lib
-import pm.asaf.inkpad.buildlogic.libs
+import pm.asaf.libreta.buildlogic.lib
+import pm.asaf.libreta.buildlogic.libs
 
 /** Enables Compose on an Android module; apply after the application or library convention. */
 class AndroidComposeConventionPlugin : Plugin<Project> {

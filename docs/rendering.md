@@ -2,8 +2,8 @@
 
 This document specifies how `:core:geometry` and `:android:render` draw a page. The
 reference is Xournal++ **v1.3.8** (commit `938bdb8`). References in the form
-`File.cpp:line` are relative to its `src/core/`. Paragraphs marked **Inkpad**
-record where Inkpad deliberately differs.
+`File.cpp:line` are relative to its `src/core/`. Paragraphs marked **Libreta**
+record where Libreta deliberately differs.
 
 All coordinates are page units: PDF points, 1/72 inch. A renderer draws a page at a
 zoom factor `z`, in pixels per point.
@@ -21,7 +21,7 @@ Layer visibility is not stored in files, so every layer is drawn.
 Elements whose bounding box (section 3.6) does not overlap the area being drawn
 are skipped (`Element.cpp:95-105`).
 
-**Inkpad:** dark-mode recolouring and the "fade strokes without audio" mode are
+**Libreta:** dark-mode recolouring and the "fade strokes without audio" mode are
 not implemented (Phase 10).
 
 ## 2. Backgrounds — `view/background/*.cpp`
@@ -135,14 +135,14 @@ For a full page, the clip range is the whole page.
   underneath, and no EXIF rotation is applied.
 - How the image file is found is the caller's job (Phase 5/8).
 
-**Inkpad:** if the image is missing, the page is white.
+**Libreta:** if the image is missing, the page is white.
 
 ### 2.3 PDF backgrounds — `PdfBackgroundView.cpp`, `control/PdfCache.cpp:113-150`
 - The PDF page (1-based `pageno`) is rendered over white, at the PDF page's own
   size, from the page origin. It is **not** scaled to the page's width and height,
   which are normally equal anyway.
 
-**Inkpad:**
+**Libreta:**
 - PDF pages are rendered by Android's `PdfRenderer` (pdfium), at no less than one
   pixel per point, like Xournal++.
   - Rendering can differ in small details from Xournal++'s poppler. In
@@ -229,7 +229,7 @@ and they start with a line from the current point.
 - **Units:** lengths are page units and are **not** scaled by the stroke width.
 - **Odd-length lists** repeat with on and off swapped, as in cairo.
 
-**Inkpad:** odd-length lists are doubled for Android's `DashPathEffect`, which
+**Libreta:** odd-length lists are doubled for Android's `DashPathEffect`, which
 requires an even count.
 
 ### 3.4 Text — `model/Text.cpp:90-111`, `view/TextView.cpp`
@@ -252,7 +252,7 @@ The font a name resolves to depends on each machine's fontconfig. On a system
 without DejaVu, Xournal++ draws `Sans` with e.g. Noto Sans, which has different
 metrics.
 
-**Inkpad:** draws each line separately at those baselines, with bundled fonts:
+**Libreta:** draws each line separately at those baselines, with bundled fonts:
 - **DejaVu** Sans, Serif and Sans Mono. These are what Xournal++ uses on typical
   Linux systems for `Sans`, `Serif` and `Monospace`, and for unknown families.
 - **Liberation** Sans, Serif and Mono, which have the same metrics as Arial/Helvetica,
@@ -293,7 +293,7 @@ against Xournal++ 1.3.8:
   filtering and normal blending.
   - EXIF orientation is applied.
   - Images larger than 2²⁵ pixels are shrunk when decoded.
-  - **Inkpad:** uses bilinear filtering limited to the box. Cairo's filter also
+  - **Libreta:** uses bilinear filtering limited to the box. Cairo's filter also
     blurs the image's edges into the surroundings, which is visible when a tiny
     image is scaled up a lot.
 - **LaTeX (`teximage`):** the data is detected by its bytes 1–3 (`PDF` or `PNG`).
@@ -305,15 +305,15 @@ against Xournal++ 1.3.8:
 - **Stroke:** the min/max of the point coordinates, padded on every side by half
   the maximum width. That is `max(zᵢ)` when the stroke is drawn with pressure,
   otherwise `width`.
-  - **Inkpad:** Xournal++ starts its maxima at the smallest positive double,
+  - **Libreta:** Xournal++ starts its maxima at the smallest positive double,
     which gives wrong boxes for strokes lying entirely at negative coordinates.
-    Inkpad starts at −∞.
+    Libreta starts at −∞.
   - Square caps can extend slightly outside this box.
 - **Image, LaTeX:** their box.
 - **Text:** `(x, y)` plus the layout size, which the platform measures.
 
-## 4. Strokes being written and erased (Inkpad)
-Xournal++ draws the stroke in progress with the page (`StrokeToolView`). Inkpad
+## 4. Strokes being written and erased (Libreta)
+Xournal++ draws the stroke in progress with the page (`StrokeToolView`). Libreta
 draws it where it shows soonest, then hands over to the page without a visible
 change:
 

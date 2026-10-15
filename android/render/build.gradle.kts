@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 plugins {
-    alias(libs.plugins.inkpad.android.library)
+    alias(libs.plugins.libreta.android.library)
 }
 
 dependencies {
@@ -38,23 +38,23 @@ androidComponents {
 }
 
 // Screenshot tests compare against PNGs in src/test/screenshots. Record new references with
-//   ./gradlew :android:render:testDebugUnitTest -Pinkpad.recordScreenshots=true
+//   ./gradlew :android:render:testDebugUnitTest -Plibreta.recordScreenshots=true
 val screenshots: Directory = layout.projectDirectory.dir("src/test/screenshots")
 val screenshotDiffs: Provider<Directory> = layout.buildDirectory.dir("screenshot-diffs")
-val recordScreenshots: Boolean = providers.gradleProperty("inkpad.recordScreenshots").orNull.toBoolean()
+val recordScreenshots: Boolean = providers.gradleProperty("libreta.recordScreenshots").orNull.toBoolean()
 val testData: Directory = layout.settingsDirectory.dir("testdata")
 
 // Set by scripts/render-crosscheck.sh: where RenderExportTest writes rendered sample pages.
-val renderExportDir: String? = providers.gradleProperty("inkpad.renderExportDir").orNull
+val renderExportDir: String? = providers.gradleProperty("libreta.renderExportDir").orNull
 
 tasks.withType<Test>().configureEach {
     // Robolectric native graphics needs more than the default 512 MB on SDK 35+.
     maxHeapSize = "3g"
-    systemProperty("inkpad.screenshots", screenshots.asFile.absolutePath)
-    systemProperty("inkpad.screenshotDiffs", screenshotDiffs.get().asFile.absolutePath)
-    systemProperty("inkpad.recordScreenshots", recordScreenshots.toString())
-    systemProperty("inkpad.testdata", testData.asFile.absolutePath)
-    renderExportDir?.let { systemProperty("inkpad.renderExportDir", it) }
+    systemProperty("libreta.screenshots", screenshots.asFile.absolutePath)
+    systemProperty("libreta.screenshotDiffs", screenshotDiffs.get().asFile.absolutePath)
+    systemProperty("libreta.recordScreenshots", recordScreenshots.toString())
+    systemProperty("libreta.testdata", testData.asFile.absolutePath)
+    renderExportDir?.let { systemProperty("libreta.renderExportDir", it) }
     inputs.property("recordScreenshots", recordScreenshots)
     inputs
         .files(screenshots.asFileTree)

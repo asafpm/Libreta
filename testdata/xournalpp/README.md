@@ -13,6 +13,6 @@ Left out: `big-test.xoj` and `packaged_xopp/big-test.xopp` (6 MB each, covered
 by `testdata/physics.xopp`), `load/test.xoi` (empty), and the palette,
 metadata and image fixtures, which are not Xournal++ document files.
 
-The expectations Inkpad's tests check for these files come from Xournal++'s
+The expectations Libreta's tests check for these files come from Xournal++'s
 `test/unit_tests/control/LoadHandlerTest.cpp`. `docs/xopp-format.md`
 describes what each file exercises.

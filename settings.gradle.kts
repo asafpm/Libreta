@@ -23,7 +23,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "inkpad"
+rootProject.name = "libreta"
 
 include(":core:model")
 include(":core:format")

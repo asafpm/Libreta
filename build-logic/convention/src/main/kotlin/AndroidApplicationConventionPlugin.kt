@@ -6,9 +6,9 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.kotlin
-import pm.asaf.inkpad.buildlogic.InkpadBuild
-import pm.asaf.inkpad.buildlogic.lib
-import pm.asaf.inkpad.buildlogic.libs
+import pm.asaf.libreta.buildlogic.LibretaBuild
+import pm.asaf.libreta.buildlogic.lib
+import pm.asaf.libreta.buildlogic.libs
 
 /** The Android app module (AGP built-in Kotlin) with Robolectric unit tests. */
 class AndroidApplicationConventionPlugin : Plugin<Project> {
@@ -18,22 +18,22 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             pluginManager.apply(LintConventionPlugin::class.java)
 
             extensions.configure<ApplicationExtension> {
-                namespace = InkpadBuild.NAMESPACE_ROOT
-                compileSdk = InkpadBuild.COMPILE_SDK
+                namespace = LibretaBuild.NAMESPACE_ROOT
+                compileSdk = LibretaBuild.COMPILE_SDK
                 defaultConfig {
-                    applicationId = InkpadBuild.NAMESPACE_ROOT
-                    minSdk = InkpadBuild.MIN_SDK
-                    targetSdk = InkpadBuild.TARGET_SDK
+                    applicationId = LibretaBuild.NAMESPACE_ROOT
+                    minSdk = LibretaBuild.MIN_SDK
+                    targetSdk = LibretaBuild.TARGET_SDK
                     versionCode = 1
                     versionName = "0.1.0"
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 }
                 compileOptions {
-                    sourceCompatibility = InkpadBuild.javaVersion
-                    targetCompatibility = InkpadBuild.javaVersion
+                    sourceCompatibility = LibretaBuild.javaVersion
+                    targetCompatibility = LibretaBuild.javaVersion
                 }
                 testOptions.unitTests.isIncludeAndroidResources = true
-                testOptions.unitTests.all { it.jvmArgs(InkpadBuild.robolectricJvmArgs) }
+                testOptions.unitTests.all { it.jvmArgs(LibretaBuild.robolectricJvmArgs) }
             }
 
             dependencies {

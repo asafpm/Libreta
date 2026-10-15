@@ -4,7 +4,7 @@ plugins {
     `kotlin-dsl`
 }
 
-group = "pm.asaf.inkpad.buildlogic"
+group = "pm.asaf.libreta.buildlogic"
 
 dependencies {
     compileOnly(libs.android.gradlePlugin)
@@ -17,19 +17,19 @@ dependencies {
 gradlePlugin {
     plugins {
         register("kmpLibrary") {
-            id = libs.plugins.inkpad.kmp.library.get().pluginId
+            id = libs.plugins.libreta.kmp.library.get().pluginId
             implementationClass = "KmpLibraryConventionPlugin"
         }
         register("androidLibrary") {
-            id = libs.plugins.inkpad.android.library.get().pluginId
+            id = libs.plugins.libreta.android.library.get().pluginId
             implementationClass = "AndroidLibraryConventionPlugin"
         }
         register("androidApplication") {
-            id = libs.plugins.inkpad.android.application.get().pluginId
+            id = libs.plugins.libreta.android.application.get().pluginId
             implementationClass = "AndroidApplicationConventionPlugin"
         }
         register("androidCompose") {
-            id = libs.plugins.inkpad.android.compose.get().pluginId
+            id = libs.plugins.libreta.android.compose.get().pluginId
             implementationClass = "AndroidComposeConventionPlugin"
         }
     }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Inkpad</string>
+    <string name="app_name">Libreta</string>
 
     <!-- Library -->
     <string name="add_folder">Add a folder</string>

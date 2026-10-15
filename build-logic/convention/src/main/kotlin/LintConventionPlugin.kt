@@ -5,7 +5,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.jlleitschuh.gradle.ktlint.KtlintExtension
-import pm.asaf.inkpad.buildlogic.libs
+import pm.asaf.libreta.buildlogic.libs
 
 /** ktlint + detekt for every module; applied by the other convention plugins. */
 class LintConventionPlugin : Plugin<Project> {

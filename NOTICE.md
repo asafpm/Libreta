@@ -1,18 +1,18 @@
 # Notices
 
-Inkpad is free software: you can redistribute it and/or modify it under the
+Libreta is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation, either version 2 of the License, or (at your option) any later
 version (`GPL-2.0-or-later`). See [LICENSE](LICENSE) for the GPL version 2 text.
 
-Inkpad is distributed in the hope that it will be useful, but WITHOUT ANY
+Libreta is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 ## Xournal++
 
-Inkpad reads and writes the Xournal++ file format. Xournal++ v1.3.8 is the
-reference implementation for that format, and parts of Inkpad are derived from
+Libreta reads and writes the Xournal++ file format. Xournal++ v1.3.8 is the
+reference implementation for that format, and parts of Libreta are derived from
 it.
 
 - Project: https://github.com/xournalpp/xournalpp
@@ -126,7 +126,7 @@ The release archive `liberation-fonts-ttf-2.1.5.tar.gz` had SHA-256
 
 ## Third-party libraries
 
-Inkpad depends on libraries under the Apache License 2.0, among them the Kotlin
+Libreta depends on libraries under the Apache License 2.0, among them the Kotlin
 standard library, AndroidX/Jetpack Compose, Okio and xmlutil. The Apache
 License 2.0 is compatible with version 3 of the GPL, which this project's
 "or later" clause allows the combined work to be distributed under.

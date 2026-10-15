@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 plugins {
-    alias(libs.plugins.inkpad.kmp.library)
+    alias(libs.plugins.libreta.kmp.library)
 }
 
 kotlin {
@@ -19,11 +19,11 @@ kotlin {
 val testData: Directory = layout.settingsDirectory.dir("testdata")
 
 // Set by scripts/xournalpp-crosscheck.sh: where RoundTripExportTest writes rewritten samples.
-val roundTripDir: String? = providers.gradleProperty("inkpad.roundtripDir").orNull
+val roundTripDir: String? = providers.gradleProperty("libreta.roundtripDir").orNull
 
 tasks.withType<Test>().configureEach {
-    systemProperty("inkpad.testdata", testData.asFile.absolutePath)
-    roundTripDir?.let { systemProperty("inkpad.roundtripDir", it) }
+    systemProperty("libreta.testdata", testData.asFile.absolutePath)
+    roundTripDir?.let { systemProperty("libreta.roundtripDir", it) }
     inputs
         .dir(testData)
         .withPathSensitivity(PathSensitivity.RELATIVE)

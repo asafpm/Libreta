@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Manual check (not part of CI): Xournal++ must render every sample document rewritten
-# by Inkpad exactly like the original. Needs xournalpp, pdftoppm (poppler) and compare
+# by Libreta exactly like the original. Needs xournalpp, pdftoppm (poppler) and compare
 # (ImageMagick), and a graphical session for xournalpp.
 set -euo pipefail
 
@@ -11,8 +11,8 @@ for tool in xournalpp pdftoppm compare; do
 done
 echo "Using $(xournalpp --version 2>/dev/null | head -1)"
 
-./gradlew -q :core:format:jvmTest --tests 'pm.asaf.inkpad.core.format.RoundTripExportTest' --rerun \
-    -Pinkpad.roundtripDir="$out"
+./gradlew -q :core:format:jvmTest --tests 'pm.asaf.libreta.core.format.RoundTripExportTest' --rerun \
+    -Plibreta.roundtripDir="$out"
 
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Manual review (not part of CI): renders every page of the sample documents with
-# Inkpad (Robolectric, JVM) and with Xournal++, and writes side-by-side and diff images
+# Libreta (Robolectric, JVM) and with Xournal++, and writes side-by-side and diff images
 # plus a similarity table to core/../android/render/build/render-crosscheck/.
-# Xournal++ is pointed at Inkpad's bundled DejaVu fonts so text can be compared.
+# Xournal++ is pointed at Libreta's bundled DejaVu fonts so text can be compared.
 # Needs xournalpp, fc-match, python3 with Pillow, and a graphical session for xournalpp.
 set -euo pipefail
 
@@ -17,8 +17,8 @@ python3 -c 'import PIL' 2>/dev/null || { echo "missing python module: Pillow" >&
 rm -rf "$out"
 mkdir -p "$out/xournalpp" "$out/review" "$out/fontcache"
 
-./gradlew -q :android:render:testDebugUnitTest --tests 'pm.asaf.inkpad.android.render.RenderExportTest' --rerun \
-    -Pinkpad.renderExportDir="$out/inkpad"
+./gradlew -q :android:render:testDebugUnitTest --tests 'pm.asaf.libreta.android.render.RenderExportTest' --rerun \
+    -Plibreta.renderExportDir="$out/libreta"
 
 # Xournal++ resolves font names through fontconfig: make Sans/Serif/Monospace mean DejaVu.
 cat >"$out/fonts.conf" <<CONF
@@ -52,18 +52,18 @@ while IFS=$'\t' read -r doc pages pdf_pages; do
         >"$out/xournalpp/$doc/export.log" 2>&1 || echo "Xournal++ could not export $doc" >&2
     # Single-page documents are exported without a page number.
     if [ -f "$out/xournalpp/$doc/page.png" ]; then mv "$out/xournalpp/$doc/page.png" "$out/xournalpp/$doc/page-1.png"; fi
-done <"$out/inkpad/manifest.tsv"
+done <"$out/libreta/manifest.tsv"
 
 python3 -I - "$out" <<'PY'
 import sys, os
 from PIL import Image, ImageChops
 out = sys.argv[1]
 rows = []
-for line in open(f"{out}/inkpad/manifest.tsv", encoding="utf-8"):
+for line in open(f"{out}/libreta/manifest.tsv", encoding="utf-8"):
     doc, pages, pdf = line.rstrip("\n").split("\t")
     pdf_pages = {int(p) for p in pdf.split(",") if p}
     for n in range(1, int(pages) + 1):
-        ours, theirs = f"{out}/inkpad/{doc}/page-{n}.png", f"{out}/xournalpp/{doc}/page-{n}.png"
+        ours, theirs = f"{out}/libreta/{doc}/page-{n}.png", f"{out}/xournalpp/{doc}/page-{n}.png"
         name = f"{doc} p{n}"
         if n in pdf_pages:
             rows.append((name, None, None, "PDF background: review on a device")); continue
@@ -86,5 +86,5 @@ print(f"{'page':60s} {'mean':>7s} {'>32':>7s}")
 for name, mean, far, note in rows:
     if mean is None: print(f"{name:60s} {'-':>7s} {'-':>7s}  {note}")
     else: print(f"{name:60s} {mean:7.2f} {far:6.2f}%")
-print(f"\nSide-by-side images (Xournal++ | Inkpad | difference): {out}/review/")
+print(f"\nSide-by-side images (Xournal++ | Libreta | difference): {out}/review/")
 PY

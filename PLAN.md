@@ -1,4 +1,4 @@
-# PLAN.md — Android-native Xournal++ ("Inkpad" working name)
+# PLAN.md — Libreta, an Android-native Xournal++
 
 ## Goal
 A native Android handwriting/PDF-annotation app that reads and writes
@@ -100,7 +100,7 @@ highlighter blending + text + images) to a Bitmap.
 ✅ Geometry unit tests; screenshot tests against reference PNGs.
 Done: rules in `docs/rendering.md` (ported from Xournal++'s view code); screenshot
 references in `android/render/src/test/screenshots`, recorded with
-`-Pinkpad.recordScreenshots=true`; PDF rendering (PdfRenderer) tested on the device;
+`-Plibreta.recordScreenshots=true`; PDF rendering (PdfRenderer) tested on the device;
 `scripts/render-crosscheck.sh` compares every sample page with Xournal++.
 
 ### Phase 3 — Library and viewer
@@ -115,7 +115,7 @@ from file managers works, offering to add the note's folder when needed.
 ✅ Opens a 100-page file smoothly; memory bounded (LRU cache).
 Done: `LargeDocumentTest` (androidTest) opens 104 dense pages (23 MB) in 2.6 s
 and scrolls them with p95 frame time 10.5 ms on the Tab S9; measure speed with
-the `benchmark` build type (`-Pinkpad.testBuildType=benchmark`), since
+the `benchmark` build type (`-Plibreta.testBuildType=benchmark`), since
 debuggable builds are several times slower. Library and file code is in
 `android/app` (`library/`, `files/`, `viewer/`, `ui/`); Phase 5 moves its SAF
 calls behind `DocumentStore`. Samsung My Files can't open .xopp files with any
@@ -166,7 +166,7 @@ Autosave 5 s after the last change, at least every minute, and on leaving; a pri
 of each note before its first overwrite in a session (20 per note, 500 MB; restoring later).
 Saving 104 pages: 8.4 s → 2.1 s (allocation-free number writing, new coordinates kept to
 8 digits like Xournal++, zlib level 2 compressing in parallel; files 11% larger).
-`testdata/inkpad-edits.xopp` renders the same in Xournal++ (render cross-check).
+`testdata/libreta-edits.xopp` renders the same in Xournal++ (render cross-check).
 
 ### Phase 6 — Pages & layers
 Add/delete/reorder pages, background chooser, layer panel
@@ -180,7 +180,7 @@ inserts, duplicates, deletes and moves pages and changes backgrounds (Xournal++'
 the original Xournal's paper colours or any colour, one page or all); a layer sheet chooses
 the layer ink and the eraser use, hides layers (session-only, as in Xournal++), and renames,
 adds, deletes, moves and merges them. New pages copy the page before, or follow a template
-from Settings that new notes use too. `testdata/inkpad-pages.xopp` renders the same in
+from Settings that new notes use too. `testdata/libreta-pages.xopp` renders the same in
 Xournal++.
 
 ### Phase 7 — Selection
@@ -193,8 +193,8 @@ stretches by its edges, mirrors strokes and rotates strokes (snapped to 15°), e
 edit; pressing the stylus button while moving leaves a copy. Meanwhile the selection is drawn
 from an image kept while it only moves (`SelectionDeviceTest`: 500 elements, frames p95
 13.6 ms). A bar by the selection cuts, copies, pastes, duplicates and deletes; the clipboard
-carries elements between notes in Inkpad's own format; the tool bar's colours and widths
-restyle the selection. `testdata/inkpad-selection.xopp` renders the same in Xournal++.
+carries elements between notes in Libreta's own format; the tool bar's colours and widths
+restyle the selection. `testdata/libreta-selection.xopp` renders the same in Xournal++.
 
 ### Phase 8 — PDF annotation
 Open a PDF → create document with pdf backgrounds; store relative path
