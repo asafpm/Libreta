@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -78,6 +79,21 @@ class PagePanelTest {
     }
 
     @Test
+    // Dense, like a tablet: smaller than the frame in pixels, the bitmap is scaled up to it.
+    @Config(qualifiers = "w900dp-h1400dp-xxhdpi")
+    fun thumbnailsFillTheirFrame() {
+        show(count = 1)
+        // Inside the page's merged node.
+        compose.waitUntil(TIMEOUT) {
+            compose.onAllNodesWithTag("thumbnail", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        val image = compose.onNodeWithTag("thumbnail", useUnmergedTree = true).getBoundsInRoot()
+        // As wide as thumbnails are shown, at the page's proportions (1 dp for rounding).
+        assertEquals(THUMBNAIL_DP.toFloat(), (image.right - image.left).value, 1f)
+        assertEquals(THUMBNAIL_DP * PAGE_HEIGHT / PAGE_WIDTH, (image.bottom - image.top).value, 1f)
+    }
+
+    @Test
     fun aSinglePageHasNoHint() {
         show(count = 1)
         compose.onNodeWithText(HINT).assertDoesNotExist()
@@ -131,6 +147,11 @@ class PagePanelTest {
 
     private companion object {
         const val HINT = "Hold a page and drag it to move it"
+        const val TIMEOUT = 10_000L
+
+        /** physics.xopp's first page, Letter. */
+        const val PAGE_WIDTH = 611.99998f
+        const val PAGE_HEIGHT = 791.99998f
         const val STEPS = 20
     }
 }

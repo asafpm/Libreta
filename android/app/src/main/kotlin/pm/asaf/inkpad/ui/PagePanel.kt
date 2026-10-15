@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -48,9 +49,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.layout.PinnableContainer
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -90,10 +91,9 @@ fun PagePanel(
         val shown = list.layoutInfo.visibleItemsInfo.map { it.index }
         if (current !in shown) list.scrollToItem(current)
     }
-    val wide = LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainerLow,
-        modifier = modifier.width(if (wide) WIDE_PANEL_DP.dp else NARROW_PANEL_DP.dp).fillMaxHeight(),
+        modifier = modifier.width(PANEL_DP.dp).fillMaxHeight(),
     ) {
         Column {
             PageCommands(pages.size, current, actions)
@@ -113,7 +113,7 @@ fun PagePanel(
                 verticalArrangement = Arrangement.spacedBy(SPACING_DP.dp),
                 modifier =
                     Modifier
-                        .padding(horizontal = 16.dp)
+                        .padding(horizontal = THUMBNAIL_MARGIN_DP.dp)
                         .testTag("pages"),
             ) {
                 itemsIndexed(pages) { index, page ->
@@ -347,10 +347,12 @@ private fun Thumbnail(
                 .background(Color.White),
         ) {
             bitmap?.let {
+                // Rendered at the page's proportions: it fills the frame.
                 Image(
                     it.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize().testTag("thumbnail"),
                 )
             }
         }
@@ -372,9 +374,12 @@ private fun Action(
     IconButton(onClick = onClick, enabled = enabled) { Icon(icon, stringResource(label)) }
 }
 
-/** Wide enough for all the commands in one row. */
-private const val WIDE_PANEL_DP = 312
-private const val NARROW_PANEL_DP = 200
+/** Wide enough for the commands in one row. */
+private const val PANEL_DP = 200
+private const val THUMBNAIL_MARGIN_DP = 16
+
+/** How wide thumbnails are shown. */
+internal const val THUMBNAIL_DP = PANEL_DP - 2 * THUMBNAIL_MARGIN_DP
 private const val DRAGGED_ALPHA = 0.85f
 private const val SPACING_DP = 12
 

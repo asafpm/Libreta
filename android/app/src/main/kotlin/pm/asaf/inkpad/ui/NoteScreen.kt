@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -268,7 +269,10 @@ private fun NotePagePanel(
     // Read for its changes: the pages are the session's.
     session.changes.collectAsState().value
     val scope = rememberCoroutineScope()
-    val thumbnails = remember(state) { PageThumbnails(scope, Dispatchers.Default, state.files::newRenderer) }
+    // As sharp as they are shown.
+    val width = with(LocalDensity.current) { THUMBNAIL_DP.dp.roundToPx() }
+    val thumbnails =
+        remember(state, width) { PageThumbnails(scope, Dispatchers.Default, state.files::newRenderer, width) }
     PagePanel(
         session.document.pages,
         panels.current,
