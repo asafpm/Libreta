@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.graphics.lowlatency.LowLatencyCanvasView
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.android.render.RenderThreads
@@ -210,7 +209,7 @@ private fun NotePagePanel(
     // Read for its changes: the pages are the session's.
     session.changes.collectAsState().value
     val scope = rememberCoroutineScope()
-    val thumbnails = remember(state) { PageThumbnails(scope, THUMBNAIL_THREAD, state.files::newRenderer) }
+    val thumbnails = remember(state) { PageThumbnails(scope, Dispatchers.Default, state.files::newRenderer) }
     PagePanel(
         session.document.pages,
         panels.current,
@@ -393,9 +392,5 @@ private fun NoteCanvas(
     )
 }
 
-/** Page thumbnails render one at a time: renderers aren't thread-safe. */
-@OptIn(ExperimentalCoroutinesApi::class)
-private val THUMBNAIL_THREAD = Dispatchers.Default.limitedParallelism(1)
-
-/** From this width the note's actions are buttons. */
-private const val WIDE_SCREEN_DP = 600
+/** From this width the note's actions are buttons, and the page panel is wide. */
+internal const val WIDE_SCREEN_DP = 600

@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.util.LruCache
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,13 +17,13 @@ import pm.asaf.inkpad.core.model.Page
 
 /**
  * Small pictures of pages (for the page panel), [width] pixels wide, rendered on [dispatcher]
- * (one thread: renderers aren't thread-safe) with a renderer from [newRenderer], and kept on
+ * one at a time (renderers aren't thread-safe) with a renderer from [newRenderer], and kept on
  * the main thread of [scope]. Pages never change, so a thumbnail is kept for the page object
  * it shows; an edited page is a new object, rendered anew.
  */
 class PageThumbnails(
     private val scope: CoroutineScope,
-    private val dispatcher: CoroutineDispatcher,
+    dispatcher: CoroutineDispatcher,
     private val newRenderer: () -> PageRenderer,
     private val width: Int = DEFAULT_WIDTH,
 ) {
@@ -34,6 +35,9 @@ class PageThumbnails(
 
         override fun hashCode(): Int = System.identityHashCode(page)
     }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val dispatcher = dispatcher.limitedParallelism(1)
 
     private val cache =
         object : LruCache<Key, Bitmap>(MAX_BYTES) {
