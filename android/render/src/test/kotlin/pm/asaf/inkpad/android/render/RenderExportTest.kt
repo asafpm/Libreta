@@ -57,6 +57,7 @@ class RenderExportTest {
                 "pdf_annotation.xopp",
                 "physics.xopp",
                 "inkpad-edits.xopp",
+                "inkpad-pages.xopp",
                 "muzzy_pixmap_bg.xopp",
                 "2026-10-13-Note-22-46.xoj",
                 "xournalpp/cjk/测试.xopp",
