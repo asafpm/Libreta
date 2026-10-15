@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// Default name pattern from Xournal++ v1.3.8 src/core/control/settings/Settings.cpp (`%F-Note-%H-%M`),
+// Default name pattern from Xournal++ v1.3.8 src/core/control/settings/Settings.cpp (`%F-Note-%H-%M`);
+// new pages follow src/core/control/PageBackgroundChangeController.cpp (insertNewPage,
+// copyBackgroundFromOtherPage) and src/core/control/settings/PageTemplateSettings.cpp,
 // © Xournal++ contributors.
 
 package pm.asaf.inkpad.core.model

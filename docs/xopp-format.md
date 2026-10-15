@@ -187,6 +187,18 @@ Any other `type` fails the load (`LoadHandler.cpp:527-529`).
 optional. The style is kept as a string, so values like `:copy` survive. An
 unknown `type` is kept verbatim.
 
+When pages are inserted, deleted or moved, Inkpad keeps these references valid:
+- **The PDF file:** `domain` and `filename` move to whichever PDF page comes first.
+- **Cloned images:** a `clone` background points at its source page's new index.
+  If the source no longer comes before it, or is gone, the page takes the
+  source's own image instead.
+
+New pages copy the background of the page they follow, as Xournal++ does
+(`PageBackgroundChangeController::copyBackgroundFromOtherPage`):
+- a PDF page gets the same `pageno`, without the filename;
+- an image page gets a `clone` of it;
+- a solid background gets the same ruling, colour and `config`.
+
 ### `<layer>` — `LoadHandler.cpp:530-540`, `SaveHandler.cpp:163-217`
 - **`name`** is optional.
 - **Layer visibility is not stored in the file.** Neither the loader nor the

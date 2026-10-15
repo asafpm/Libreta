@@ -78,6 +78,13 @@ Xournal++ live in `testdata/xournalpp/`.
   `test/unit_tests/model/ErasableStrokeTest.cpp`.
 - `core/geometry/src/commonMain/.../PageEraser.kt`: the eraser gesture of
   `src/core/control/tools/EraseHandler.cpp`.
+- `core/model/src/commonMain/.../PageOperations.kt`: page and layer commands of
+  `src/core/control/Control.cpp` and `src/core/control/layer/LayerController.cpp`.
+- `core/model/src/commonMain/.../NewNote.kt` (`NewPageTemplate`): new pages of
+  `src/core/control/PageBackgroundChangeController.cpp` and the page template of
+  `src/core/control/settings/PageTemplateSettings.cpp`.
+- `android/app/src/main/.../files/NoteCommands.kt`: the selected layer after layer commands,
+  `src/core/control/layer/LayerController.cpp`.
 - `core/model/src/commonMain/.../PenSettings.kt`: pen and eraser widths, colour and
   eraser types of `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
 - `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of

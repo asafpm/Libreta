@@ -172,6 +172,16 @@ Saving 104 pages: 8.4 s → 2.1 s (allocation-free number writing, new coordinat
 Add/delete/reorder pages, background chooser, layer panel
 (add/hide/rename/reorder), page templates. Page/layer operations are
 commands in core:model.
+Done: `PageOperations` and `LayerOperations` (core:model) are undoable commands following
+Xournal++; rearranging pages keeps the first PDF page naming the PDF and re-points cloned
+images. The view shows rearranged documents keeping the page in view and the tiles of pages
+kept (`PageEditingDeviceTest`: under 4 ms on 104 pages). A page panel with thumbnails
+inserts, duplicates, deletes and moves pages and changes backgrounds (Xournal++'s rulings,
+the original Xournal's paper colours or any colour, one page or all); a layer sheet chooses
+the layer ink and the eraser use, hides layers (session-only, as in Xournal++), and renames,
+adds, deletes, moves and merges them. New pages copy the page before, or follow a template
+from Settings that new notes use too. `testdata/inkpad-pages.xopp` renders the same in
+Xournal++.
 
 ### Phase 7 — Selection
 Lasso + rectangle select, move/scale/rotate, copy/paste, delete,
