@@ -7,6 +7,7 @@ import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.SelectMode
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.ToolSettings
@@ -71,6 +72,7 @@ class ToolControls(
     /** Sets the chosen tool's width. */
     val onSize: (PenSize) -> Unit,
     val onEraserType: (EraserType) -> Unit,
+    val onSelectMode: (SelectMode) -> Unit,
     val onFingerDraws: (Boolean) -> Unit,
 )
 

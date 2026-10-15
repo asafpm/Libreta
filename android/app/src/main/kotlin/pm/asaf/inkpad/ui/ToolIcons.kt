@@ -221,6 +221,23 @@ val MergeDownIcon: ImageVector =
         lineTo(20f, 20f)
     }
 
+/** Select: a dashed square. */
+@Suppress("MagicNumber") // path coordinates
+val SelectIcon: ImageVector =
+    lineIcon("Select") {
+        for (i in 0..2) {
+            val a = 4f + i * 6f
+            moveTo(a, 4f)
+            lineTo(a + 3f, 4f)
+            moveTo(a, 20f)
+            lineTo(a + 3f, 20f)
+            moveTo(4f, a)
+            lineTo(4f, a + 3f)
+            moveTo(20f, a)
+            lineTo(20f, a + 3f)
+        }
+    }
+
 /** An icon drawn with 2-unit lines on a 24 x 24 grid. */
 @Suppress("MagicNumber") // grid sizes
 private fun lineIcon(

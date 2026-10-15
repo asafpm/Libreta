@@ -103,10 +103,72 @@ internal class Inking(
             },
         )
 
+    /** Called when the selection changes, goes, or moves on screen. */
+    var onSelection: (() -> Unit)? = null
+
+    val selection =
+        SelectionTool(
+            object : SelectionTool.Host {
+                override fun pageAt(
+                    viewX: Float,
+                    viewY: Float,
+                ): PageMapping? = mappingAt(viewX, viewY)
+
+                override fun mappingOf(index: Int): PageMapping? = host.state?.let { placedPage(it, index) }
+
+                override val pages: List<Page> get() = checkNotNull(host.state).pages.all
+
+                override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
+
+                override fun layer(index: Int): Int = checkNotNull(host.state).pages.view(index).selected
+
+                override val renderer: PageRenderer? get() = this@Inking.renderer
+
+                override fun hide(hidden: HiddenElements?) {
+                    val state = host.state ?: return
+                    val page = hidden?.page ?: state.pages.hiddenElements?.page ?: return
+                    replacePage(page) { hiddenElements = hidden }
+                }
+
+                override fun edit(edit: Edit) {
+                    onEdit?.invoke(edit)
+                    // The last state of each page changed; what was left out is back, moved.
+                    val pages = edit.changes.filterIsInstance<PageChange>().associate { it.index to it.after }
+                    for ((index, page) in pages) {
+                        replacePage(index) {
+                            hiddenElements = null
+                            this[index] = page
+                        }
+                    }
+                    host.state?.pages?.hiddenElements?.let { hidden ->
+                        replacePage(hidden.page) { hiddenElements = null }
+                    }
+                }
+
+                override fun offset(
+                    from: Int,
+                    to: Int,
+                ): Pair<Double, Double> {
+                    val layout = checkNotNull(host.state).layout
+                    val a = layout.pageBounds(from)
+                    val b = layout.pageBounds(to)
+                    return (a.left - b.left) to (a.top - b.top)
+                }
+
+                override fun redraw() = view.invalidate()
+
+                override fun changed() {
+                    onSelection?.invoke()
+                    view.invalidate()
+                }
+            },
+        ).apply { density = view.resources.displayMetrics.density }
+
     val input =
         InkInput(
             object : InkInput.Host {
                 override val tools: ToolSettings get() = this@Inking.tools
+                override val selectionTool: SelectionTool get() = selection
                 override val fingerDraws: Boolean get() = this@Inking.fingerDraws
                 override val wetInk: WetInk get() = this@Inking.wetInk
 
@@ -175,8 +237,9 @@ internal class Inking(
         view.invalidate()
     }
 
-    /** The view moved: wet ink of finished strokes would be out of place. */
+    /** The view moved: wet ink of finished strokes would be out of place, and the selection moved on screen. */
     fun viewportChanged() {
+        if (selection.selected != null) onSelection?.invoke()
         if (wetFramesLeft > 0) {
             wetFramesLeft = 0
             wetInk.clear()
@@ -184,6 +247,7 @@ internal class Inking(
     }
 
     fun reset() {
+        selection.clear()
         pending.clear()
         inView = null
         wetFramesLeft = 0
@@ -210,25 +274,24 @@ internal class Inking(
                 }
             }
         }
+        selection.draw(canvas)
         erasing.drawCursor(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()
         return wetFramesLeft > 0
     }
 
     /**
-     * Page [index] is now [page] (null: unchanged) with its layers shown as [view] (null: as
-     * they were), e.g. on undo; what changed is drawn until the tiles are re-rendered.
+     * Page [index] as [change] leaves the pages (e.g. undone, its layers shown otherwise, or
+     * a selection left out); what changed is drawn until the tiles are re-rendered.
      */
     fun replacePage(
         index: Int,
-        page: Page?,
-        view: LayerView?,
+        change: ShownPages.() -> Unit,
     ) {
         val state = host.state ?: return
         val measurer = renderer?.textMeasurer ?: return
         val before = state.pages.rendered(index)
-        page?.let { state.pages[index] = it }
-        view?.let { state.pages.setView(index, it) }
+        state.pages.change()
         val after = state.pages.rendered(index)
         val changed = ElementDiff.changedBounds(before, after, measurer)
         if (changed != null) {
@@ -248,7 +311,7 @@ internal class Inking(
         val view = state.pages.view(index)
         if (view.selected in view.hidden) {
             val shown = view.copy(hidden = view.hidden - view.selected)
-            replacePage(index, null, shown)
+            replacePage(index) { setView(index, shown) }
             onLayerView?.invoke(index, shown)
         }
         return view.selected
@@ -272,14 +335,8 @@ internal class Inking(
         viewY: Float,
     ): PageMapping? {
         val state = host.state ?: return null
-        val viewport = state.viewport
-        val (x, y) = viewport.viewToLayout(viewX.toDouble(), viewY.toDouble())
-        return state.layout.pageAt(x, y)?.let { index ->
-            val page = state.layout.pageBounds(index)
-            val left = ((page.left - viewport.offsetX) * viewport.zoom).roundToInt().toDouble()
-            val top = ((page.top - viewport.offsetY) * viewport.zoom).roundToInt().toDouble()
-            PageMapping(index, left, top, viewport.zoom)
-        }
+        val (x, y) = state.viewport.viewToLayout(viewX.toDouble(), viewY.toDouble())
+        return state.layout.pageAt(x, y)?.let { placedPage(state, it) }
     }
 
     /** Where [pointerId] is predicted to go next, as (x, y) pairs. */
@@ -348,4 +405,16 @@ private fun onScreen(
             visible.bottom - placed.top,
         )
     return { it.zoom == zoom && it.bounds.intersects(onScreen) }
+}
+
+/** Page [index], placed where the tiles draw it (whole pixels). */
+internal fun placedPage(
+    state: Inking.ViewState,
+    index: Int,
+): PageMapping {
+    val viewport = state.viewport
+    val page = state.layout.pageBounds(index)
+    val left = ((page.left - viewport.offsetX) * viewport.zoom).roundToInt().toDouble()
+    val top = ((page.top - viewport.offsetY) * viewport.zoom).roundToInt().toDouble()
+    return PageMapping(index, left, top, viewport.zoom)
 }

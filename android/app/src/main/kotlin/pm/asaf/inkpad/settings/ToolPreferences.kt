@@ -12,6 +12,7 @@ import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.HighlighterSettings
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.SelectMode
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.ToolSettings
@@ -49,7 +50,11 @@ class ToolPreferences(
         update {
             when (it.tool) {
                 Tool.HIGHLIGHTER -> it.copy(highlighter = it.highlighter.copy(color = color))
-                else -> it.copy(pen = it.pen.copy(color = color))
+
+                Tool.PEN, Tool.ERASER -> it.copy(pen = it.pen.copy(color = color))
+
+                // The selection's colour changes instead.
+                Tool.SELECT -> it
             }
         }
 
@@ -60,12 +65,15 @@ class ToolPreferences(
                 Tool.PEN -> it.copy(pen = it.pen.copy(size = size))
                 Tool.HIGHLIGHTER -> it.copy(highlighter = it.highlighter.copy(size = size))
                 Tool.ERASER -> it.copy(eraser = it.eraser.copy(size = size))
+                Tool.SELECT -> it
             }
         }
 
     fun setEraserType(type: EraserType) = update { it.copy(eraser = it.eraser.copy(type = type)) }
 
     fun setButton(button: StylusButton) = update { it.copy(button = button) }
+
+    fun setSelectMode(mode: SelectMode) = update { it.copy(selectMode = mode) }
 
     /** Shows width [size] in the toolbar, or hides it unless it is the last one shown. */
     fun setSizeVisible(
@@ -114,6 +122,7 @@ class ToolPreferences(
             .putString(Keys.ERASER_TYPE, tools.eraser.type.name)
             .putString(Keys.ERASER_SIZE, tools.eraser.size.name)
             .putString(Keys.BUTTON, tools.button.name)
+            .putString(Keys.SELECT_MODE, tools.selectMode.name)
             .apply()
     }
 }
@@ -134,6 +143,7 @@ private fun SharedPreferences.readTools(): ToolSettings {
                 enumOf(Keys.ERASER_SIZE, defaults.eraser.size),
             ),
         button = enumOf(Keys.BUTTON, defaults.button),
+        selectMode = enumOf(Keys.SELECT_MODE, defaults.selectMode),
     )
 }
 
@@ -169,6 +179,7 @@ private object Keys {
     const val ERASER_TYPE = "eraser.type"
     const val ERASER_SIZE = "eraser.size"
     const val BUTTON = "stylus.button"
+    const val SELECT_MODE = "select.mode"
     const val FINGER = "finger.draws"
     const val FINGER_BUTTON = "toolbar.fingerButton"
     const val SIZES = "sizes.visible"

@@ -55,25 +55,45 @@ internal class ShownPages(
         views[index] = view.fitting(pages[index])
     }
 
-    /** Page [index] as rendered: its hidden layers empty. */
+    /** Elements left out of rendering (a selection being moved). */
+    var hiddenElements: HiddenElements? = null
+
+    /** Page [index] as rendered: its hidden layers empty, and without [hiddenElements]. */
     fun rendered(index: Int): Page {
         val hidden = views[index].hidden
+        val leftOut = hiddenElements?.takeIf { it.page == index }
         val page = pages[index]
-        return if (hidden.isEmpty()) {
-            page
-        } else {
-            page.copy(
-                layers =
-                    page.layers.mapIndexed { i, layer ->
-                        if (i in
-                            hidden
-                        ) {
+        if (hidden.isEmpty() && leftOut == null) return page
+        return page.copy(
+            layers =
+                page.layers.mapIndexed { i, layer ->
+                    when {
+                        i in hidden -> {
                             layer.copy(elements = emptyList())
-                        } else {
+                        }
+
+                        leftOut != null && i == leftOut.layer -> {
+                            layer.copy(
+                                elements =
+                                    layer.elements.filterIndexed { e, _ ->
+                                        e !in
+                                            leftOut.indices
+                                    },
+                            )
+                        }
+
+                        else -> {
                             layer
                         }
-                    },
-            )
-        }
+                    }
+                },
+        )
     }
 }
+
+/** Elements [indices] of layer [layer] of page [page]. */
+internal data class HiddenElements(
+    val page: Int,
+    val layer: Int,
+    val indices: Set<Int>,
+)

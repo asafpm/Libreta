@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.PenSize
+import pm.asaf.inkpad.core.model.SelectMode
 import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.Color as InkColor
 
@@ -67,6 +68,7 @@ fun ToolBar(
             ToolButton(Tool.PEN, PenIcon, R.string.tool_pen, controls)
             ToolButton(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter, controls)
             ToolButton(Tool.ERASER, EraserIcon, R.string.tool_eraser, controls)
+            ToolButton(Tool.SELECT, SelectIcon, R.string.tool_select, controls)
             Separator()
             when (tools.tool) {
                 Tool.PEN -> {
@@ -79,6 +81,10 @@ fun ToolBar(
 
                 Tool.ERASER -> {
                     EraserOptions(controls)
+                }
+
+                Tool.SELECT -> {
+                    SelectOptions(controls)
                 }
             }
             if (controls.fingerButton) {
@@ -136,6 +142,18 @@ private fun RowScope.InkOptions(
     Separator()
     for (option in PenSize.entries.filter { it in controls.visibleSizes || it == size }) {
         WidthOption(option, color.toCompose(), CircleShape, selected = option == size) { controls.onSize(option) }
+    }
+}
+
+/** How the selection tool encloses what it selects. */
+@Composable
+private fun SelectOptions(controls: ToolControls) {
+    for ((mode, label) in SELECT_MODES) {
+        FilterChip(
+            selected = controls.tools.selectMode == mode,
+            onClick = { controls.onSelectMode(mode) },
+            label = { Text(stringResource(label)) },
+        )
     }
 }
 
@@ -227,6 +245,12 @@ internal val PenSize.label: Int
             PenSize.THICK -> R.string.width_thick
             PenSize.VERY_THICK -> R.string.width_very_thick
         }
+
+private val SELECT_MODES =
+    listOf(
+        SelectMode.RECTANGLE to R.string.select_rectangle,
+        SelectMode.LASSO to R.string.select_lasso,
+    )
 
 private val ERASER_TYPES =
     listOf(

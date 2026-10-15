@@ -61,7 +61,10 @@ data class HighlighterSettings(
 }
 
 /** The tool chosen in the toolbar. */
-enum class Tool { PEN, HIGHLIGHTER, ERASER }
+enum class Tool { PEN, HIGHLIGHTER, ERASER, SELECT }
+
+/** How the selection tool encloses what it selects (Xournal++'s rectangle and region select). */
+enum class SelectMode { RECTANGLE, LASSO }
 
 /** What the stylus does while its side button is held. */
 enum class StylusButton { ERASER, HIGHLIGHTER, NONE }
@@ -73,6 +76,7 @@ data class ToolSettings(
     val highlighter: HighlighterSettings = HighlighterSettings(),
     val eraser: EraserSettings = EraserSettings(),
     val button: StylusButton = StylusButton.ERASER,
+    val selectMode: SelectMode = SelectMode.RECTANGLE,
 )
 
 object Palette {

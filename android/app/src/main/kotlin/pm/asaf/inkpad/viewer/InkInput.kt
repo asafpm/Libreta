@@ -78,6 +78,9 @@ internal class InkInput(
 
         fun finishErasing()
 
+        /** Selecting, and what is selected. */
+        val selectionTool: SelectionTool
+
         /** Draws [stroke], being written on [page], with the page; null: no more. */
         fun drawInView(
             page: Int,
@@ -102,12 +105,13 @@ internal class InkInput(
     private var writing: Writing? = null
 
     private val eraser = EraserInput(host)
+    private val selection = SelectionInput(host)
 
     /** The rest of this touch sequence is ignored (e.g. it started off the pages). */
     private var ignoring = false
 
     /** Whether a stroke is being written, or erasing goes on. */
-    val isActive: Boolean get() = writing != null || eraser.isActive
+    val isActive: Boolean get() = writing != null || eraser.isActive || selection.isActive
 
     /**
      * Handles [event] if it belongs to writing; false leaves it to the gestures. A touch
@@ -126,6 +130,11 @@ internal class InkInput(
 
             eraser.isActive -> {
                 if (!eraser.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+                true
+            }
+
+            selection.isActive -> {
+                if (!selection.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
                 true
             }
 
@@ -165,6 +174,10 @@ internal class InkInput(
 
             chosen == Tool.ERASER -> {
                 eraser.begin(event, index)
+            }
+
+            chosen == Tool.SELECT -> {
+                selection.begin(event, index)
             }
 
             chosen == Tool.HIGHLIGHTER -> {

@@ -214,5 +214,6 @@ private fun toolControls(
     },
     onSize = preferences::setSize,
     onEraserType = preferences::setEraserType,
+    onSelectMode = preferences::setSelectMode,
     onFingerDraws = preferences::setFingerDraws,
 )

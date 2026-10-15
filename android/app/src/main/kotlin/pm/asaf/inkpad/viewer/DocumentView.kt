@@ -23,6 +23,7 @@ import pm.asaf.inkpad.core.model.Bounds
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PenSettings
+import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.ToolSettings
 import pm.asaf.inkpad.core.model.pageMapping
 import kotlin.math.abs
@@ -127,6 +128,8 @@ class DocumentView
         var tools: ToolSettings
             get() = inking.tools
             set(value) {
+                // Another tool: nothing selected any more.
+                if (value.tool != Tool.SELECT) inking.selection.clear()
                 inking.tools = value
             }
 
@@ -165,6 +168,16 @@ class DocumentView
                 inking.onLayerView = value
             }
 
+        /** What is selected (with the selection tool). */
+        val selection: ViewSelection by lazy { ViewSelection(inking.selection) }
+
+        /** Called when the selection changes, goes, or moves on screen. */
+        var onSelection: (() -> Unit)?
+            get() = inking.onSelection
+            set(value) {
+                inking.onSelection = value
+            }
+
         /** Called with the page at the middle of the view, when it changes. */
         var onCurrentPage: ((Int) -> Unit)? = null
         private var lastCurrentPage = -1
@@ -186,7 +199,7 @@ class DocumentView
                 for (i in 0 until minOf(value.size, content.pages.size)) {
                     if (content.pages.view(i) == value[i].fitting(content.pages[i])) continue
                     if (viewport != null) {
-                        inking.replacePage(i, null, value[i])
+                        inking.replacePage(i) { setView(i, value[i]) }
                     } else {
                         // Not shown yet: whatever was rendered of the page goes.
                         content.pages.setView(i, value[i])
@@ -203,9 +216,11 @@ class DocumentView
          */
         fun showDocument(pages: List<Page>) {
             val content = content ?: return
+            // The document changed under the selection.
+            inking.selection.clear()
             val mapping = pageMapping(content.pages.all, pages)
             if (pages.size == content.pages.size && mapping.withIndex().all { (i, old) -> old == i || old == -1 }) {
-                for (i in pages.indices) if (mapping[i] == -1) inking.replacePage(i, pages[i], null)
+                for (i in pages.indices) if (mapping[i] == -1) inking.replacePage(i) { this[i] = pages[i] }
                 return
             }
             val anchor = anchor
