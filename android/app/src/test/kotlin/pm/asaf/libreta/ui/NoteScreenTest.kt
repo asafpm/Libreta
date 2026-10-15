@@ -4,6 +4,7 @@ package pm.asaf.libreta.ui
 
 import android.app.Application
 import android.content.Context
+import android.content.Intent
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -41,6 +42,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLooper
@@ -458,6 +460,18 @@ class NoteScreenTest {
         // All undone, step by step.
         repeat(4) { compose.onNodeWithContentDescription("Undo").performClick() }
         assertEquals(original, model.pages())
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun exportingAsksWhereWithTheNotesName() {
+        openLecture()
+        compose.onNodeWithContentDescription("Export PDF…").performClick()
+        val picker = Shadows.shadowOf(compose.activity).nextStartedActivityForResult.intent
+        assertEquals(Intent.ACTION_CREATE_DOCUMENT, picker.action)
+        assertEquals("application/pdf", picker.type)
+        assertEquals("Lecture.pdf", picker.getStringExtra(Intent.EXTRA_TITLE))
+        compose.onNodeWithContentDescription("Share as PDF").assertIsEnabled()
     }
 
     private companion object {

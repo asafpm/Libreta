@@ -36,6 +36,7 @@ import pm.asaf.libreta.files.NoteFile
 import pm.asaf.libreta.files.NoteLoader
 import pm.asaf.libreta.files.NoteSaver
 import pm.asaf.libreta.files.NoteSession
+import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.files.SaveResult
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
@@ -168,6 +169,9 @@ class AppViewModel
                 onOpen = { showNote(it) },
                 onMessage = { errorState.value = it },
             )
+
+        /** Exporting the open note as a PDF. */
+        val exports = PdfExportFlow(application, viewModelScope, io, onMessage = { errorState.value = it })
 
         private val noteState = MutableStateFlow<NoteState?>(null)
         val note: StateFlow<NoteState?> = noteState.asStateFlow()

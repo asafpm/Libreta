@@ -60,6 +60,9 @@ class DocumentFiles private constructor(
     private val decoded = LruCache<String, Bitmap>(IMAGE_CACHE_SIZE)
     private val rasterizer = AndroidPdfRasterizer(File(context.cacheDir, "pdf-images"))
 
+    /** A local copy of the PDF the document annotates, if it was found. */
+    val pdfFile: File? get() = pdfCopy
+
     /** A renderer for this document's pages; one per thread. */
     fun newRenderer(): PageRenderer = PageRenderer(context.applicationContext, this, rasterizer)
 

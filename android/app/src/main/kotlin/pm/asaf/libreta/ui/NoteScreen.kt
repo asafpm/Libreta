@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -58,6 +59,7 @@ import pm.asaf.libreta.files.NoteClipboard
 import pm.asaf.libreta.files.NoteCommands
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.files.PageThumbnails
+import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
 import pm.asaf.libreta.viewer.LowLatencyWetInk
@@ -79,6 +81,7 @@ fun NoteScreen(
     onBack: () -> Unit,
     template: NewPageTemplate = NewPageTemplate(),
     clipboard: NoteClipboard? = null,
+    exports: PdfExportFlow? = null,
 ) {
     var view by remember { mutableStateOf<DocumentView?>(null) }
     val loaded = state as? NoteState.Loaded
@@ -94,11 +97,13 @@ fun NoteScreen(
         }
         Unit
     }
+    val export = rememberExportActions(exports, loaded, name) { view }
+    ExportProgress(exports)
     Scaffold(
         topBar = {
             NoteTopBar(name, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
-                NoteActions(panels, commands, view, if (canPaste) paste else null)
+                NoteActions(panels, commands, view, if (canPaste) paste else null, export)
             }
         },
     ) { padding ->
@@ -208,6 +213,7 @@ private fun NoteActions(
     view: DocumentView?,
     /** Pastes the clipboard's elements; null when there are none. */
     paste: (() -> Unit)?,
+    export: ExportActions?,
 ) {
     val enabled = view != null
     val actions =
@@ -222,6 +228,8 @@ private fun NoteActions(
                 },
                 NoteAction(LayersIcon, R.string.layers) { panels.layers = true },
                 NoteAction(PasteIcon, R.string.paste, paste != null) { paste?.invoke() },
+                NoteAction(ExportIcon, R.string.export_pdf, export != null) { export?.save?.invoke() },
+                NoteAction(Icons.Filled.Share, R.string.share_pdf, export != null) { export?.share?.invoke() },
             )
         }
     if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {

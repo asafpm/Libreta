@@ -9,6 +9,11 @@
     <string name="new_folder">New folder</string>
     <string name="pdf">PDF</string>
     <string name="opened_pdfs">Opened PDFs</string>
+    <string name="export_pdf">Export PDF…</string>
+    <string name="share_pdf">Share as PDF</string>
+    <string name="exporting_pdf">Exporting PDF…</string>
+    <string name="exported">PDF exported</string>
+    <string name="error_export">Couldn\'t export the PDF</string>
     <string name="move_to_folder">Move to a folder…</string>
     <string name="more_actions_for">More for %1$s</string>
     <string name="move_here">Move here</string>

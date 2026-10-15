@@ -68,4 +68,17 @@ class NewNoteTest {
         )
         assertEquals(listOf("a.b.xopp", "a.b.xoj", "a.b.pdf.xopp", "a.b.pdf.xoj"), NewNote.notesForPdf("a.b.pdf"))
     }
+
+    @Test
+    fun exportsAreNamedAsXournalNamesThem() {
+        val plain = NewNote.document(PaperSize.A4, landscape = false, creator = "x")
+        assertEquals("Lecture 1.pdf", NewNote.exportName(plain, "Lecture 1.xopp"))
+        assertEquals("old.pdf", NewNote.exportName(plain, "old.XOJ"))
+        // A note on a PDF: after the PDF.
+        val onPdf = NewNote.forPdf(listOf(612.0 to 792.0), FileDomain.ABSOLUTE, "../papers/paper.pdf", "x")
+        assertEquals("paper_annotated.pdf", NewNote.exportName(onPdf, "my notes.xopp"))
+        // Carrying its PDF (named "bg.pdf"): after the note.
+        val attached = NewNote.forPdf(listOf(612.0 to 792.0), FileDomain.ATTACH, "bg.pdf", "x")
+        assertEquals("slides_annotated.pdf", NewNote.exportName(attached, "slides.xopp"))
+    }
 }

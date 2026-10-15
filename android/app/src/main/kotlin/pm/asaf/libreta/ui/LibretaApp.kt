@@ -197,6 +197,7 @@ private fun Note(
         onBack = { model.back() },
         template = newPages,
         clipboard = model.clipboard,
+        exports = model.exports,
     )
 }
 

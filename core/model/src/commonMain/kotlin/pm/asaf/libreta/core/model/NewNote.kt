@@ -92,6 +92,34 @@ object NewNote {
         return listOf(".xopp", ".xoj", ".pdf.xopp", ".pdf.xoj").map { base + it }
     }
 
+    /**
+     * The name an export of [document] (the note [noteName]) is offered under: after the PDF
+     * it annotates, as Xournal++'s default `%{name}_annotated`, or after the note.
+     */
+    fun exportName(
+        document: Document,
+        noteName: String,
+    ): String {
+        val note = listOf(EXTENSION, ".xoj").fold(noteName) { name, extension -> name.dropSuffix(extension) }
+        val pdf =
+            document.pages
+                .firstNotNullOfOrNull {
+                    it.background as? Background.Pdf
+                }?.takeIf { it.filename != null }
+        return when {
+            pdf == null -> "$note$PDF"
+
+            pdf.domain == FileDomain.ATTACH -> "${note}_annotated$PDF"
+
+            else -> "${pdf.filename.orEmpty().substringAfterLast(
+                '/',
+            ).substringAfterLast('\\').dropSuffix(PDF)}_annotated$PDF"
+        }
+    }
+
+    private fun String.dropSuffix(suffix: String): String =
+        if (endsWith(suffix, ignoreCase = true)) dropLast(suffix.length) else this
+
     private const val PDF = ".pdf"
 
     private fun Int.pad(length: Int): String = toString().padStart(length, '0')

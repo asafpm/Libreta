@@ -131,6 +131,21 @@ val AddPageIcon: ImageVector =
         lineTo(16f, 12f)
     }
 
+/** Export: an arrow up out of a tray. */
+@Suppress("MagicNumber") // path coordinates
+val ExportIcon: ImageVector =
+    lineIcon("Export") {
+        moveTo(4f, 14f)
+        lineTo(4f, 20f)
+        lineTo(20f, 20f)
+        lineTo(20f, 14f)
+        moveTo(12f, 15f)
+        lineTo(12f, 4f)
+        moveTo(8f, 8f)
+        lineTo(12f, 4f)
+        lineTo(16f, 8f)
+    }
+
 /** New folder: a folder with a plus. */
 @Suppress("MagicNumber") // path coordinates
 val NewFolderIcon: ImageVector =
