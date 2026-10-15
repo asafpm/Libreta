@@ -8,8 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
@@ -45,6 +47,7 @@ fun HomeScreen(
     folders: Map<FolderRef, FolderState>,
     previews: PreviewCache,
     actions: LibraryActions,
+    onNewFolder: (FolderRef) -> Unit,
     onNewNote: (FolderRef) -> Unit,
     onAddFolder: () -> Unit,
     onSettings: () -> Unit,
@@ -65,7 +68,7 @@ fun HomeScreen(
         } else {
             LibraryGrid(Modifier.padding(padding)) {
                 for (root in locals) {
-                    sectionHeader(root.id, root.name) { onNewNote(root.folder) }
+                    sectionHeader(root.id, root.name, { onNewFolder(root.folder) }) { onNewNote(root.folder) }
                     folderItems(root.id, folders[root.folder], previews, actions)
                 }
             }
@@ -105,6 +108,7 @@ fun FolderScreen(
     state: FolderState?,
     previews: PreviewCache,
     actions: LibraryActions,
+    onNewFolder: () -> Unit,
     onNewNote: () -> Unit,
     onBreadcrumb: (Int) -> Unit,
     onBack: () -> Unit,
@@ -118,7 +122,11 @@ fun FolderScreen(
                         onClick = onBack,
                     ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                 },
-                actions = { NewNoteButton(onNewNote) },
+                actions = {
+                    NewFolderButton(onNewFolder)
+                    Spacer(Modifier.width(8.dp))
+                    NewNoteButton(onNewNote)
+                },
             )
         },
     ) { padding ->

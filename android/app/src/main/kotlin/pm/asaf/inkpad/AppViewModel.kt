@@ -40,6 +40,7 @@ import pm.asaf.inkpad.files.SaveResult
 import pm.asaf.inkpad.library.FolderListing
 import pm.asaf.inkpad.library.FolderRef
 import pm.asaf.inkpad.library.Library
+import pm.asaf.inkpad.library.NewFolderFlow
 import pm.asaf.inkpad.library.NewNoteCreator
 import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
@@ -132,6 +133,16 @@ class AppViewModel
                     library.refresh(path.last())
                     open(Screen.Note(file.id, file.name, DocumentLocation(path, file.name)))
                 },
+                onError = { errorState.value = it },
+            )
+
+        val newFolders =
+            NewFolderFlow(
+                application,
+                store,
+                viewModelScope,
+                io,
+                onCreated = { parent -> library.refresh(parent) },
                 onError = { errorState.value = it },
             )
 

@@ -84,6 +84,18 @@ class SafDocumentStore(
             entry(id) as? StoreEntry.File ?: StoreEntry.File(id, name, FileVersion(0, 0))
         }
 
+    override fun createFolder(
+        folder: StoreId,
+        name: String,
+    ): StoreEntry.Folder =
+        guard("create folder") {
+            val uri =
+                DocumentsContract.createDocument(resolver, folder.uri, Document.MIME_TYPE_DIR, name)
+                    ?: throw StoreException("Cannot create folder $name in ${folder.uri}")
+            val id = StoreId(uri.toString())
+            entry(id) as? StoreEntry.Folder ?: StoreEntry.Folder(id, name, 0)
+        }
+
     override fun delete(file: StoreId) {
         guard("delete") { DocumentsContract.deleteDocument(resolver, file.uri) }
     }

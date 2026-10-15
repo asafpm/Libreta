@@ -27,6 +27,7 @@ import pm.asaf.inkpad.settings.ToolPreferences
 fun InkpadApp(model: AppViewModel) {
     val screens by model.screens.collectAsStateWithLifecycle()
     val newNote by model.newNotes.request.collectAsStateWithLifecycle()
+    val newFolder by model.newFolders.request.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model.library::addRoot)
@@ -47,6 +48,7 @@ fun InkpadApp(model: AppViewModel) {
     newNote?.let { request ->
         NewNoteDialog(request, onCreate = model.newNotes::create, onDismiss = model.newNotes::cancel)
     }
+    if (newFolder != null) NewFolderDialog(onCreate = model.newFolders::create, onDismiss = model.newFolders::cancel)
 }
 
 @Composable
@@ -88,6 +90,7 @@ private fun Home(
         folders = folders,
         previews = model.previews,
         actions = libraryActions(model, parent = null),
+        onNewFolder = model.newFolders::start,
         onNewNote = { folder -> model.newNotes.start(listOf(folder)) },
         onAddFolder = addFolder,
         onSettings = { model.open(Screen.Settings) },
@@ -105,6 +108,7 @@ private fun Folder(
         state = folders[screen.folder],
         previews = model.previews,
         actions = libraryActions(model, parent = screen),
+        onNewFolder = { model.newFolders.start(screen.folder) },
         onNewNote = { model.newNotes.start(screen.path) },
         onBreadcrumb = { index -> repeat(screen.path.lastIndex - index) { model.back() } },
         onBack = { model.back() },

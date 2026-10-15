@@ -7,11 +7,14 @@ import android.content.Context
 import android.provider.DocumentsContract
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -120,6 +123,37 @@ class InkpadAppTest {
         compose.onNodeWithContentDescription("Back").performClick()
         waitForText("Lecture 1.xopp")
         assertTrue(model.screens.value.last() is Screen.Folder)
+    }
+
+    /** "New folder", with its text on wide screens, its icon on narrow ones. */
+    private fun newFolder() =
+        compose.onNode(hasText("New folder") or hasContentDescription("New folder")).performClick()
+
+    @Test
+    fun createsFolders() {
+        File(directory, "Courses").mkdirs()
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        show()
+        waitForText("Courses")
+
+        // In a library folder, from the home screen.
+        newFolder()
+        waitForText("Create")
+        compose.onNodeWithText("Create").assertIsNotEnabled()
+        compose.onNodeWithText("Name").performTextInput("Physics")
+        compose.onNodeWithText("Create").performClick()
+        waitForText("Physics")
+        assertTrue(File(directory, "Physics").isDirectory)
+
+        // In a folder below, from its screen.
+        compose.onNodeWithText("Courses").performClick()
+        newFolder()
+        waitForText("Create")
+        compose.onNodeWithText("Name").performTextInput("Algebra")
+        compose.onNodeWithText("Create").performClick()
+        waitForText("Algebra")
+        assertTrue(File(directory, "Courses/Algebra").isDirectory)
     }
 
     @Test

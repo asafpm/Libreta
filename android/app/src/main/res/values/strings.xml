@@ -6,6 +6,7 @@
     <string name="add_folder">Add a folder</string>
     <string name="no_folders">Choose the folders where your notes are. Their notes and subfolders will show up here.</string>
     <string name="new_note">New note</string>
+    <string name="new_folder">New folder</string>
     <string name="settings">Settings</string>
     <string name="back">Back</string>
     <string name="empty_folder">No notes here yet</string>
@@ -146,6 +147,7 @@
     <string name="saved_as_copy">The note changed elsewhere while open, so your changes were saved as %1$s</string>
     <string name="read_only_package">Older Xournal++ file (zip package): changes can\'t be saved yet</string>
     <string name="error_create_note">Couldn\'t create %1$s</string>
+    <string name="error_create_folder">Couldn\'t create the folder %1$s</string>
     <string name="error_read_note">Couldn\'t open %1$s</string>
     <string name="error_not_a_note">%1$s isn\'t a Xournal++ note, or it is damaged</string>
 </resources>

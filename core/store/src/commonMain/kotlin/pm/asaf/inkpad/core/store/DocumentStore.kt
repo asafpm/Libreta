@@ -95,6 +95,13 @@ interface DocumentStore {
         name: String,
     ): StoreEntry.File
 
+    /** Creates a folder named [name] in [folder]; the store may change a taken name. */
+    @Throws(StoreException::class)
+    fun createFolder(
+        folder: StoreId,
+        name: String,
+    ): StoreEntry.Folder
+
     @Throws(StoreException::class)
     fun delete(file: StoreId)
 

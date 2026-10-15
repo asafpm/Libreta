@@ -131,6 +131,23 @@ val AddPageIcon: ImageVector =
         lineTo(16f, 12f)
     }
 
+/** New folder: a folder with a plus. */
+@Suppress("MagicNumber") // path coordinates
+val NewFolderIcon: ImageVector =
+    lineIcon("New folder") {
+        moveTo(3f, 5f)
+        lineTo(9f, 5f)
+        lineTo(11f, 7f)
+        lineTo(21f, 7f)
+        lineTo(21f, 19f)
+        lineTo(3f, 19f)
+        close()
+        moveTo(12f, 10f)
+        lineTo(12f, 16f)
+        moveTo(9f, 13f)
+        lineTo(15f, 13f)
+    }
+
 /** Duplicate: two sheets, the front one with a plus. */
 @Suppress("MagicNumber") // path coordinates
 val DuplicateIcon: ImageVector =

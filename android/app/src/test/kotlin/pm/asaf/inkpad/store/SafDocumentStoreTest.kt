@@ -66,6 +66,19 @@ class SafDocumentStoreTest {
     }
 
     @Test
+    fun createsFolders() {
+        val folder = store.createFolder(FakeDocumentsProvider.folderId(), "Courses")
+        assertEquals("Courses", folder.name)
+        assertTrue(File(directory, "Courses").isDirectory)
+        // Listed, and notes can go in it.
+        assertEquals(listOf(folder.id), store.list(FakeDocumentsProvider.folderId()).map { it.id })
+        store.create(folder.id, "n.xopp")
+        assertTrue(File(directory, "Courses/n.xopp").isFile)
+        // A taken name is changed.
+        assertEquals("Courses (1)", store.createFolder(FakeDocumentsProvider.folderId(), "Courses").name)
+    }
+
+    @Test
     fun findsThePathToAFile() {
         File(directory, "A/B").mkdirs()
         File(directory, "A/B/c.xopp").writeText("")

@@ -31,6 +31,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,17 +68,38 @@ fun LibraryGrid(
     )
 }
 
-/** A heading across the grid, with a "New note" button. */
+/** A heading across the grid, with "New folder" and "New note" buttons. */
 fun LazyGridScope.sectionHeader(
     key: String,
     title: String,
+    onNewFolder: () -> Unit,
     onNewNote: () -> Unit,
 ) {
     item(key = "header:$key", span = { GridItemSpan(maxLineSpan) }) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(top = 8.dp),
+        ) {
             Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            NewFolderButton(onNewFolder)
             NewNoteButton(onNewNote)
         }
+    }
+}
+
+/** "New folder"; just its icon on narrow screens, where the title needs the room. */
+@Composable
+fun NewFolderButton(onClick: () -> Unit) {
+    val label = stringResource(R.string.new_folder)
+    if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
+        OutlinedButton(onClick = onClick) {
+            Icon(NewFolderIcon, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(label)
+        }
+    } else {
+        OutlinedIconButton(onClick = onClick) { Icon(NewFolderIcon, contentDescription = label) }
     }
 }
 
