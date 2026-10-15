@@ -201,6 +201,17 @@ Open a PDF → create document with pdf backgrounds; store relative path
 like Xournal++; export annotated PDF (vector overlay).
 ✅ Exported PDF opens in other readers with annotations correct.
 
+Done: library folders list PDFs; tapping one opens its note next to it (made the first
+time, with a page per PDF page and the PDF named relative to the note; one Xournal++
+made is opened instead). A PDF opened from another app gets its note next to it if it is
+in the library, and otherwise a note carrying a copy of it (Xournal++'s attach) kept in
+the app's own storage, never in the user's folders, listed under Opened PDFs with Move to
+a folder… and Delete. Notes export as PDF (Export PDF… and Share as PDF): Android's
+PdfDocument draws the ink, which PdfBox-Android lays over the original PDF pages, kept
+as vectors (`PdfExportDeviceTest`: the 104-page note in 13 s). `scripts/pdf-export-check.sh`
+finds the exports within 0.5% of Xournal++'s, with the same page sizes and the PDF's
+text kept. LaTeX formulas are exported as images.
+
 ### Phase 9 — Nextcloud / WebDAV sync
 New KMP module `:core:sync` using Ktor client (shared with future iOS).
 - WebDAV ops: PROPFIND (list + ETags), GET, PUT with If-Match, MKCOL, MOVE

@@ -1,5 +1,5 @@
 # CLAUDE.md
-- Read PLAN.md before starting. Current phase: 8.
+- Read PLAN.md before starting. Current phase: 9.
 - Build/test: ./gradlew check   Lint: ./gradlew ktlintCheck detekt   CI: scripts/ci.sh
 - Screenshots: record with ./gradlew :android:render:testDebugUnitTest -Plibreta.recordScreenshots=true,
   then review the PNGs (scripts/render-crosscheck.sh compares with Xournal++) before committing.

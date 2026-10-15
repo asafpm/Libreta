@@ -89,6 +89,16 @@ Xournal++ live in `testdata/xournalpp/`.
   eraser types of `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
 - `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of
   `src/core/control/jobs/SaveJob.cpp`.
+- `core/model/src/commonMain/.../NewNote.kt` (`forPdf`, `notesForPdf`, `exportName`): notes
+  for PDFs of `src/core/model/Document.cpp` (`readPdf`), the existing notes looked for in
+  `src/core/control/Control.cpp` (`autoloadPdfXoj`), and the export name `%{name}_annotated`
+  of `src/core/control/settings/Settings.cpp`.
+- `android/render/src/main/.../PdfPages.kt`: PDF page sizes as `readPdf` takes them.
+- `android/app/src/main/.../library/PdfNotes.kt`, `OpenedPdfs.kt`: opening a PDF's note, of
+  `src/core/control/Control.cpp`, and carrying the PDF as an attachment, of
+  `src/core/control/xojfile/SaveHandler.cpp`.
+- `android/render/src/main/.../PdfExport.kt`, `PdfMerge.kt`: PDF export of
+  `src/core/pdf/base/XojCairoPdfExport.cpp`.
 - `core/geometry/src/commonMain/.../Selection.kt`: what a rectangle or lasso selects of
   `src/core/control/tools/Selector.cpp` and `Element::isInSelection`
   (`src/core/model/Element.cpp`, `Stroke.cpp`), object picking of
@@ -127,6 +137,39 @@ The release archive `liberation-fonts-ttf-2.1.5.tar.gz` had SHA-256
 ## Third-party libraries
 
 Libreta depends on libraries under the Apache License 2.0, among them the Kotlin
-standard library, AndroidX/Jetpack Compose, Okio and xmlutil. The Apache
-License 2.0 is compatible with version 3 of the GPL, which this project's
+standard library, AndroidX/Jetpack Compose, Okio, xmlutil and PdfBox-Android. The
+Apache License 2.0 is compatible with version 3 of the GPL, which this project's
 "or later" clause allows the combined work to be distributed under.
+
+### PdfBox-Android
+
+PdfBox-Android 2.0.27.0 (https://github.com/TomRoush/PdfBox-Android), a port of
+Apache PDFBox 2.0.27, reads PDFs and writes exported ones. It is distributed under
+the Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0), with this
+notice:
+
+> Apache PDFBox
+> Copyright 2014 The Apache Software Foundation
+>
+> This product includes software developed at
+> The Apache Software Foundation (http://www.apache.org/).
+>
+> Based on source code originally developed in the PDFBox and
+> FontBox projects.
+>
+> Copyright (c) 2002-2007, www.pdfbox.org
+>
+> Based on source code originally developed in the PaDaF project.
+> Copyright (c) 2010 Atos Worldline SAS
+>
+> Includes the Adobe Glyph List
+> Copyright 1997, 1998, 2002, 2007, 2010 Adobe Systems Incorporated.
+>
+> Includes the Zapf Dingbats Glyph List
+> Copyright 2002, 2010 Adobe Systems Incorporated.
+>
+> Includes the Script Property (Scripts-10.0.0.txt)
+> Copyright 2017 Unicode, Inc.
+
+It also bundles Liberation Sans Regular (SIL Open Font License 1.1, see Fonts
+above). Its optional BouncyCastle dependency is left out.

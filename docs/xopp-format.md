@@ -193,6 +193,20 @@ When pages are inserted, deleted or moved, Libreta keeps these references valid:
   If the source no longer comes before it, or is gone, the page takes the
   source's own image instead.
 
+Notes Libreta makes for PDFs name the PDF the way Xournal++ does
+(`Document::readPdf`, `SaveHandler::visitPage`, `Util::normalizeAssetPath`). They
+have a page per PDF page, at the PDF page's crop box size turned by its rotation,
+with `pageno` 1, 2, …. The first page also names the PDF:
+- **A PDF in a library folder:** `domain="absolute"` with the file name relative to
+  the note (`paper.pdf`, the note being `paper.xopp` next to it). Desktop
+  Xournal++ finds it the same way when the folder is synced.
+- **A PDF opened from another app:** the note carries a copy, as Xournal++'s
+  "attach": `domain="attach" filename="bg.pdf"`, with the copy written as
+  `<note>.bg.pdf`. Moving the note moves the copy along.
+
+Notes opened from files keep their PDF references as they were written.
+Changing a page's background keeps the PDF named on the first remaining PDF page.
+
 New pages copy the background of the page they follow, as Xournal++ does
 (`PageBackgroundChangeController::copyBackgroundFromOtherPage`):
 - a PDF page gets the same `pageno`, without the filename;

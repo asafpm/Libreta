@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// Default name pattern from Xournal++ v1.3.8 src/core/control/settings/Settings.cpp (`%F-Note-%H-%M`);
+// Default name patterns from Xournal++ v1.3.8 src/core/control/settings/Settings.cpp (`%F-Note-%H-%M`,
+// and `%{name}_annotated` for exports);
 // new pages follow src/core/control/PageBackgroundChangeController.cpp (insertNewPage,
 // copyBackgroundFromOtherPage) and src/core/control/settings/PageTemplateSettings.cpp; notes for
 // PDFs follow src/core/model/Document.cpp (readPdf) and src/core/control/Control.cpp (the notes
