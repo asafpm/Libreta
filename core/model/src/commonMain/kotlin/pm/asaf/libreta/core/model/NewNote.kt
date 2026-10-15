@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Default name pattern from Xournal++ v1.3.8 src/core/control/settings/Settings.cpp (`%F-Note-%H-%M`);
 // new pages follow src/core/control/PageBackgroundChangeController.cpp (insertNewPage,
-// copyBackgroundFromOtherPage) and src/core/control/settings/PageTemplateSettings.cpp,
-// © Xournal++ contributors.
+// copyBackgroundFromOtherPage) and src/core/control/settings/PageTemplateSettings.cpp; notes for
+// PDFs follow src/core/model/Document.cpp (readPdf) and src/core/control/Control.cpp (the notes
+// looked for with autoloadPdfXoj), © Xournal++ contributors.
 
 package pm.asaf.libreta.core.model
 
@@ -62,6 +63,36 @@ object NewNote {
             title = "Libreta document",
         )
     }
+
+    /**
+     * A note on a PDF: a page per PDF page of [pageSizes] (points, width to height), each with
+     * that PDF page as its background. The first one names the PDF ([domain], [filename]).
+     */
+    fun forPdf(
+        pageSizes: List<Pair<Double, Double>>,
+        domain: FileDomain,
+        filename: String,
+        creator: String,
+    ): Document =
+        Document(
+            pages =
+                pageSizes.mapIndexed { i, (width, height) ->
+                    val background =
+                        if (i == 0) Background.Pdf(1, domain, filename) else Background.Pdf(i + 1L)
+                    Page(width, height, background, listOf(Layer(emptyList())))
+                },
+            creator = creator,
+            fileVersion = CURRENT_FILE_VERSION,
+            title = "Libreta document",
+        )
+
+    /** The names of the notes a PDF named [pdfName] may already have, in the order Xournal++ looks for them. */
+    fun notesForPdf(pdfName: String): List<String> {
+        val base = if (pdfName.endsWith(PDF, ignoreCase = true)) pdfName.dropLast(PDF.length) else pdfName
+        return listOf(".xopp", ".xoj", ".pdf.xopp", ".pdf.xoj").map { base + it }
+    }
+
+    private const val PDF = ".pdf"
 
     private fun Int.pad(length: Int): String = toString().padStart(length, '0')
 }

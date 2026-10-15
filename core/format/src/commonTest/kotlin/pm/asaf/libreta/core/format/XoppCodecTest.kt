@@ -17,6 +17,7 @@ import pm.asaf.libreta.core.model.FileDomain
 import pm.asaf.libreta.core.model.ForeignElement
 import pm.asaf.libreta.core.model.Layer
 import pm.asaf.libreta.core.model.LineStyle
+import pm.asaf.libreta.core.model.NewNote
 import pm.asaf.libreta.core.model.PageStyle
 import pm.asaf.libreta.core.model.PointList
 import pm.asaf.libreta.core.model.StrokeTool
@@ -28,6 +29,16 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class XoppCodecTest {
+    @Test
+    fun notesForPdfsAreWrittenAsXournalWritesThem() {
+        val note = NewNote.forPdf(listOf(612.0 to 792.0, 612.0 to 792.0), FileDomain.ABSOLUTE, "paper.pdf", "Libreta")
+        val xml = Buffer().also { XoppWriter.writeXml(note, it) }.readUtf8()
+        // The first PDF page names the file, relative to the note; the others give their page.
+        assertTrue("""<background type="pdf" domain="absolute" filename="paper.pdf" pageno="1"/>""" in xml, xml)
+        assertTrue("""<background type="pdf" pageno="2"/>""" in xml, xml)
+        assertEquals(note, XoppReader.read(XoppWriter.toByteString(note)).document)
+    }
+
     private fun read(xml: String): XoppReadResult = XoppReader.read(xml.encodeUtf8())
 
     private fun document(

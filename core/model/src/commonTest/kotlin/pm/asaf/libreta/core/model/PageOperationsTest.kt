@@ -125,6 +125,36 @@ class PageOperationsTest {
     }
 
     @Test
+    fun aNewBackgroundOnTheFirstPdfPageKeepsThePdfNamed() {
+        val pdf =
+            Document(
+                listOf(
+                    page(background = Background.Pdf(1, FileDomain.ABSOLUTE, "paper.pdf")),
+                    page(background = Background.Pdf(2)),
+                    page(background = Background.Pdf(3)),
+                ),
+            )
+        val lined = Background.Solid(Color.WHITE, PageStyle.LINED)
+        val changed = pdf.applying(checkNotNull(PageOperations.setBackground(pdf, listOf(0), lined)))
+        assertEquals(
+            listOf(lined, Background.Pdf(2, FileDomain.ABSOLUTE, "paper.pdf"), Background.Pdf(3)),
+            changed.pages.map { it.background },
+        )
+        // Undone, as it was.
+        assertEquals(pdf, changed.reverting(checkNotNull(PageOperations.setBackground(pdf, listOf(0), lined))))
+    }
+
+    @Test
+    fun aNewBackgroundOnAClonedImageSourceLeavesTheCloneItsImage() {
+        val image = page(background = Background.Pixmap(FileDomain.ATTACH, "bg_1.png"))
+        val clone = page(background = Background.Pixmap(FileDomain.CLONE, "0"))
+        val doc = Document(listOf(image, clone))
+        val lined = Background.Solid(Color.WHITE, PageStyle.LINED)
+        val changed = doc.applying(checkNotNull(PageOperations.setBackground(doc, listOf(0), lined)))
+        assertEquals(listOf(lined, image.background), changed.pages.map { it.background })
+    }
+
+    @Test
     fun clonedImagesFollowTheirSource() {
         val image = page(background = Background.Pixmap(FileDomain.ATTACH, "bg_1.png"))
         val clone = page(background = Background.Pixmap(FileDomain.CLONE, "1"))

@@ -4,6 +4,7 @@ package pm.asaf.libreta.core.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class NewNoteTest {
     @Test
@@ -35,5 +36,36 @@ class NewNoteTest {
         val page = NewNote.document(PaperSize.LETTER, landscape = true, creator = "x").pages.single()
         assertEquals(792.0, page.width)
         assertEquals(612.0, page.height)
+    }
+
+    @Test
+    fun aPdfGivesOnePagePerPdfPageOnlyTheFirstNamingIt() {
+        val sizes = listOf(612.0 to 792.0, 792.0 to 612.0, 595.28 to 841.89)
+        val document = NewNote.forPdf(sizes, FileDomain.ABSOLUTE, "paper.pdf", creator = "Libreta 0.1.0")
+        assertEquals(sizes, document.pages.map { it.width to it.height })
+        assertEquals(
+            listOf(
+                Background.Pdf(1, FileDomain.ABSOLUTE, "paper.pdf"),
+                Background.Pdf(2),
+                Background.Pdf(3),
+            ),
+            document.pages.map { it.background },
+        )
+        assertTrue(document.pages.all { it.layers == listOf(Layer(emptyList())) })
+        assertEquals("Libreta 0.1.0", document.creator)
+        assertEquals(4, document.fileVersion)
+    }
+
+    @Test
+    fun aPdfsNotesAreLookedForUnderXournalNames() {
+        assertEquals(
+            listOf("paper.xopp", "paper.xoj", "paper.pdf.xopp", "paper.pdf.xoj"),
+            NewNote.notesForPdf("paper.pdf"),
+        )
+        assertEquals(
+            NewNote.notesForPdf("paper.pdf"),
+            NewNote.notesForPdf("paper.PDF").map { it.replace("PDF", "pdf") },
+        )
+        assertEquals(listOf("a.b.xopp", "a.b.xoj", "a.b.pdf.xopp", "a.b.pdf.xoj"), NewNote.notesForPdf("a.b.pdf"))
     }
 }

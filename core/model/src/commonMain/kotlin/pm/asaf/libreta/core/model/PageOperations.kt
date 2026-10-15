@@ -44,17 +44,23 @@ object PageOperations {
         return rearranged(document, document.pages.toMutableList().apply { add(to, removeAt(from)) })
     }
 
-    /** Gives pages [indices] a solid [background]. */
+    /**
+     * Gives pages [indices] a solid [background]. A PDF named on one of them is named on the
+     * next PDF page; images cloned from one keep the image.
+     */
     fun setBackground(
         document: Document,
         indices: Collection<Int>,
         background: Background.Solid,
     ): Edit? {
-        val changes =
-            indices.sorted().mapNotNull { index ->
-                val page = document.pages[index]
-                if (page.background == background) null else PageChange(index, page, page.copy(background = background))
+        val pages = document.pages
+        val changed = indices.toSet()
+        val replaced =
+            pages.mapIndexed { index, page ->
+                if (index in changed && page.background != background) page.copy(background = background) else page
             }
+        val fixed = BackgroundReferences.fixed(pages, replaced)
+        val changes = pages.indices.filter { pages[it] !== fixed[it] }.map { PageChange(it, pages[it], fixed[it]) }
         return changes.takeIf { it.isNotEmpty() }?.let(::Edit)
     }
 
