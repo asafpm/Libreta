@@ -94,6 +94,14 @@ val AddIcon: ImageVector =
         lineTo(19f, 12f)
     }
 
+/** Remove: a minus. */
+@Suppress("MagicNumber") // path coordinates
+val RemoveIcon: ImageVector =
+    lineIcon("Remove") {
+        moveTo(5f, 12f)
+        lineTo(19f, 12f)
+    }
+
 /** An icon drawn with 2-unit lines on a 24 x 24 grid. */
 @Suppress("MagicNumber") // grid sizes
 private fun lineIcon(

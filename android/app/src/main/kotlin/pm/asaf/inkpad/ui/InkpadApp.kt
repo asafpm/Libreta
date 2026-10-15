@@ -18,6 +18,7 @@ import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.ToolSettings
 import pm.asaf.inkpad.files.DocumentLocation
 import pm.asaf.inkpad.library.LibraryRoot
+import pm.asaf.inkpad.settings.ColorPreferences
 import pm.asaf.inkpad.settings.ToolPreferences
 
 /** The app's screens, driven by [model]. */
@@ -118,12 +119,15 @@ private fun Settings(
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val tools by model.tools.tools.collectAsStateWithLifecycle()
+    val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
+    val recentLimit by model.colors.recentLimit.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
         sortOrder = sortOrder,
         fingerDraws = fingerDraws,
         stylusButton = tools.button,
+        colors = ColorSettings(fixedColors, recentLimit),
         actions =
             SettingsActions(
                 addFolder,
@@ -132,6 +136,9 @@ private fun Settings(
                 library::setSortOrder,
                 model.tools::setFingerDraws,
                 model.tools::setButton,
+                model.colors::setFixedCount,
+                model.colors::setFixedColor,
+                model.colors::setRecentLimit,
             ),
         onBack = { model.back() },
     )
@@ -144,7 +151,8 @@ private fun Note(
 ) {
     val note by model.note.collectAsStateWithLifecycle()
     val tools by model.tools.tools.collectAsStateWithLifecycle()
-    val recentColors by model.tools.recentColors.collectAsStateWithLifecycle()
+    val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
+    val recentColors by model.colors.recentColors.collectAsStateWithLifecycle()
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
@@ -155,7 +163,7 @@ private fun Note(
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
-        tools = toolControls(model.tools, tools, recentColors, fingerDraws),
+        tools = toolControls(model.tools, model.colors, tools, fixedColors, recentColors, fingerDraws),
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
@@ -164,18 +172,21 @@ private fun Note(
 
 private fun toolControls(
     preferences: ToolPreferences,
+    colors: ColorPreferences,
     tools: ToolSettings,
+    fixedColors: List<Color>,
     recentColors: List<Color>,
     fingerDraws: Boolean,
 ) = ToolControls(
     tools = tools,
+    fixedColors = fixedColors,
     fingerDraws = fingerDraws,
     recentColors = recentColors,
     onTool = preferences::selectTool,
     onColor = preferences::setColor,
     onCustomColor = { color ->
         preferences.setColor(color)
-        preferences.addRecentColor(color)
+        colors.addRecentColor(color)
     },
     onSize = preferences::setSize,
     onEraserType = preferences::setEraserType,

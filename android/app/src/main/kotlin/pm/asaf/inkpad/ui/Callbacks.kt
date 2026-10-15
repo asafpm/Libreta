@@ -27,12 +27,28 @@ class SettingsActions(
     val sortBy: (SortOrder) -> Unit,
     val fingerDraws: (Boolean) -> Unit,
     val stylusButton: (StylusButton) -> Unit,
+    /** How many fixed colours the toolbar offers. */
+    val fixedCount: (Int) -> Unit,
+    /** Changes fixed colour (index) to a colour. */
+    val fixedColor: (Int, Color) -> Unit,
+    /** How many recent colours are kept. */
+    val recentLimit: (Int) -> Unit,
+)
+
+/** The toolbar's colours as set in Settings. */
+class ColorSettings(
+    /** Offered for the pen and the highlighter. */
+    val fixed: List<Color>,
+    /** How many recent custom colours are kept. */
+    val recentLimit: Int,
 )
 
 /** The tools and finger drawing, and how to change them. */
 class ToolControls(
     val tools: ToolSettings,
     val fingerDraws: Boolean,
+    /** The colours always offered (Settings). */
+    val fixedColors: List<Color>,
     /** Custom colours picked, most recent first. */
     val recentColors: List<Color>,
     val onTool: (Tool) -> Unit,

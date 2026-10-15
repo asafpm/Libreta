@@ -39,7 +39,7 @@ import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.SortOrder
 
-/** The library folders (add, remove, reorder), how notes are sorted, and input. */
+/** The library folders (add, remove, reorder), how notes are sorted, input, toolbar colours and the stylus. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
@@ -47,6 +47,7 @@ fun SettingsScreen(
     sortOrder: SortOrder,
     fingerDraws: Boolean,
     stylusButton: StylusButton,
+    colors: ColorSettings,
     actions: SettingsActions,
     onBack: () -> Unit,
 ) {
@@ -91,6 +92,9 @@ fun SettingsScreen(
                         onValueChange = actions.fingerDraws,
                     ),
             )
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.colors))
+            ColorSettingsSection(colors, actions)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.stylus))
             Text(

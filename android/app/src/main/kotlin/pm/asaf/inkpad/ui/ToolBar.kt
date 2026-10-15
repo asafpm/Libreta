@@ -42,14 +42,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.EraserType
-import pm.asaf.inkpad.core.model.Palette
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.core.model.Color as InkColor
 
 /**
- * The tools: pen, highlighter and eraser, then the chosen tool's colour (Xournal++'s palette,
- * recent custom colours, and a picker) and width, or the eraser's type and size; and finger
+ * The tools: pen, highlighter and eraser, then the chosen tool's colour (the fixed colours
+ * from Settings, recent custom colours, and a picker) and width, or the eraser's type and size; and finger
  * drawing.
  */
 @Composable
@@ -71,24 +70,11 @@ fun ToolBar(
             Separator()
             when (tools.tool) {
                 Tool.PEN -> {
-                    InkOptions(
-                        tools.pen.color,
-                        tools.pen.size,
-                        Palette.DEFAULT_PEN to R.string.color_royal_blue,
-                        controls,
-                    ) {
-                        picking =
-                            true
-                    }
+                    InkOptions(tools.pen.color, tools.pen.size, controls) { picking = true }
                 }
 
                 Tool.HIGHLIGHTER -> {
-                    InkOptions(
-                        tools.highlighter.color,
-                        tools.highlighter.size,
-                        Palette.HIGHLIGHTER to R.string.color_bright_yellow,
-                        controls,
-                    ) { picking = true }
+                    InkOptions(tools.highlighter.color, tools.highlighter.size, controls) { picking = true }
                 }
 
                 Tool.ERASER -> {
@@ -129,26 +115,17 @@ private fun ToolButton(
     }
 }
 
-/** Colours, with the tool's own default first, then widths, for the pen or highlighter. */
+/** The fixed colours, recent ones and the current one if it is neither, then widths, for the pen or highlighter. */
 @Composable
 private fun RowScope.InkOptions(
     color: InkColor,
     size: PenSize,
-    default: Pair<InkColor, Int>,
     controls: ToolControls,
     onAddColor: () -> Unit,
 ) {
-    val named = listOf(default) + PALETTE
-    for ((swatch, name) in named) {
-        Swatch(swatch, stringResource(name), selected = swatch == color) { controls.onColor(swatch) }
-    }
-    // Recent custom colours, and the current one if it is neither.
-    val customs =
-        (listOf(color) + controls.recentColors).distinct().filter { custom ->
-            named.none { it.first == custom }
-        }
-    for (custom in customs) {
-        Swatch(custom, custom.hex(), selected = custom == color) { controls.onColor(custom) }
+    val swatches = (controls.fixedColors + controls.recentColors + color).distinct()
+    for (swatch in swatches) {
+        Swatch(swatch, colorName(swatch), selected = swatch == color) { controls.onColor(swatch) }
     }
     IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
     Separator()
@@ -234,24 +211,6 @@ private val PenSize.label: Int
             PenSize.THICK -> R.string.width_thick
             PenSize.VERY_THICK -> R.string.width_very_thick
         }
-
-/** Xournal++'s palette, with names. */
-private val PALETTE: List<Pair<InkColor, Int>> =
-    Palette.XOURNALPP.zip(
-        listOf(
-            R.string.color_yellow,
-            R.string.color_orange,
-            R.string.color_purple,
-            R.string.color_light_green,
-            R.string.color_light_blue,
-            R.string.color_gray,
-            R.string.color_dark_green,
-            R.string.color_red,
-            R.string.color_dark_blue,
-            R.string.color_black,
-            R.string.color_white,
-        ),
-    )
 
 private val ERASER_TYPES =
     listOf(

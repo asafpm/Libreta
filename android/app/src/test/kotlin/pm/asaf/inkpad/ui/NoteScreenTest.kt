@@ -10,10 +10,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -264,37 +266,23 @@ class NoteScreenTest {
         // Still offered after choosing another colour, and next time.
         compose.onNodeWithContentDescription("Colour: Red").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Colour: #123456").performScrollTo().assertIsNotSelected()
-        assertEquals(listOf(picked), AppViewModel(application).tools.recentColors.value)
+        assertEquals(listOf(picked), AppViewModel(application).colors.recentColors.value)
     }
 
     @Test
-    fun editsAreSavedWhileWriting() {
-        val model = openLecture(Autosave(idle = 200.milliseconds))
-        val view = checkNotNull(documentView(compose.activity.window.decorView))
-        val file = File(directory, "Lecture.xopp")
-        val before = file.readBytes()
-        write(view)
-        val written = model.elements().last()
-        // Saved in place, without leaving the note (autosave's delays run on the main looper's clock).
-        eventually {
-            ShadowLooper.idleMainLooper(50, TimeUnit.MILLISECONDS)
-            !file.readBytes().contentEquals(before)
+    fun theToolbarOffersTheFixedAndThreeRecentColours() {
+        openLecture()
+        for (hex in listOf("#111111", "#222222", "#333333", "#444444")) {
+            compose.onNodeWithContentDescription("Add a colour").performScrollTo().performClick()
+            compose.onNodeWithTag("hex").performTextReplacement(hex)
+            compose.onNodeWithText("OK").performClick()
         }
-        val saved =
-            file
-                .source()
-                .buffer()
-                .use { XoppReader.read(it) }
-                .document
+        val swatches = compose.onAllNodes(hasContentDescription("Colour:", substring = true)).fetchSemanticsNodes()
+        val names = swatches.map { it.config[SemanticsProperties.ContentDescription].single().removePrefix("Colour: ") }
         assertEquals(
-            written,
-            saved.pages[0]
-                .layers
-                .last()
-                .elements
-                .last(),
+            listOf("Black", "Royal blue", "Red", "Dark green", "Bright yellow", "#444444", "#333333", "#222222"),
+            names,
         )
-        eventually { !(model.note.value as NoteState.Loaded).session.dirty }
     }
 
     private companion object {

@@ -82,6 +82,10 @@ object Palette {
     /** Xournal++'s default highlighter colour. */
     val HIGHLIGHTER: Color = Color.of(255, 255, 0)
 
+    /** The colours a toolbar offers by default: black, the default pen, red, dark green and the default highlighter. */
+    val DEFAULT_FIXED: List<Color>
+        get() = listOf(Color.of(0, 0, 0), DEFAULT_PEN, Color.of(237, 83, 83), Color.of(58, 145, 4), HIGHLIGHTER)
+
     /** Xournal++'s default palette, `palettes/xournalpp.gpl`, in its order. */
     val XOURNALPP: List<Color> =
         listOf(

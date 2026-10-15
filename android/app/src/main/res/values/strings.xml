@@ -55,6 +55,12 @@
     <string name="color_saturation_value">Saturation and brightness</string>
     <string name="color_hex">Hex colour</string>
     <string name="color_bright_yellow">Bright yellow</string>
+    <string name="colors">Colours</string>
+    <string name="fixed_colors">Fixed colours</string>
+    <string name="recent_colors_limit">Recent colours to keep</string>
+    <string name="fewer">Fewer: %1$s</string>
+    <string name="more">More: %1$s</string>
+    <string name="edit_color">Change colour %1$s</string>
     <string name="stylus">Stylus</string>
     <string name="stylus_button">Holding the side button</string>
     <string name="button_erases">Erases</string>

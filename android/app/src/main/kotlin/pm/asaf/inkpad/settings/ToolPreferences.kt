@@ -18,18 +18,13 @@ import pm.asaf.inkpad.core.model.ToolSettings
 
 /**
  * The tools as last used (the chosen one, and each one's colour and width), the stylus
- * button, recent custom colours and how fingers act, remembered in [preferences].
+ * button and how fingers act, remembered in [preferences].
  */
 class ToolPreferences(
     private val preferences: SharedPreferences,
 ) {
     private val toolState = MutableStateFlow(preferences.readTools())
     val tools: StateFlow<ToolSettings> = toolState.asStateFlow()
-
-    private val recentState = MutableStateFlow(preferences.readRecent())
-
-    /** Custom colours picked, most recent first. */
-    val recentColors: StateFlow<List<Color>> = recentState.asStateFlow()
 
     private val fingerState = MutableStateFlow(preferences.getBoolean(Keys.FINGER, false))
 
@@ -60,13 +55,6 @@ class ToolPreferences(
     fun setEraserType(type: EraserType) = update { it.copy(eraser = it.eraser.copy(type = type)) }
 
     fun setButton(button: StylusButton) = update { it.copy(button = button) }
-
-    /** Remembers [color], picked from the colour picker, among the recent ones. */
-    fun addRecentColor(color: Color) {
-        val recent = (listOf(color) + recentState.value.filter { it != color }).take(Keys.MAX_RECENT)
-        recentState.value = recent
-        preferences.edit().putString(Keys.RECENT, recent.joinToString(",") { it.rgba.toString(Keys.HEX) }).apply()
-    }
 
     fun setFingerDraws(draws: Boolean) {
         fingerState.value = draws
@@ -126,12 +114,6 @@ private inline fun <reified T : Enum<T>> SharedPreferences.enumOf(
     default: T,
 ): T = enumValues<T>().firstOrNull { it.name == getString(key, null) } ?: default
 
-private fun SharedPreferences.readRecent(): List<Color> =
-    getString(Keys.RECENT, null)
-        .orEmpty()
-        .split(',')
-        .mapNotNull { it.toUIntOrNull(Keys.HEX)?.let(::Color) }
-
 /** Preference keys. */
 private object Keys {
     const val TOOL = "tool"
@@ -144,8 +126,5 @@ private object Keys {
     const val ERASER_TYPE = "eraser.type"
     const val ERASER_SIZE = "eraser.size"
     const val BUTTON = "stylus.button"
-    const val RECENT = "colors.recent"
     const val FINGER = "finger.draws"
-    const val MAX_RECENT = 8
-    const val HEX = 16
 }

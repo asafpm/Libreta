@@ -42,6 +42,7 @@ import pm.asaf.inkpad.library.Library
 import pm.asaf.inkpad.library.NewNoteCreator
 import pm.asaf.inkpad.library.NewNoteFlow
 import pm.asaf.inkpad.library.PreviewCache
+import pm.asaf.inkpad.settings.ColorPreferences
 import pm.asaf.inkpad.settings.ToolPreferences
 import pm.asaf.inkpad.store.SafDocumentStore
 import java.io.File
@@ -109,6 +110,7 @@ class AppViewModel
         val library = Library(store, application.contentResolver, preferences, viewModelScope, io)
         val previews = PreviewCache(application, store)
         val tools = ToolPreferences(preferences)
+        val colors = ColorPreferences(preferences)
 
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
         val screens: StateFlow<List<Screen>> = stack.asStateFlow()
