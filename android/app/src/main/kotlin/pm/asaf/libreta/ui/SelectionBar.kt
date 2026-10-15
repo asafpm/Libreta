@@ -10,11 +10,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
+import pm.asaf.libreta.core.model.Tool
+import pm.asaf.libreta.files.NoteClipboard
+import pm.asaf.libreta.viewer.DocumentView
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -62,3 +67,44 @@ fun SelectionBar(
 }
 
 private const val GAP_DP = 12
+
+/** The selection bar's commands on [view]'s selection; cut and copy put it on [clipboard]. */
+internal fun selectionActions(
+    view: () -> DocumentView?,
+    clipboard: NoteClipboard?,
+    /** Null when there is nothing to paste. */
+    paste: (() -> Unit)?,
+) = SelectionActions(
+    cut = {
+        view()?.selection?.let {
+            clipboard?.copy(it.elements)
+            it.delete()
+        }
+    },
+    copy = { view()?.selection?.let { clipboard?.copy(it.elements) } },
+    paste = paste ?: {},
+    canPaste = paste != null,
+    duplicate = { view()?.selection?.duplicate() },
+    delete = { view()?.selection?.delete() },
+)
+
+/**
+ * Pastes the clipboard's elements on the page in view, with the selection tool so that they
+ * can be moved at once; null while there is nothing to paste.
+ */
+@Composable
+internal fun rememberPaste(
+    clipboard: NoteClipboard?,
+    tools: ToolControls,
+    page: () -> Int,
+    view: () -> DocumentView?,
+): (() -> Unit)? {
+    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
+    if (!canPaste) return null
+    return {
+        clipboard?.paste()?.let { elements ->
+            tools.onTool(Tool.SELECT)
+            view()?.selection?.paste(page(), elements)
+        }
+    }
+}

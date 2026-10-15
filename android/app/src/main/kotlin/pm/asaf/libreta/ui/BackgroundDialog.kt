@@ -131,6 +131,7 @@ internal fun RulingChoices(
                 Image(
                     checkNotNull(previews[ruling]),
                     contentDescription = null,
+                    colorFilter = pageColorFilter(),
                     modifier = Modifier.border(if (selected) 3.dp else 1.dp, ring),
                 )
                 Text(stringResource(label), style = MaterialTheme.typography.labelSmall)

@@ -15,6 +15,7 @@ import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.SortOrder
+import pm.asaf.libreta.settings.ThemeMode
 
 /** What a library grid does when something in it is chosen. */
 class LibraryActions(
@@ -61,6 +62,15 @@ class SettingsActions(
     val sizeVisible: (PenSize, Boolean) -> Unit,
     /** How new pages and notes look. */
     val newPages: (NewPageTemplate) -> Unit,
+)
+
+/** How the app looks, as set in Settings. */
+class AppearanceSettings(
+    val theme: ThemeMode,
+    /** Pages shown dark while the app is. */
+    val darkPages: Boolean,
+    val onTheme: (ThemeMode) -> Unit,
+    val onDarkPages: (Boolean) -> Unit,
 )
 
 /** What the toolbar offers, as set in Settings. */

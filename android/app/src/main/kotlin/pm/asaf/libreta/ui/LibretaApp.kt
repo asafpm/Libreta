@@ -132,6 +132,8 @@ private fun Settings(
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
     val recentLimit by model.colors.recentLimit.collectAsStateWithLifecycle()
     val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
+    val theme by model.appearance.theme.collectAsStateWithLifecycle()
+    val darkPages by model.appearance.darkPages.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
@@ -156,6 +158,7 @@ private fun Settings(
                 model.pages::setTemplate,
             ),
         onBack = { model.back() },
+        appearance = AppearanceSettings(theme, darkPages, model.appearance::setTheme, model.appearance::setDarkPages),
     )
 }
 

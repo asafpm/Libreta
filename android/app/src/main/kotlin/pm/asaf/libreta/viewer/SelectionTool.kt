@@ -117,6 +117,13 @@ internal class SelectionTool(
     private var area: Area? = null
     private var gesture: SelectionGesture? = null
     private val overlay = SelectionOverlay()
+
+    /** Pages are shown dark: a moving selection's picture is recoloured like them. */
+    var darkPages: Boolean
+        get() = overlay.darkPages
+        set(value) {
+            overlay.darkPages = value
+        }
     private val image = KeptSelectionImage(host)
 
     /** Handle sizes, in view pixels. */

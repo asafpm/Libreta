@@ -56,6 +56,13 @@ internal class TextEditing(
 
     val isEditing: Boolean get() = session != null
 
+    /** Pages are shown dark: text being typed is recoloured like them. */
+    var darkPages: Boolean = false
+        set(value) {
+            field = value
+            place()
+        }
+
     /**
      * A tap at a view point with the text tool: finishes the text edited, then edits the text
      * under the point, or starts new text there in [style].
@@ -188,9 +195,8 @@ internal class TextEditing(
         val style = active.style
         val lines = renderer.lineMetrics(style.font, style.size)
         view.typeface = renderer.typeface(style.font)
-        view.setTextColor(
-            android.graphics.Color.argb(style.color.alpha, style.color.red, style.color.green, style.color.blue),
-        )
+        val color = android.graphics.Color.argb(style.color.alpha, style.color.red, style.color.green, style.color.blue)
+        view.setTextColor(if (darkPages) PageRecolor.map(color) else color)
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, (style.size * zoom).toFloat())
         view.firstBaselineToTopHeight = (lines.firstBaseline * zoom).roundToInt()
         view.setLineHeight((lines.lineHeight * zoom).roundToInt().coerceAtLeast(1))

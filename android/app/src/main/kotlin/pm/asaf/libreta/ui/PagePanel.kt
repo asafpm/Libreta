@@ -67,6 +67,7 @@ import kotlinx.coroutines.delay
 import pm.asaf.libreta.R
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.files.PageThumbnails
+import pm.asaf.libreta.viewer.PageRecolor
 import kotlin.math.abs
 
 /**
@@ -344,7 +345,7 @@ private fun Thumbnail(
                 .fillMaxWidth()
                 .aspectRatio((page.width / page.height).toFloat())
                 .border(if (current) 3.dp else 1.dp, ring)
-                .background(Color.White),
+                .background(if (LocalDarkPages.current) Color(PageRecolor.PAPER) else Color.White),
         ) {
             bitmap?.let {
                 // Rendered at the page's proportions: it fills the frame.
@@ -352,6 +353,7 @@ private fun Thumbnail(
                     it.asImageBitmap(),
                     contentDescription = null,
                     contentScale = ContentScale.FillBounds,
+                    colorFilter = pageColorFilter(),
                     modifier = Modifier.fillMaxSize().testTag("thumbnail"),
                 )
             }

@@ -46,6 +46,7 @@ import pm.asaf.libreta.library.NewNoteFlow
 import pm.asaf.libreta.library.OpenedPdfs
 import pm.asaf.libreta.library.PdfNotesFlow
 import pm.asaf.libreta.library.PreviewCache
+import pm.asaf.libreta.settings.AppearancePreferences
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.PagePreferences
 import pm.asaf.libreta.settings.ToolPreferences
@@ -126,6 +127,7 @@ class AppViewModel
         val tools = ToolPreferences(preferences)
         val colors = ColorPreferences(preferences)
         val pages = PagePreferences(preferences)
+        val appearance = AppearancePreferences(preferences)
 
         /** Elements copied, to paste in any note. */
         val clipboard = NoteClipboard(application)

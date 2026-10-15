@@ -194,6 +194,7 @@ private fun PreviewImage(
             bitmap = it.asImageBitmap(),
             contentDescription = null,
             contentScale = ContentScale.Fit,
+            colorFilter = pageColorFilter(),
             modifier = Modifier.border(1.dp, Color(BORDER)),
         )
     }

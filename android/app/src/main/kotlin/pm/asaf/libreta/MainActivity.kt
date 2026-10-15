@@ -8,9 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.ui.LibretaApp
+import pm.asaf.libreta.ui.LibretaTheme
 
 class MainActivity : ComponentActivity() {
     private val model: AppViewModel by viewModels()
@@ -21,7 +23,9 @@ class MainActivity : ComponentActivity() {
         // After a rotation the note is open already.
         if (savedInstanceState == null) openFrom(intent)
         setContent {
-            MaterialTheme {
+            val theme by model.appearance.theme.collectAsStateWithLifecycle()
+            val darkPages by model.appearance.darkPages.collectAsStateWithLifecycle()
+            LibretaTheme(theme, darkPages) {
                 LibretaApp(model)
             }
         }

@@ -30,6 +30,13 @@ internal class SelectionOverlay {
     private val rotateFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = ROTATE }
     private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 
+    /** Pages are shown dark: the moving selection's picture is recoloured like them. */
+    var darkPages: Boolean = false
+        set(value) {
+            field = value
+            bitmapPaint.colorFilter = if (value) PageRecolor.filter() else null
+        }
+
     /** A rectangle (from the first point to the last) or a lasso (through them all), in view pixels. */
     fun drawArea(
         canvas: Canvas,

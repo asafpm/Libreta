@@ -102,6 +102,9 @@ internal class InkInput(
 
         /** How far (pixels) a pointer moves before a tap is no longer one. */
         val touchSlop: Float
+
+        /** Pages are shown dark: wet ink is recoloured like them. */
+        val darkPages: Boolean
     }
 
     /** One stroke in progress. */
@@ -275,7 +278,10 @@ internal class InkInput(
                 page = page,
                 ink = strokeInk,
                 builder = builder,
-                color = android.graphics.Color.argb(color.alpha, color.red, color.green, color.blue),
+                color =
+                    android.graphics.Color
+                        .argb(color.alpha, color.red, color.green, color.blue)
+                        .let { if (host.darkPages) PageRecolor.map(it) else it },
                 byFinger = byFinger,
                 pressure = ink == Ink.PEN && !byFinger,
                 // Highlighters blend with the page: drawn in it, as they will look.

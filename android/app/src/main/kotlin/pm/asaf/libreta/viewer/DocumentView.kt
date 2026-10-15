@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.DragEvent
@@ -140,6 +141,19 @@ class DocumentView
 
         /** Text typed or changed with the text tool. */
         val text: ViewText by lazy { ViewText(inking.textEditing) }
+
+        /** The recolouring pages are drawn through while they are shown dark. */
+        private var recolor: Paint? = null
+
+        /** Whether pages are shown dark (PageRecolor); the document does not change. */
+        var darkPages: Boolean
+            get() = recolor != null
+            set(value) {
+                if (value == darkPages) return
+                recolor = if (value) Paint().apply { colorFilter = PageRecolor.filter() } else null
+                inking.darkPages = value
+                invalidate()
+            }
 
         /** Called with a picture dropped from another app, and where (view pixels); null: none accepted. */
         var onImageDropped: ((uri: Uri, viewX: Float, viewY: Float) -> Unit)? = null
@@ -391,8 +405,12 @@ class DocumentView
             } else {
                 // Compose hosts views without clipping them: stay off the bars around.
                 canvas.clipRect(0, 0, width, height)
-                painter.draw(canvas, content.layout, content.caches, viewport, content.renderer::version)
-                if (inking.draw(canvas)) postInvalidateOnAnimation()
+                // Pages shown dark are drawn through the recolouring; what is over them is not.
+                val again =
+                    inking.draw(canvas, recolor) {
+                        painter.draw(canvas, content.layout, content.caches, viewport, content.renderer::version)
+                    }
+                if (again) postInvalidateOnAnimation()
             }
         }
 

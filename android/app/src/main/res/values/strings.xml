@@ -8,6 +8,12 @@
     <string name="new_note">New note</string>
     <string name="new_folder">New folder</string>
     <string name="pdf">PDF</string>
+    <string name="appearance">Appearance</string>
+    <string name="theme_system">As the system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="dark_pages">Dark pages</string>
+    <string name="dark_pages_summary">While the app is dark, show pages dark too (only on screen: notes don\'t change)</string>
     <string name="shape">Shape: %1$s</string>
     <string name="shape_freehand">Freehand</string>
     <string name="shape_line">Line</string>

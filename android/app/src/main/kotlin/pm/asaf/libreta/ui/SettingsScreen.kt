@@ -64,6 +64,7 @@ fun SettingsScreen(
     newPages: NewPageTemplate,
     actions: SettingsActions,
     onBack: () -> Unit,
+    appearance: AppearanceSettings? = null,
 ) {
     Scaffold(
         topBar = {
@@ -86,13 +87,12 @@ fun SettingsScreen(
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.sort_by))
-            RadioOption(stringResource(R.string.sort_modified), sortOrder == SortOrder.MODIFIED) {
-                actions.sortBy(SortOrder.MODIFIED)
+            SortChoices(sortOrder, actions.sortBy)
+            appearance?.let {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Heading(stringResource(R.string.appearance))
+                AppearanceSection(it)
             }
-            RadioOption(
-                stringResource(R.string.sort_name),
-                sortOrder == SortOrder.NAME,
-            ) { actions.sortBy(SortOrder.NAME) }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.input))
             ListItem(
@@ -120,6 +120,16 @@ fun SettingsScreen(
             ButtonChoices(stylusButton, actions.stylusButton)
         }
     }
+}
+
+/** How library folders are sorted. */
+@Composable
+private fun SortChoices(
+    sortOrder: SortOrder,
+    onSort: (SortOrder) -> Unit,
+) {
+    RadioOption(stringResource(R.string.sort_modified), sortOrder == SortOrder.MODIFIED) { onSort(SortOrder.MODIFIED) }
+    RadioOption(stringResource(R.string.sort_name), sortOrder == SortOrder.NAME) { onSort(SortOrder.NAME) }
 }
 
 /** What holding the stylus button does. */

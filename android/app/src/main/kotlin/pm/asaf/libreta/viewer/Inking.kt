@@ -3,6 +3,7 @@
 package pm.asaf.libreta.viewer
 
 import android.graphics.Canvas
+import android.graphics.Paint
 import android.view.MotionEvent
 import android.view.View
 import androidx.input.motionprediction.MotionEventPredictor
@@ -244,6 +245,8 @@ internal class Inking(
                 ) = textEditing.tap(viewX, viewY, tools.text)
 
                 override val touchSlop: Float = TAP_DP * view.resources.displayMetrics.density
+
+                override val darkPages: Boolean get() = this@Inking.darkPages
             },
         )
 
@@ -285,8 +288,26 @@ internal class Inking(
         wetInk.clear()
     }
 
-    /** Draws the changes the tiles don't show yet, and the eraser. Returns whether to draw again soon. */
-    fun draw(canvas: Canvas): Boolean {
+    /** Pages shown dark (PageRecolor): what is drawn outside the view's pages follows. */
+    var darkPages: Boolean = false
+        set(value) {
+            field = value
+            selection.darkPages = value
+            textEditing.darkPages = value
+        }
+
+    /**
+     * Draws the pages: their tiles ([drawTiles]), then the changes the tiles don't show yet and
+     * the stroke written in the view, all through [recolor] if pages are shown dark; then, over
+     * them, the selection and the eraser's cursor. Returns whether to draw again soon.
+     */
+    fun draw(
+        canvas: Canvas,
+        recolor: Paint?,
+        drawTiles: () -> Unit,
+    ): Boolean {
+        val layer = recolor?.let { canvas.saveLayer(null, it) }
+        drawTiles()
         val state = host.state
         val painter = renderer
         if (state != null && painter != null) {
@@ -305,6 +326,7 @@ internal class Inking(
                 }
             }
         }
+        layer?.let(canvas::restoreToCount)
         selection.draw(canvas)
         erasing.drawCursor(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()

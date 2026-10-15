@@ -2,6 +2,7 @@
 
 package pm.asaf.libreta.ui
 
+import android.content.Context
 import android.graphics.RectF
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -89,7 +90,7 @@ fun NoteScreen(
     val currentTemplate by rememberUpdatedState(template)
     val commands = loaded?.let { remember(it.session) { NoteCommands(it.session, { view }, { currentTemplate }) } }
     val panels = remember { NotePanels() }
-    val paste = rememberPaste(clipboard, tools, panels) { view }
+    val paste = rememberPaste(clipboard, tools, { panels.current }) { view }
     val export = rememberExportActions(exports, loaded, name) { view }
     val images = rememberImageActions({ view }, { panels.current }) { tools.onTool(Tool.SELECT) }
     ExportProgress(exports)
@@ -155,47 +156,6 @@ private fun NoteTopBar(
         },
         actions = actions,
     )
-}
-
-/** The selection bar's commands on [view]'s selection; cut and copy put it on [clipboard]. */
-private fun selectionActions(
-    view: () -> DocumentView?,
-    clipboard: NoteClipboard?,
-    /** Null when there is nothing to paste. */
-    paste: (() -> Unit)?,
-) = SelectionActions(
-    cut = {
-        view()?.selection?.let {
-            clipboard?.copy(it.elements)
-            it.delete()
-        }
-    },
-    copy = { view()?.selection?.let { clipboard?.copy(it.elements) } },
-    paste = paste ?: {},
-    canPaste = paste != null,
-    duplicate = { view()?.selection?.duplicate() },
-    delete = { view()?.selection?.delete() },
-)
-
-/**
- * Pastes the clipboard's elements on the page in view, with the selection tool so that they
- * can be moved at once; null while there is nothing to paste.
- */
-@Composable
-private fun rememberPaste(
-    clipboard: NoteClipboard?,
-    tools: ToolControls,
-    panels: NotePanels,
-    view: () -> DocumentView?,
-): (() -> Unit)? {
-    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
-    if (!canPaste) return null
-    return {
-        clipboard?.paste()?.let { elements ->
-            tools.onTool(Tool.SELECT)
-            view()?.selection?.paste(panels.current, elements)
-        }
-    }
 }
 
 /**
@@ -459,6 +419,7 @@ private fun NoteCanvas(
     modifier: Modifier = Modifier,
 ) {
     var document by remember { mutableStateOf<DocumentView?>(null) }
+    val darkPages = LocalDarkPages.current
     val layers by state.session.layers.collectAsState()
     AndroidView(
         factory = { context ->
@@ -480,29 +441,15 @@ private fun NoteCanvas(
                     text.onStyle = { style -> tools.onChange { it.copy(text = style) } }
                     position.get()?.let { restore(it) }
                 }
-            val ink = LowLatencyCanvasView(context)
-            view.wetInk = LowLatencyWetInk(ink)
-            // Text is typed over the page; it takes its own touches.
-            val text = EditText(context)
-            view.text.field = text
             document = view
             onView(view)
-            FrameLayout(context).apply {
-                addView(view)
-                addView(
-                    text,
-                    FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                        FrameLayout.LayoutParams.WRAP_CONTENT,
-                    ),
-                )
-                addView(ink)
-            }
+            view.stackedOver(context)
         },
         update = {
             document?.tools = tools.tools
             document?.fingerDraws = tools.fingerDraws
             document?.layerViews = layers
+            document?.darkPages = darkPages
         },
         onRelease = {
             document?.let { released ->
@@ -516,6 +463,23 @@ private fun NoteCanvas(
         },
         modifier = modifier,
     )
+}
+
+/**
+ * This view with what goes over it: the field text is typed in (it takes its own touches), and
+ * the front buffer wet ink is drawn in.
+ */
+private fun DocumentView.stackedOver(context: Context): FrameLayout {
+    val ink = LowLatencyCanvasView(context)
+    wetInk = LowLatencyWetInk(ink)
+    val field = EditText(context)
+    text.field = field
+    val wrap = FrameLayout.LayoutParams.WRAP_CONTENT
+    return FrameLayout(context).apply {
+        addView(this@stackedOver)
+        addView(field, FrameLayout.LayoutParams(wrap, wrap))
+        addView(ink)
+    }
 }
 
 /** From this width the note's actions are buttons, and the page panel is wide. */
