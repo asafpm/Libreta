@@ -187,6 +187,15 @@ Xournal++.
 Lasso + rectangle select, move/scale/rotate, copy/paste, delete,
 recolor selection. Hit testing and transforms in core:geometry.
 
+Done: rectangle, lasso and tap select on the selected layer, by Xournal++'s rules
+(`Selecting`, core:geometry). The box moves (onto other pages too), scales by its corners,
+stretches by its edges, mirrors strokes and rotates strokes (snapped to 15°), each drag one
+edit; pressing the stylus button while moving leaves a copy. Meanwhile the selection is drawn
+from an image kept while it only moves (`SelectionDeviceTest`: 500 elements, frames p95
+13.6 ms). A bar by the selection cuts, copies, pastes, duplicates and deletes; the clipboard
+carries elements between notes in Inkpad's own format; the tool bar's colours and widths
+restyle the selection. `testdata/inkpad-selection.xopp` renders the same in Xournal++.
+
 ### Phase 8 — PDF annotation
 Open a PDF → create document with pdf backgrounds; store relative path
 like Xournal++; export annotated PDF (vector overlay).

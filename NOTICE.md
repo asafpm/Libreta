@@ -89,6 +89,22 @@ Xournal++ live in `testdata/xournalpp/`.
   eraser types of `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
 - `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of
   `src/core/control/jobs/SaveJob.cpp`.
+- `core/geometry/src/commonMain/.../Selection.kt`: what a rectangle or lasso selects of
+  `src/core/control/tools/Selector.cpp` and `Element::isInSelection`
+  (`src/core/model/Element.cpp`, `Stroke.cpp`), object picking of
+  `src/core/gui/PageViewFindObjectHelper.h`, transforms of
+  `src/core/control/tools/EditSelectionContents.cpp` with `Stroke::scale`, `Stroke::rotate`,
+  `Text::scale` and `Image::scale`, and rotation snapping of `src/core/model/Snapping.cpp`.
+- `core/geometry/src/commonMain/.../SelectionBox.kt` and
+  `android/app/src/main/.../viewer/SelectionGesture.kt`: the selection box, its handles and
+  dragging them, of `src/core/control/tools/EditSelection.cpp`.
+- `core/model/src/commonMain/.../SelectionOperations.kt`: restyling of
+  `src/core/control/tools/EditSelectionContents.cpp`.
+- `android/app/src/main/.../viewer/SelectionTool.kt`, `SelectionOverlay.kt`: selecting and
+  its look, of `src/core/control/tools/Selector.cpp`, `src/core/gui/PageView.cpp` and
+  `src/core/view/overlays/SelectorView.cpp`.
+- `android/app/src/main/.../viewer/SelectionCommands.kt`: where pasted elements go, of
+  `src/core/control/Control.cpp`.
 
 ## Fonts
 
