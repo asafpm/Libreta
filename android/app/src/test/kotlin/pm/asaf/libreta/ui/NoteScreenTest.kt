@@ -7,11 +7,13 @@ import android.content.Context
 import android.content.Intent
 import android.provider.MediaStore
 import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
@@ -37,6 +39,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import okio.buffer
 import okio.source
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -53,6 +56,7 @@ import pm.asaf.libreta.android.render.RenderThreads
 import pm.asaf.libreta.core.format.XoppReader
 import pm.asaf.libreta.core.model.Background
 import pm.asaf.libreta.core.model.Color
+import pm.asaf.libreta.core.model.DrawingType
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserSettings
 import pm.asaf.libreta.core.model.EraserType
@@ -152,7 +156,9 @@ class NoteScreenTest {
     private fun openLecture(autosave: Autosave = Autosave()): AppViewModel {
         val paused = StandardTestDispatcher()
         val model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused), autosave)
-        compose.setContent { MaterialTheme { LibretaApp(model) } }
+        compose.setContent {
+            MaterialTheme { CompositionLocalProvider(LocalKeyShortcuts provides shortcuts) { LibretaApp(model) } }
+        }
         compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasText("Lecture.xopp")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Lecture.xopp").performClick()
         eventually { model.note.value is NoteState.Loaded }
@@ -487,6 +493,49 @@ class NoteScreenTest {
             picker.action in
                 setOf(MediaStore.ACTION_PICK_IMAGES, Intent.ACTION_OPEN_DOCUMENT, Intent.ACTION_GET_CONTENT),
         )
+    }
+
+    private val shortcuts = KeyShortcuts()
+
+    /** A key pressed with [meta] (e.g. Ctrl), as the activity hands it on. */
+    private fun press(
+        key: Int,
+        meta: Int = 0,
+    ) = compose.runOnIdle { shortcuts.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, key, 0, meta)) }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun theKeyboardChoosesToolsAndShapesAndUndoes() {
+        val model = openLecture()
+        val ctrl = KeyEvent.META_CTRL_ON
+        assertTrue(press(KeyEvent.KEYCODE_T, ctrl or KeyEvent.META_SHIFT_ON))
+        assertEquals(Tool.TEXT, model.tools.tools.value.tool)
+        press(KeyEvent.KEYCODE_P, ctrl or KeyEvent.META_SHIFT_ON)
+        press(KeyEvent.KEYCODE_3, ctrl)
+        assertEquals(DrawingType.ELLIPSE, model.tools.tools.value.drawingType)
+        press(KeyEvent.KEYCODE_1, ctrl)
+        // Written, undone, redone.
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        val before = model.elements().size
+        write(view)
+        compose.waitForIdle()
+        assertEquals(before + 1, model.elements().size)
+        press(KeyEvent.KEYCODE_Z, ctrl)
+        assertEquals(before, model.elements().size)
+        press(KeyEvent.KEYCODE_Y, ctrl)
+        assertEquals(before + 1, model.elements().size)
+        // Zoom in; keys that are no shortcut are left alone.
+        val zoom = checkNotNull(view.viewport).zoom
+        press(KeyEvent.KEYCODE_EQUALS, ctrl)
+        assertEquals(zoom * 1.1, checkNotNull(view.viewport).zoom, 1e-6)
+        assertFalse(press(KeyEvent.KEYCODE_Q))
+    }
+
+    @Test
+    fun theShortcutsAreListed() {
+        val groups = shortcutGroups(application)
+        assertEquals(3, groups.size)
+        assertTrue(groups.flatMap { it.items }.any { it.label == "Undo" && it.keycode == KeyEvent.KEYCODE_Z })
     }
 
     private companion object {

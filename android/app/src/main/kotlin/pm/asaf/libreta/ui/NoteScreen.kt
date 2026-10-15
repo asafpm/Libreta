@@ -65,6 +65,8 @@ import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
 import pm.asaf.libreta.viewer.LowLatencyWetInk
+import pm.asaf.libreta.viewer.fitWidth
+import pm.asaf.libreta.viewer.scrollToPage
 
 /**
  * A note, shown in a [DocumentView], with a notice when its background files could not be
@@ -94,11 +96,15 @@ fun NoteScreen(
     val export = rememberExportActions(exports, loaded, name) { view }
     val images = rememberImageActions({ view }, { panels.current }) { tools.onTool(Tool.SELECT) }
     ExportProgress(exports)
+    val more = TopBarActions(paste, export, images)
+    if (loaded != null && commands != null) {
+        NoteShortcuts(loaded, commands, panels, tools, more, selectionActions({ view }, clipboard, paste)) { view }
+    }
     Scaffold(
         topBar = {
             NoteTopBar(name, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
-                NoteActions(panels, commands, view, TopBarActions(paste, export, images))
+                NoteActions(panels, commands, view, more)
             }
         },
     ) { padding ->
@@ -167,6 +173,24 @@ private class TopBarActions(
     val export: ExportActions?,
     val images: ImageActions,
 )
+
+/** Keyboard shortcuts for the note in [state], shown by [view]. */
+@Composable
+private fun NoteShortcuts(
+    state: NoteState.Loaded,
+    commands: NoteCommands,
+    panels: NotePanels,
+    tools: ToolControls,
+    more: TopBarActions,
+    selection: SelectionActions,
+    view: () -> DocumentView?,
+) {
+    val newPage = {
+        commands.pages.insertPageAfter(panels.current)
+        panels.current += 1
+    }
+    KeysFor(NoteKeys(view, state.session, tools, selection, newPage, more.export?.save, more.images.insert))
+}
 
 /** A command of the note's top bar. */
 private class NoteAction(
@@ -353,31 +377,13 @@ private fun UndoButtons(
     session: NoteSession,
     view: DocumentView?,
 ) {
-    val undo by session.undoState.collectAsState()
-    // Text being typed is finished first: it is a step of its own.
-    IconButton(
-        onClick = {
-            view?.text?.finish()
-            session.undo()?.let { view?.show(it, session) }
-        },
-        enabled = view != null && undo.canUndo,
-    ) { Icon(UndoIcon, stringResource(R.string.undo)) }
-    IconButton(
-        onClick = {
-            view?.text?.finish()
-            session.redo()?.let { view?.show(it, session) }
-        },
-        enabled = view != null && undo.canRedo,
-    ) { Icon(RedoIcon, stringResource(R.string.redo)) }
-}
-
-/** Shows [pages] after an undo or redo, with the layers as [session] shows them. */
-private fun DocumentView.show(
-    pages: List<Page>,
-    session: NoteSession,
-) {
-    showDocument(pages)
-    layerViews = session.layers.value
+    val history by session.undoState.collectAsState()
+    IconButton(onClick = { undo(session, view) }, enabled = view != null && history.canUndo) {
+        Icon(UndoIcon, stringResource(R.string.undo))
+    }
+    IconButton(onClick = { redo(session, view) }, enabled = view != null && history.canRedo) {
+        Icon(RedoIcon, stringResource(R.string.redo))
+    }
 }
 
 /** Why backgrounds are missing, if they are. */

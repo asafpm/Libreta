@@ -11,6 +11,7 @@ import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.PageOperations
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
+import pm.asaf.libreta.viewer.scrollToPage
 
 /** Edits of the note in [session], shown in the [view] if there is one. */
 class NoteEditor(

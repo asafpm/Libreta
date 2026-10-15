@@ -26,6 +26,25 @@ internal class SelectionCommands(
         host.edit(SelectionOperations.delete(Document(host.pages), selected.page, selected.layer, selected.indices))
     }
 
+    /** Moves the selection by ([dx], [dy]) points, still selected, like Xournal++'s arrow keys. */
+    fun moveBy(
+        dx: Double,
+        dy: Double,
+    ) {
+        val selected = tool.selected ?: return
+        val moved = selected.elements.map(SelectionTransform(dx = dx, dy = dy)::apply)
+        val result =
+            SelectionOperations.replace(
+                Document(host.pages),
+                selected.page,
+                selected.layer,
+                selected.indices,
+                moved,
+            )
+        host.edit(result.edit)
+        tool.select(selected.page, result.indices)
+    }
+
     /** Copies, a little down and right, selected instead. */
     fun duplicate() {
         val selected = tool.selected ?: return

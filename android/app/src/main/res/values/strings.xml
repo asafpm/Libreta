@@ -8,6 +8,17 @@
     <string name="new_note">New note</string>
     <string name="new_folder">New folder</string>
     <string name="pdf">PDF</string>
+    <string name="zoom_in">Zoom in</string>
+    <string name="zoom_out">Zoom out</string>
+    <string name="previous_page">Previous page</string>
+    <string name="next_page">Next page</string>
+    <string name="first_page">First page</string>
+    <string name="last_page">Last page</string>
+    <string name="shortcuts_edit">Editing</string>
+    <string name="shortcuts_tools">Tools</string>
+    <string name="shortcuts_view">Moving around</string>
+    <string name="shortcut_select_rectangle">Select with a rectangle</string>
+    <string name="shortcut_select_lasso">Select with a lasso</string>
     <string name="appearance">Appearance</string>
     <string name="theme_system">As the system</string>
     <string name="theme_light">Light</string>

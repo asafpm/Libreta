@@ -17,6 +17,7 @@ import pm.asaf.libreta.core.geometry.StrokeGeometry
 import pm.asaf.libreta.core.geometry.Viewport
 import pm.asaf.libreta.core.geometry.intersects
 import pm.asaf.libreta.core.model.Bounds
+import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Edit
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserType
@@ -182,6 +183,9 @@ internal class Inking(
     /** Text typed or changed with the text tool. */
     val textEditing = TextEditing(selectionHost)
 
+    /** Where the hovering stylus would write. */
+    private val penCursor = PenCursor()
+
     /** What can be done with the selection. */
     val selectionCommands: SelectionCommands by lazy { SelectionCommands(selection, selectionHost) }
 
@@ -255,17 +259,20 @@ internal class Inking(
         predictor?.record(event)
     }
 
-    /** The stylus hovers: shows where the eraser would erase, if it would. */
+    /** The stylus hovers: shows where the eraser would erase, or where the pen would write. */
     fun hover(event: MotionEvent) {
         val eraser = tools.eraser
-        val erases = tools.toolFor(event, 0) == Tool.ERASER
+        val chosen = tools.toolFor(event, 0)
+        val leaving = event.actionMasked == MotionEvent.ACTION_HOVER_EXIT
         val halfSize =
             when {
-                !erases || event.actionMasked == MotionEvent.ACTION_HOVER_EXIT -> null
+                chosen != Tool.ERASER || leaving -> null
                 eraser.type == EraserType.WHITEOUT -> eraser.width / 2
                 else -> eraser.width
             }
         erasing.hover(event.x, event.y, halfSize)
+        val zoom = mappingAt(event.x, event.y)?.zoom?.takeUnless { leaving }
+        penCursor.show(event.x, event.y, zoom?.let { cursorLook(tools, chosen, it, darkPages) })
         view.invalidate()
     }
 
@@ -329,6 +336,7 @@ internal class Inking(
         layer?.let(canvas::restoreToCount)
         selection.draw(canvas)
         erasing.drawCursor(canvas)
+        penCursor.draw(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()
         return wetFramesLeft > 0
     }
@@ -474,3 +482,41 @@ internal fun placedPage(
     val top = ((page.top - viewport.offsetY) * viewport.zoom).roundToInt().toDouble()
     return PageMapping(index, left, top, viewport.zoom)
 }
+
+/**
+ * What the hovering stylus shows with [chosen] at [zoom] (pixels a point); null: nothing (e.g.
+ * the eraser has its own cursor).
+ */
+private fun cursorLook(
+    tools: ToolSettings,
+    chosen: Tool,
+    zoom: Double,
+    darkPages: Boolean,
+): PenCursor.Look? {
+    fun shown(color: Color): Int {
+        val argb = android.graphics.Color.argb(color.alpha, color.red, color.green, color.blue)
+        return if (darkPages) PageRecolor.map(argb) else argb
+    }
+    return when (chosen) {
+        Tool.PEN -> {
+            PenCursor.Look.Dot(shown(tools.pen.color), (tools.pen.size.width * zoom).toFloat())
+        }
+
+        Tool.HIGHLIGHTER -> {
+            // See-through, like highlighter ink.
+            val color = shown(tools.highlighter.color) and RGB or HALF_OPAQUE
+            PenCursor.Look.Bar(color, (tools.highlighter.width * zoom).toFloat())
+        }
+
+        Tool.TEXT -> {
+            PenCursor.Look.Caret((tools.text.size * zoom).toFloat())
+        }
+
+        Tool.ERASER, Tool.SELECT -> {
+            null
+        }
+    }
+}
+
+private const val RGB = 0x00FFFFFF
+private const val HALF_OPAQUE = 0x80000000.toInt()

@@ -11,6 +11,7 @@ import android.net.Uri
 import android.util.AttributeSet
 import android.view.DragEvent
 import android.view.GestureDetector
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
@@ -292,11 +293,45 @@ class DocumentView
             showViewport()
         }
 
-        /** Scrolls to the top of page [index], at the same zoom. */
-        fun scrollToPage(index: Int) {
-            val anchor = anchor ?: return
-            scroller.forceFinished(true)
-            restore(anchor.copy(page = index.coerceIn(0, (content?.pages?.size ?: 1) - 1), pageY = 0.0))
+        /** Moves around: to a page, zooming, scrolling. */
+        fun navigate(move: Navigation) {
+            val pages = content?.pages?.size ?: return
+            when (move) {
+                Navigation.FitWidth -> {
+                    zoomTo(0f, 0f) { navigator -> navigator.fitWidthZoom(width.toDouble()) }
+                }
+
+                is Navigation.ToPage -> {
+                    anchor?.let {
+                        scroller.forceFinished(true)
+                        restore(it.copy(page = move.index.coerceIn(0, pages - 1), pageY = 0.0))
+                    }
+                }
+
+                is Navigation.PageBy -> {
+                    navigate(Navigation.ToPage(currentPage + move.delta))
+                }
+
+                is Navigation.ZoomBy -> {
+                    viewport?.let { now ->
+                        zoomTo(move.focusX ?: (width / 2f), move.focusY ?: (height / 2f)) { now.zoom * move.factor }
+                    }
+                }
+
+                is Navigation.ScrollBy -> {
+                    scroller.forceFinished(true)
+                    update {
+                        navigator,
+                        viewport,
+                        ->
+                        navigator.scrolledBy(viewport, move.dx.toDouble(), move.dy.toDouble())
+                    }
+                }
+
+                is Navigation.ScreenBy -> {
+                    navigate(Navigation.ScrollBy(0f, (move.screens * (height - KEEP_IN_VIEW_PX)).toFloat()))
+                }
+            }
         }
 
         /** The pages' versions (a copy), for [setDocument] with the same caches later. */
@@ -346,9 +381,6 @@ class DocumentView
             viewport = null
             showViewport()
         }
-
-        /** Zooms to fit the page width, keeping the top of the view in place. */
-        fun fitWidth() = zoomTo(0f, 0f) { navigator -> navigator.fitWidthZoom(width.toDouble()) }
 
         override fun onSizeChanged(
             w: Int,
@@ -438,6 +470,20 @@ class DocumentView
         override fun onHoverEvent(event: MotionEvent): Boolean {
             inking.hover(event)
             return super.onHoverEvent(event)
+        }
+
+        /** A mouse wheel or a touchpad scrolls; with Ctrl it zooms around the pointer. */
+        override fun onGenericMotionEvent(event: MotionEvent): Boolean {
+            if (event.actionMasked != MotionEvent.ACTION_SCROLL) return super.onGenericMotionEvent(event)
+            val vertical = event.getAxisValue(MotionEvent.AXIS_VSCROLL)
+            val horizontal = event.getAxisValue(MotionEvent.AXIS_HSCROLL)
+            val step = WHEEL_STEP_DP * resources.displayMetrics.density
+            if (event.metaState and KeyEvent.META_CTRL_ON != 0) {
+                navigate(Navigation.ZoomBy(Math.pow(WHEEL_ZOOM, vertical.toDouble()), event.x, event.y))
+            } else {
+                navigate(Navigation.ScrollBy(horizontal * step, -vertical * step))
+            }
+            return true
         }
 
         private fun feedGestures(event: MotionEvent) {
@@ -567,6 +613,13 @@ class DocumentView
         companion object {
             /** Double tap at fit width zooms to this many times fit width. */
             const val DOUBLE_TAP_ZOOM = 2.5
+
+            /** What a mouse wheel's notch scrolls (dp) and zooms. */
+            private const val WHEEL_STEP_DP = 48f
+            private const val WHEEL_ZOOM = 1.1
+
+            /** What stays in view when Space scrolls a screen, like Xournal++'s (pixels). */
+            private const val KEEP_IN_VIEW_PX = 30
             private const val FIT_TOLERANCE = 0.05
         }
     }

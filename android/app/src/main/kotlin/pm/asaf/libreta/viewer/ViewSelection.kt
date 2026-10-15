@@ -30,6 +30,12 @@ class ViewSelection internal constructor(
     /** Deletes the selection (one edit). */
     fun delete() = commands.delete()
 
+    /** Moves the selection by ([dx], [dy]) points (one edit). */
+    fun moveBy(
+        dx: Double,
+        dy: Double,
+    ) = commands.moveBy(dx, dy)
+
     /** Copies of the selection, a little down and right, become the selection (one edit). */
     fun duplicate() = commands.duplicate()
 
