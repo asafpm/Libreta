@@ -42,6 +42,8 @@ internal class Inking(
         val renderer: TileRenderer,
         val caches: RenderCaches,
         val viewport: Viewport,
+        /** The document's pages; the renderer has them as shown. */
+        val pages: ShownPages,
     )
 
     /** What writing needs from the view. */
@@ -59,6 +61,9 @@ internal class Inking(
     var fingerDraws = false
     var wetInk: WetInk = WetInk.None
     var onEdit: ((Edit) -> Unit)? = null
+
+    /** Called when writing shows a page's hidden layer again. */
+    var onLayerView: ((index: Int, view: LayerView) -> Unit)? = null
 
     /** Renders committed strokes and changed areas on the UI thread. */
     var renderer: PageRenderer? = null
@@ -78,13 +83,19 @@ internal class Inking(
                     viewY: Float,
                 ): PageMapping? = mappingAt(viewX, viewY)
 
-                override fun page(index: Int): Page = checkNotNull(host.state).renderer.page(index)
+                override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
+
+                override fun layer(index: Int): Int = showSelectedLayer(index)
 
                 override fun show(
                     index: Int,
                     page: Page,
                     changed: Bounds,
-                ) = showPage(index, page, changed)
+                ) {
+                    val state = host.state ?: return
+                    state.pages[index] = page
+                    showPage(index, state.pages.rendered(index), changed)
+                }
 
                 override fun edited(edit: Edit) {
                     onEdit?.invoke(edit)
@@ -184,8 +195,15 @@ internal class Inking(
         val state = host.state
         val painter = renderer
         if (state != null && painter != null) {
-            val tiles = state.renderer
-            pending.draw(canvas, state.layout, state.viewport, state.caches, painter, tiles::page, tiles::version)
+            pending.draw(
+                canvas,
+                state.layout,
+                state.viewport,
+                state.caches,
+                painter,
+                state.pages::rendered,
+                state.renderer::version,
+            )
             inView?.let { (page, stroke) ->
                 canvas.onPage(state.layout, state.viewport, page) {
                     painter.renderElements(listOf(stroke), canvas, state.viewport.zoom.toFloat())
@@ -198,24 +216,42 @@ internal class Inking(
     }
 
     /**
-     * Shows [pages] (by index) in place of the current ones, e.g. on undo, drawing what
-     * changed until the tiles are re-rendered.
+     * Page [index] is now [page] (null: unchanged) with its layers shown as [view] (null: as
+     * they were), e.g. on undo; what changed is drawn until the tiles are re-rendered.
      */
-    fun showPages(pages: Map<Int, Page>) {
+    fun replacePage(
+        index: Int,
+        page: Page?,
+        view: LayerView?,
+    ) {
         val state = host.state ?: return
         val measurer = renderer?.textMeasurer ?: return
-        for ((index, page) in pages) {
-            val changed = ElementDiff.changedBounds(state.renderer.page(index), page, measurer)
-            if (changed != null) {
-                showPage(index, page, changed)
-            } else {
-                // The renderer still gets the document's page.
-                state.renderer.updatePage(index, page, null, onScreen(state, index))
-            }
+        val before = state.pages.rendered(index)
+        page?.let { state.pages[index] = it }
+        view?.let { state.pages.setView(index, it) }
+        val after = state.pages.rendered(index)
+        val changed = ElementDiff.changedBounds(before, after, measurer)
+        if (changed != null) {
+            showPage(index, after, changed)
+        } else {
+            // The renderer still gets the page as shown.
+            state.renderer.updatePage(index, after, null, onScreen(state, index))
         }
         // Wet ink of a stroke just undone would still show it.
         viewportChanged()
         host.pageChanged()
+    }
+
+    /** The layer of page [index] that ink goes on, shown again if it was hidden. */
+    private fun showSelectedLayer(index: Int): Int {
+        val state = host.state ?: return 0
+        val view = state.pages.view(index)
+        if (view.selected in view.hidden) {
+            val shown = view.copy(hidden = view.hidden - view.selected)
+            replacePage(index, null, shown)
+            onLayerView?.invoke(index, shown)
+        }
+        return view.selected
     }
 
     /** Page [index] is now [page], changed within [changed]: drawn from it until the tiles show it. */
@@ -271,36 +307,45 @@ internal class Inking(
         val state = host.state
         val bounds = StrokeGeometry.bounds(stroke)
         if (state == null || bounds == null) return
-        val before = state.renderer.page(index)
-        val page = before.withElementAdded(stroke)
-        val version = state.renderer.updatePage(index, page, bounds, onScreen(state, index))
-        pending.addStroke(index, version, stroke, bounds)
+        val layer = showSelectedLayer(index)
+        val before = state.pages[index]
+        val page = before.withElementAdded(stroke, layer)
+        state.pages[index] = page
+        val version = state.renderer.updatePage(index, state.pages.rendered(index), bounds, onScreen(state, index))
+        // Drawn alone on top, unless layers above would cover it.
+        if (layer ==
+            page.layers.lastIndex
+        ) {
+            pending.addStroke(index, version, stroke, bounds)
+        } else {
+            pending.addArea(index, version, bounds)
+        }
         wetFramesLeft = WET_INK_FRAMES
         onEdit?.invoke(Edit(listOf(PageChange(index, before, page))))
         host.pageChanged()
-    }
-
-    /** Whether a tile of page [index] is on screen at the current zoom (then it stands in while stale). */
-    private fun onScreen(
-        state: ViewState,
-        index: Int,
-    ): (TileKey) -> Boolean {
-        val viewport = state.viewport
-        val zoom = viewport.zoom.toFloat()
-        val placed = state.layout.pageBounds(index)
-        val visible = viewport.visible
-        val onScreen =
-            Bounds(
-                visible.left - placed.left,
-                visible.top - placed.top,
-                visible.right - placed.left,
-                visible.bottom - placed.top,
-            )
-        return { it.zoom == zoom && it.bounds.intersects(onScreen) }
     }
 
     private companion object {
         /** Frames the page draws a committed stroke before its wet ink goes (frames take a few to show). */
         const val WET_INK_FRAMES = 4
     }
+}
+
+/** Whether a tile of page [index] is on screen at the current zoom (then it stands in while stale). */
+private fun onScreen(
+    state: Inking.ViewState,
+    index: Int,
+): (TileKey) -> Boolean {
+    val viewport = state.viewport
+    val zoom = viewport.zoom.toFloat()
+    val placed = state.layout.pageBounds(index)
+    val visible = viewport.visible
+    val onScreen =
+        Bounds(
+            visible.left - placed.left,
+            visible.top - placed.top,
+            visible.right - placed.left,
+            visible.bottom - placed.top,
+        )
+    return { it.zoom == zoom && it.bounds.intersects(onScreen) }
 }

@@ -12,16 +12,17 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * One eraser gesture on a page. Like Xournal++ it erases strokes of one layer, here the top
- * one: cutting them where the eraser goes ([deleteStrokes] false), or deleting each stroke it
- * touches. Erased strokes are replaced in place by what is left of them.
+ * One eraser gesture on a page. Like Xournal++ it erases strokes of one layer, the selected
+ * one ([layerIndex], by default the top one): cutting them where the eraser goes
+ * ([deleteStrokes] false), or deleting each stroke it touches. Erased strokes are replaced in
+ * place by what is left of them.
  */
 class PageEraser(
     /** The page as the gesture found it. */
     val original: Page,
     private val deleteStrokes: Boolean,
+    private val layerIndex: Int = original.layers.lastIndex,
 ) {
-    private val layerIndex = original.layers.lastIndex
     private val elements = original.layers[layerIndex].elements
     private val bounds: List<Bounds?> = elements.map { (it as? Element.Stroke)?.let(StrokeGeometry::bounds) }
     private val erasables = arrayOfNulls<ErasableStroke>(elements.size)

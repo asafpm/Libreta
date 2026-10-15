@@ -112,8 +112,14 @@ class TileCache(
         bounds: Bounds,
     ): Boolean = tiles.keys { it.page == page && it.version < version && it.bounds.intersects(bounds) }.isNotEmpty()
 
-    /** Drops the tiles of [page]. */
-    fun invalidate(page: Int) = tiles.removeIf { it.page == page }
+    /** After pages were rearranged: tiles move to their page's new index ([newIndex]), or go (null). */
+    fun remap(newIndex: (Int) -> Int?) {
+        val moved = tiles.keys { true }.mapNotNull { key -> tiles.take(key)?.let { key to it } }
+        for ((key, bitmap) in moved) {
+            val page = newIndex(key.page)
+            if (page == null) recycle(bitmap) else tiles.put(key.copy(page = page), bitmap)
+        }
+    }
 
     fun clear() = tiles.clear()
 
@@ -171,7 +177,11 @@ class Thumbnails(
         pages.put(key, bitmap)
     }
 
-    fun invalidate(page: Int) = pages.removeIf { it.page == page }
+    /** After pages were rearranged: thumbnails move to their page's new index ([newIndex]), or go (null). */
+    fun remap(newIndex: (Int) -> Int?) {
+        val moved = pages.keys { true }.mapNotNull { key -> pages.take(key)?.let { key to it } }
+        for ((key, bitmap) in moved) newIndex(key.page)?.let { pages.put(key.copy(page = it), bitmap) }
+    }
 
     fun clear() = pages.clear()
 

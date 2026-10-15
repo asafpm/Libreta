@@ -2,25 +2,47 @@
 
 package pm.asaf.inkpad.core.model
 
+/** Part of an edit. */
+sealed interface Change
+
 /** Page [index] replaced: [before] by [after]. */
 data class PageChange(
     val index: Int,
     val before: Page,
     val after: Page,
-)
+) : Change
 
-/** One user action (a stroke, an erasure, …), undone and redone as a whole. */
+/**
+ * The pages rearranged (inserted, deleted, moved): [before] became [after]. Pages are shared,
+ * not copied; [pageMapping] tells which page went where.
+ */
+data class PagesChange(
+    val before: List<Page>,
+    val after: List<Page>,
+) : Change
+
+/** One user action (a stroke, an erasure, a new page, …), undone and redone as a whole. */
 data class Edit(
-    val changes: List<PageChange>,
+    val changes: List<Change>,
 )
 
 /** This document with [edit] done. */
 fun Document.applying(edit: Edit): Document =
-    edit.changes.fold(this) { document, change -> document.withPage(change.index, change.after) }
+    edit.changes.fold(this) { document, change ->
+        when (change) {
+            is PageChange -> document.withPage(change.index, change.after)
+            is PagesChange -> document.copy(pages = change.after)
+        }
+    }
 
 /** This document with [edit] undone. */
 fun Document.reverting(edit: Edit): Document =
-    edit.changes.asReversed().fold(this) { document, change -> document.withPage(change.index, change.before) }
+    edit.changes.asReversed().fold(this) { document, change ->
+        when (change) {
+            is PageChange -> document.withPage(change.index, change.before)
+            is PagesChange -> document.copy(pages = change.before)
+        }
+    }
 
 /**
  * Undo and redo: the [limit] most recent edits. Unsaved changes are tracked by which edit is

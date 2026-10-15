@@ -107,11 +107,11 @@ private fun UndoButtons(
 ) {
     val undo by session.undoState.collectAsState()
     IconButton(
-        onClick = { session.undo()?.let { view?.showPages(it) } },
+        onClick = { session.undo()?.let { view?.showDocument(it) } },
         enabled = view != null && undo.canUndo,
     ) { Icon(UndoIcon, stringResource(R.string.undo)) }
     IconButton(
-        onClick = { session.redo()?.let { view?.showPages(it) } },
+        onClick = { session.redo()?.let { view?.showDocument(it) } },
         enabled = view != null && undo.canRedo,
     ) { Icon(RedoIcon, stringResource(R.string.redo)) }
 }
@@ -154,6 +154,7 @@ private fun NoteCanvas(
     modifier: Modifier = Modifier,
 ) {
     var document by remember { mutableStateOf<DocumentView?>(null) }
+    val layers by state.session.layers.collectAsState()
     AndroidView(
         factory = { context ->
             val view =
@@ -165,8 +166,10 @@ private fun NoteCanvas(
                         state.files::newRenderer,
                         threads,
                         session.versions(),
+                        session.layers.value,
                     )
                     onEdit = session::edited
+                    onLayerView = session::setLayerView
                     position.get()?.let { restore(it) }
                 }
             val ink = LowLatencyCanvasView(context)
@@ -181,6 +184,7 @@ private fun NoteCanvas(
         update = {
             document?.tools = tools.tools
             document?.fingerDraws = tools.fingerDraws
+            document?.layerViews = layers
         },
         onRelease = {
             document?.let { released ->

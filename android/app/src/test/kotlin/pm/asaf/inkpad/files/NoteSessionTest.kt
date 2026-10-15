@@ -13,10 +13,14 @@ import pm.asaf.inkpad.core.model.Document
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.Layer
+import pm.asaf.inkpad.core.model.LayerOperations
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PageChange
+import pm.asaf.inkpad.core.model.PageOperations
 import pm.asaf.inkpad.core.model.PointList
 import pm.asaf.inkpad.core.model.StrokeTool
+import pm.asaf.inkpad.core.model.applying
+import pm.asaf.inkpad.viewer.LayerView
 
 class NoteSessionTest {
     private val blank = Page(100.0, 100.0, null, listOf(Layer(emptyList())))
@@ -48,7 +52,6 @@ class NoteSessionTest {
         assertEquals(UndoState(canUndo = true, canRedo = false), session.undoState.value)
 
         val undone = checkNotNull(session.undo())
-        assertEquals(setOf(0, 1), undone.keys)
         assertSame(one.pages[0], undone[0])
         assertSame(blank, undone[1])
         assertEquals(one, session.document)
@@ -77,6 +80,31 @@ class NoteSessionTest {
         assertTrue(session.dirty)
         session.redo()
         assertFalse(session.dirty)
+    }
+
+    @Test
+    fun layerViewsFollowThePages() {
+        val twoLayers = session.document.applying(LayerOperations.addLayer(session.document, 1, 0))
+        session.edited(LayerOperations.addLayer(session.document, 1, 0))
+        assertEquals(twoLayers, session.document)
+        session.setLayerView(1, LayerView(selected = 0, hidden = setOf(1)))
+        // Not a change to the note.
+        assertEquals(1L, session.changes.value)
+        session.saved(session.document)
+        session.setLayerView(0, LayerView(0, setOf(0)))
+        assertFalse(session.dirty)
+
+        // Page 1 moves first: its view goes with it; an inserted page starts as opened.
+        session.edited(checkNotNull(PageOperations.movePage(session.document, 1, 0)))
+        session.edited(PageOperations.insertPage(session.document, 0, blank.copy()))
+        assertEquals(listOf(LayerView(0), LayerView(0, setOf(1)), LayerView(0, setOf(0))), session.layers.value)
+        session.undo()
+        assertEquals(listOf(LayerView(0, setOf(1)), LayerView(0, setOf(0))), session.layers.value)
+        session.undo()
+        assertEquals(listOf(LayerView(0, setOf(0)), LayerView(0, setOf(1))), session.layers.value)
+        // Undoing the new layer: the view fits the page again.
+        session.undo()
+        assertEquals(LayerView(0), session.layers.value[1])
     }
 
     @Test

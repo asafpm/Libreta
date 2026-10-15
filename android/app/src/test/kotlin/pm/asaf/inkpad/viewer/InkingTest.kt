@@ -33,6 +33,7 @@ import pm.asaf.inkpad.core.model.EraserSettings
 import pm.asaf.inkpad.core.model.EraserType
 import pm.asaf.inkpad.core.model.Layer
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.PageChange
 import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.PenSize
@@ -95,7 +96,7 @@ class InkingTest {
         view.pen = PenSettings(Color.of(255, 0, 0), PenSize.THICK)
         view.onEdit = { edit ->
             allEdits += edit
-            edit.changes.forEach { edits += it.index to it.after }
+            edit.changes.filterIsInstance<PageChange>().forEach { edits += it.index to it.after }
         }
         view.measure(
             View.MeasureSpec.makeMeasureSpec(WIDTH, View.MeasureSpec.EXACTLY),
@@ -328,6 +329,7 @@ class InkingTest {
             .last()
             .changes
             .single()
+            .let { it as PageChange }
             .after.layers
             .last()
             .elements
@@ -346,6 +348,7 @@ class InkingTest {
                 .first()
                 .changes
                 .single()
+                .let { it as PageChange }
                 .after
         assertTrue(pieces.all { it.color == Color.of(255, 0, 0) && it.width == PenSize.THICK.width })
         assertTrue(
@@ -353,6 +356,7 @@ class InkingTest {
                 .last()
                 .changes
                 .single()
+                .let { it as PageChange }
                 .before === written,
         )
         // Nothing to erase: no edit.
@@ -387,6 +391,7 @@ class InkingTest {
                 .first()
                 .changes
                 .single()
+                .let { it as PageChange }
                 .after.layers
                 .last()
                 .elements
@@ -541,14 +546,14 @@ class InkingTest {
         val (index, written) = edits.single()
         // Undo at once: neither the pending stroke nor its wet ink stay.
         val clears = wetInk.clears
-        view.showPages(mapOf(index to pages[index]))
+        view.showDocument(pages)
         assertTrue(wetInk.clears > clears)
         scheduler.advanceUntilIdle()
         val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
         assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, 400))
         // Redo: it is back, and new strokes go on the page shown.
-        view.showPages(mapOf(index to written))
+        view.showDocument(pages.toMutableList().also { it[index] = written })
         scheduler.advanceUntilIdle()
         view.draw(Canvas(bitmap))
         assertEquals(android.graphics.Color.RED, bitmap.getPixel(500, 400))
@@ -561,6 +566,61 @@ class InkingTest {
                 .single()
                 .elements.size,
         )
+    }
+
+    @Test
+    fun rearrangedPagesKeepTheViewAndTheirTiles() {
+        // Page 2 in view, rendered.
+        view.scrollToPage(1)
+        scheduler.advanceUntilIdle()
+        val tiles = caches.tiles.size
+        assertTrue(tiles > 0)
+        val second = pages[1]
+        // A page inserted first: the same page stays in view, its tiles kept (now page 3).
+        val inserted = listOf(blank.copy(), pages[0], second)
+        view.showDocument(inserted)
+        assertEquals(2, view.currentPage)
+        assertEquals(tiles, caches.tiles.size)
+        val kept = mutableListOf<Int>()
+        caches.tiles.forEachOf(2) { key, _ -> kept += key.page }
+        assertTrue(kept.isNotEmpty())
+        // Deleted, then back (undo): still there.
+        view.showDocument(listOf(pages[0], second))
+        assertEquals(1, view.currentPage)
+        // Ink goes on the page under it, in the new order.
+        write(300f, 400f)
+        assertEquals(1, edits.last().first)
+    }
+
+    @Test
+    fun inkGoesOnTheSelectedLayerAndHiddenLayersAreNotDrawn() {
+        view.scrollToPage(1)
+        scheduler.advanceUntilIdle()
+        // Page 2 has two layers: write on the lower one.
+        view.layerViews = listOf(LayerView.of(pages[0]), LayerView(selected = 0))
+        val y = ((layout.pageBounds(1).top + 100 - viewport.offsetY) * viewport.zoom).toFloat()
+        write(300f, y, length = 400f)
+        val (index, page) = edits.last()
+        assertEquals(1, index)
+        assertEquals(listOf(1, 0), page.layers.map { it.elements.size })
+        scheduler.advanceUntilIdle()
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.RED, bitmap.getPixel(500, y.toInt()))
+        // Hidden: not drawn, at once and once the tiles are rendered again.
+        view.layerViews = listOf(LayerView.of(pages[0]), LayerView(selected = 1, hidden = setOf(0)))
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, y.toInt()))
+        scheduler.advanceUntilIdle()
+        view.draw(Canvas(bitmap))
+        assertEquals(android.graphics.Color.WHITE, bitmap.getPixel(500, y.toInt()))
+        // Writing on a hidden layer shows it again.
+        val shown = mutableListOf<LayerView>()
+        view.onLayerView = { _, layerView -> shown += layerView }
+        view.layerViews = listOf(LayerView.of(pages[0]), LayerView(selected = 0, hidden = setOf(0)))
+        write(300f, y + 100, length = 400f)
+        assertEquals(listOf(LayerView(0)), shown)
+        assertEquals(LayerView(0), view.layerViews[1])
     }
 
     private fun assertClose(

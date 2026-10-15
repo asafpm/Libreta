@@ -19,10 +19,12 @@ import pm.asaf.inkpad.core.geometry.Size
 import pm.asaf.inkpad.core.geometry.Viewport
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.geometry.ViewportNavigator
+import pm.asaf.inkpad.core.model.Bounds
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Page
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.ToolSettings
+import pm.asaf.inkpad.core.model.pageMapping
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -37,13 +39,36 @@ class DocumentView
         context: Context,
         attrs: AttributeSet? = null,
     ) : View(context, attrs) {
+        /** A document as shown: its pages, their layout, and their rendering into [caches]. */
         private class Content(
-            pages: List<Page>,
+            val pages: ShownPages,
             val caches: RenderCaches,
-            val renderer: TileRenderer,
+            private val newRenderer: () -> PageRenderer,
+            private val threads: RenderThreads,
+            versions: IntArray,
+            private val onRendered: () -> Unit,
         ) {
-            val layout = DocumentLayout(pages.map { Size(it.width, it.height) })
+            val renderer =
+                TileRenderer(List(pages.size, pages::rendered), caches, newRenderer, onRendered, threads, versions)
+            val layout = DocumentLayout(pages.all.map { Size(it.width, it.height) })
             val navigator = ViewportNavigator(layout)
+
+            /**
+             * The content for [next], a rearrangement of the pages (inserted, deleted, moved):
+             * pages kept keep their tiles, versions and layer views. Closes this one's renderer.
+             * Also returns each old page's new index (-1: gone).
+             */
+            fun rearranged(next: List<Page>): Pair<Content, IntArray> {
+                val mapping = pageMapping(pages.all, next)
+                val moved = IntArray(pages.size) { -1 }
+                mapping.forEachIndexed { i, old -> if (old >= 0) moved[old] = i }
+                renderer.close()
+                caches.tiles.remap { old -> moved[old].takeIf { it >= 0 } }
+                caches.thumbnails.remap { old -> moved[old].takeIf { it >= 0 } }
+                val views = mapping.mapIndexed { i, old -> if (old >= 0) pages.view(old) else LayerView.of(next[i]) }
+                val versions = IntArray(next.size) { i -> mapping[i].takeIf { it >= 0 }?.let(renderer::version) ?: 0 }
+                return Content(ShownPages(next, views), caches, newRenderer, threads, versions, onRendered) to moved
+            }
         }
 
         private var content: Content? = null
@@ -71,6 +96,7 @@ class DocumentView
                                     content.renderer,
                                     content.caches,
                                     it,
+                                    content.pages,
                                 )
                             }
                         }
@@ -132,8 +158,81 @@ class DocumentView
                 inking.onEdit = value
             }
 
-        /** Shows [pages] (by index) in place of the current ones, e.g. on undo. */
-        fun showPages(pages: Map<Int, Page>) = inking.showPages(pages)
+        /** Called when writing shows a page's hidden layer again. */
+        var onLayerView: ((index: Int, view: LayerView) -> Unit)?
+            get() = inking.onLayerView
+            set(value) {
+                inking.onLayerView = value
+            }
+
+        /** Called with the page at the middle of the view, when it changes. */
+        var onCurrentPage: ((Int) -> Unit)? = null
+        private var lastCurrentPage = -1
+
+        /** The page at the middle of the view (0 before there is one). */
+        val currentPage: Int
+            get() {
+                val content = content ?: return 0
+                val viewport = viewport ?: return pendingAnchor?.page ?: 0
+                val (x, y) = viewport.viewToLayout(width / 2.0, height / 2.0)
+                return content.layout.pageAt(x, y) ?: content.navigator.anchorOf(viewport).page
+            }
+
+        /** How each page's layers are shown: hidden ones aren't drawn, ink goes on the selected one. */
+        var layerViews: List<LayerView>
+            get() = content?.pages?.let { pages -> List(pages.size, pages::view) } ?: emptyList()
+            set(value) {
+                val content = content ?: return
+                for (i in 0 until minOf(value.size, content.pages.size)) {
+                    if (content.pages.view(i) == value[i].fitting(content.pages[i])) continue
+                    if (viewport != null) {
+                        inking.replacePage(i, null, value[i])
+                    } else {
+                        // Not shown yet: whatever was rendered of the page goes.
+                        content.pages.setView(i, value[i])
+                        val page = content.pages.rendered(i)
+                        content.renderer.updatePage(i, page, Bounds(0.0, 0.0, page.width, page.height)) { false }
+                    }
+                }
+            }
+
+        /**
+         * Shows [pages], the document after an edit or undo: pages changed in place are
+         * redrawn where they changed; inserted, deleted or moved pages relayout the document,
+         * keeping the tiles of the pages kept and the view on the same page.
+         */
+        fun showDocument(pages: List<Page>) {
+            val content = content ?: return
+            val mapping = pageMapping(content.pages.all, pages)
+            if (pages.size == content.pages.size && mapping.withIndex().all { (i, old) -> old == i || old == -1 }) {
+                for (i in pages.indices) if (mapping[i] == -1) inking.replacePage(i, pages[i], null)
+                return
+            }
+            val anchor = anchor
+            val (next, moved) = content.rearranged(pages)
+            inking.reset()
+            this.content = next
+            pendingAnchor =
+                anchor?.let {
+                    val page = moved.getOrNull(it.page)?.takeIf { page -> page >= 0 }
+                    if (page !=
+                        null
+                    ) {
+                        it.copy(page = page)
+                    } else {
+                        it.copy(page = it.page.coerceAtMost(pages.lastIndex), pageY = 0.0)
+                    }
+                }
+            viewport = null
+            showViewport()
+        }
+
+        /** Scrolls to the top of page [index], at the same zoom. */
+        fun scrollToPage(index: Int) {
+            val anchor = anchor ?: return
+            scroller.forceFinished(true)
+            restore(anchor.copy(page = index.coerceIn(0, (content?.pages?.size ?: 1) - 1), pageY = 0.0))
+        }
 
         /** The pages' versions (a copy), for [setDocument] with the same caches later. */
         val versions: IntArray
@@ -143,9 +242,9 @@ class DocumentView
             }
 
         /**
-         * Shows [pages], rendered into [caches] by renderers from [newRenderer]. [versions] are
-         * the pages' edit versions if [caches] were used before. The previous document's
-         * renderer is closed.
+         * Shows [pages] (their layers as in [layers]), rendered into [caches] by renderers from
+         * [newRenderer]. [versions] are the pages' edit versions if [caches] were used before.
+         * The previous document's renderer is closed.
          */
         fun setDocument(
             pages: List<Page>,
@@ -153,12 +252,12 @@ class DocumentView
             newRenderer: () -> PageRenderer,
             threads: RenderThreads = RenderThreads(),
             versions: IntArray = IntArray(pages.size),
+            layers: List<LayerView> = emptyList(),
         ) {
             content?.renderer?.close()
             inking.reset()
             inking.renderer = newRenderer()
-            content =
-                Content(pages, caches, TileRenderer(pages, caches, newRenderer, { invalidate() }, threads, versions))
+            content = Content(ShownPages(pages, layers), caches, newRenderer, threads, versions) { invalidate() }
             viewport = null
             scroller.forceFinished(true)
             showViewport()
@@ -225,6 +324,12 @@ class DocumentView
             val content = content ?: return
             val viewport = viewport ?: return
             content.renderer.request(RenderPlan.jobs(content.layout, viewport, settled = !scaling))
+            // The view moved: the page in the middle may be another one.
+            val current = currentPage
+            if (current != lastCurrentPage) {
+                lastCurrentPage = current
+                onCurrentPage?.invoke(current)
+            }
         }
 
         override fun onDraw(canvas: Canvas) {
@@ -332,7 +437,12 @@ class DocumentView
                         velocityX: Float,
                         velocityY: Float,
                     ): Boolean {
-                        if (!scaling) fling(velocityX, velocityY)
+                        val layout = content?.layout
+                        val viewport = viewport
+                        if (!scaling && layout != null && viewport != null) {
+                            scroller.fling(layout, viewport, width, height, velocityX, velocityY)
+                            postInvalidateOnAnimation()
+                        }
                         return true
                     }
 
@@ -368,29 +478,6 @@ class DocumentView
             }
         }
 
-        private fun fling(
-            velocityX: Float,
-            velocityY: Float,
-        ) {
-            val layout = content?.layout ?: return
-            val viewport = viewport ?: return
-            // The scroller works in view pixels from the layout origin.
-            val zoom = viewport.zoom
-            val x = ScrollRange.of((viewport.offsetX * zoom).roundToInt(), layout.width * zoom, width)
-            val y = ScrollRange.of((viewport.offsetY * zoom).roundToInt(), layout.height * zoom, height)
-            scroller.fling(
-                x.start,
-                y.start,
-                -velocityX.roundToInt(),
-                -velocityY.roundToInt(),
-                x.min,
-                x.max,
-                y.min,
-                y.max,
-            )
-            postInvalidateOnAnimation()
-        }
-
         override fun computeScroll() {
             if (scroller.computeScrollOffset()) {
                 val x = scroller.currX.toDouble()
@@ -414,6 +501,23 @@ class DocumentView
             private const val FIT_TOLERANCE = 0.05
         }
     }
+
+/** Flings from [viewport] of [layout] in a view [width] x [height], at the given velocities. */
+@Suppress("LongParameterList") // the view's size and the velocity
+private fun OverScroller.fling(
+    layout: DocumentLayout,
+    viewport: Viewport,
+    width: Int,
+    height: Int,
+    velocityX: Float,
+    velocityY: Float,
+) {
+    // The scroller works in view pixels from the layout origin.
+    val zoom = viewport.zoom
+    val x = ScrollRange.of((viewport.offsetX * zoom).roundToInt(), layout.width * zoom, width)
+    val y = ScrollRange.of((viewport.offsetY * zoom).roundToInt(), layout.height * zoom, height)
+    fling(x.start, y.start, -velocityX.roundToInt(), -velocityY.roundToInt(), x.min, x.max, y.min, y.max)
+}
 
 /** Fling limits along one axis, in view pixels. */
 private class ScrollRange(

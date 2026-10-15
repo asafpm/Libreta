@@ -12,8 +12,8 @@ import pm.asaf.inkpad.core.model.PageChange
 import kotlin.math.roundToInt
 
 /**
- * Eraser gestures: each one erases on the pages it goes over ([PageEraser]) and is one edit,
- * shown as it goes. A square cursor shows what the eraser covers.
+ * Eraser gestures: each one erases on the pages it goes over ([PageEraser], on the selected
+ * layers) and is one edit, shown as it goes. A square cursor shows what the eraser covers.
  */
 internal class Erasing(
     private val host: Host,
@@ -25,8 +25,11 @@ internal class Erasing(
             viewY: Float,
         ): PageMapping?
 
-        /** The page [index] as shown now. */
+        /** The page [index] as it is now. */
         fun page(index: Int): Page
+
+        /** The layer of page [index] to erase on. */
+        fun layer(index: Int): Int
 
         /** Page [index] is now [page], changed within [changed] (page units): show it. */
         fun show(
@@ -84,7 +87,11 @@ internal class Erasing(
         val index = mapping.page
         val x = mapping.toPageX(viewX)
         val y = mapping.toPageY(viewY)
-        val eraser = gesture.erasers.getOrPut(index) { PageEraser(host.page(index), gesture.deleteStrokes) }
+        val eraser =
+            gesture.erasers.getOrPut(index) {
+                val layer = host.layer(index)
+                PageEraser(host.page(index), gesture.deleteStrokes, layer)
+            }
         val changed =
             if (gesture.lastPage == index) {
                 eraser.eraseAlong(gesture.lastX, gesture.lastY, x, y, gesture.halfSize)

@@ -30,6 +30,7 @@ import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.NewNote
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.PageChange
 import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.model.PenSettings
 import pm.asaf.inkpad.core.model.PenSize
@@ -64,7 +65,7 @@ class InkingDeviceTest {
             view = DocumentView(activity)
             view.setDocument(pages, RenderCaches.forDevice(activity), { PageRenderer(activity.applicationContext) })
             view.pen = PenSettings(RED, PenSize.THICK)
-            view.onEdit = { edit -> edits += edit.changes.single().index }
+            view.onEdit = { edit -> edits += (edit.changes.single() as PageChange).index }
             val ink = LowLatencyCanvasView(activity)
             view.wetInk = LowLatencyWetInk(ink)
             activity.setContentView(
