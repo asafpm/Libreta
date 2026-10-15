@@ -5,6 +5,7 @@ package pm.asaf.inkpad.ui
 import pm.asaf.inkpad.core.geometry.ViewportAnchor
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.EraserType
+import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.core.model.Tool
@@ -35,6 +36,8 @@ class SettingsActions(
     val recentLimit: (Int) -> Unit,
     /** Shows or hides a width in the toolbar. */
     val sizeVisible: (PenSize, Boolean) -> Unit,
+    /** How new pages and notes look. */
+    val newPages: (NewPageTemplate) -> Unit,
 )
 
 /** What the toolbar offers, as set in Settings. */

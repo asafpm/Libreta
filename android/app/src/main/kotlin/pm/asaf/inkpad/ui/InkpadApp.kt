@@ -123,6 +123,7 @@ private fun Settings(
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()
     val recentLimit by model.colors.recentLimit.collectAsStateWithLifecycle()
     val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
+    val newPages by model.pages.template.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
@@ -130,6 +131,7 @@ private fun Settings(
         fingerDraws = fingerDraws,
         stylusButton = tools.button,
         toolbar = ToolbarSettings(fixedColors, recentLimit, visibleSizes),
+        newPages = newPages,
         actions =
             SettingsActions(
                 addFolder,
@@ -142,6 +144,7 @@ private fun Settings(
                 model.colors::setFixedColor,
                 model.colors::setRecentLimit,
                 model.tools::setSizeVisible,
+                model.pages::setTemplate,
             ),
         onBack = { model.back() },
     )
@@ -158,6 +161,7 @@ private fun Note(
     val recentColors by model.colors.recentColors.collectAsStateWithLifecycle()
     val visibleSizes by model.tools.visibleSizes.collectAsStateWithLifecycle()
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
+    val newPages by model.pages.template.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model::addFolderForNote)
@@ -171,6 +175,7 @@ private fun Note(
         // The picker starts next to the note, where the provider supports it.
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
+        template = newPages,
     )
 }
 

@@ -5,8 +5,9 @@ package pm.asaf.inkpad.library
 import android.content.Context
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.format.XoppWriter
+import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.NewNote
-import pm.asaf.inkpad.core.model.PaperSize
+import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.store.DocumentStore
 import pm.asaf.inkpad.core.store.StoreEntry
 import pm.asaf.inkpad.core.store.StoreException
@@ -38,20 +39,21 @@ object NewNoteCreator {
     }
 
     /**
-     * Creates a note named [name] in [folder] with one page of [paper]. The store may change
-     * the name if it is taken.
+     * Creates a note named [name] in [folder] with one page as [template] makes a note's first
+     * page. The store may change the name if it is taken.
      */
     fun create(
         store: DocumentStore,
         folder: FolderRef,
         name: String,
-        paper: PaperSize,
-        landscape: Boolean,
+        template: NewPageTemplate,
         creator: String,
     ): StoreEntry.File {
         val file = store.create(folder.id, fileName(name))
+        val background = Background.Solid(template.color, template.style)
+        val document = NewNote.document(template.paper, template.landscape, creator, background)
         try {
-            store.write(file.id, XoppWriter.toByteString(NewNote.document(paper, landscape, creator)), expected = null)
+            store.write(file.id, XoppWriter.toByteString(document), expected = null)
         } catch (e: StoreException) {
             runCatching { store.delete(file.id) }
             throw e

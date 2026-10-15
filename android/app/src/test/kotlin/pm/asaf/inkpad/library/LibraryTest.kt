@@ -19,6 +19,8 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.GraphicsMode
 import pm.asaf.inkpad.core.format.XoppReader
 import pm.asaf.inkpad.core.model.Background
+import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.store.SafDocumentStore
@@ -111,15 +113,19 @@ class LibraryTest {
                 store,
                 root,
                 "Lecture",
-                PaperSize.LETTER,
-                landscape = true,
+                NewPageTemplate(
+                    paper = PaperSize.LETTER,
+                    landscape = true,
+                    style = PageStyle.GRAPH,
+                    color = Color.of(255, 255, 128),
+                ),
                 creator = "Inkpad test",
             )
         val file = File(directory, "Lecture.xopp")
         val document = file.source().use { XoppReader.read(it).document }
         val page = document.pages.single()
         assertEquals(792.0 to 612.0, page.width to page.height)
-        assertEquals(PageStyle.LINED, (page.background as Background.Solid).style)
+        assertEquals(Background.Solid(Color.of(255, 255, 128), PageStyle.GRAPH), page.background)
         assertEquals("Inkpad test", document.creator)
         assertEquals("Lecture.xopp", created.name)
         assertEquals("Lecture.xopp", store.entry(created.id)?.name)
@@ -129,8 +135,7 @@ class LibraryTest {
                 store,
                 root,
                 "Lecture.xopp",
-                PaperSize.A4,
-                landscape = false,
+                NewPageTemplate(),
                 creator = "Inkpad test",
             )
         assertEquals("Lecture (1).xopp", second.name)
@@ -165,7 +170,7 @@ class LibraryTest {
     @Test
     fun previewsWithoutAnEmbeddedOneOrUnreadable() =
         runTest {
-            NewNoteCreator.create(store, root, "New", PaperSize.A4, landscape = false, creator = "Inkpad test")
+            NewNoteCreator.create(store, root, "New", NewPageTemplate(), creator = "Inkpad test")
             File(directory, "Broken.xopp").writeText("not a document")
             val cache =
                 PreviewCache(context, store, temporary.newFolder("previews"), StandardTestDispatcher(testScheduler))

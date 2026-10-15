@@ -23,7 +23,10 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import pm.asaf.inkpad.core.model.Color
+import pm.asaf.inkpad.core.model.NewPageTemplate
+import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.Palette
+import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.SortOrder
@@ -37,6 +40,7 @@ class SettingsScreenTest {
 
     private fun show(colors: ToolbarSettings = ToolbarSettings(Palette.DEFAULT_FIXED, 3)) {
         var shown by mutableStateOf(colors)
+        var template by mutableStateOf(NewPageTemplate())
         compose.setContent {
             MaterialTheme {
                 SettingsScreen(
@@ -45,6 +49,7 @@ class SettingsScreenTest {
                     fingerDraws = false,
                     stylusButton = StylusButton.ERASER,
                     toolbar = shown,
+                    newPages = template,
                     actions =
                         SettingsActions(
                             {},
@@ -72,6 +77,10 @@ class SettingsScreenTest {
                                                 size
                                         },
                                     )
+                            },
+                            newPages = {
+                                chosen += it
+                                template = it
                             },
                         ),
                     onBack = {},
@@ -121,6 +130,24 @@ class SettingsScreenTest {
             .assertIsOn()
             .assertIsNotEnabled()
         assertEquals(listOf("MEDIUM true", "FINE false", "MEDIUM false"), chosen)
+    }
+
+    @Test
+    fun choosesHowNewPagesLook() {
+        show()
+        compose
+            .onNodeWithText("Copy the page before")
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        compose.onNodeWithText("Graph").performScrollTo().performClick()
+        compose.onNodeWithText("Letter").performScrollTo().performClick()
+        compose.onNodeWithText("Landscape").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Yellow").performScrollTo().performClick()
+        assertEquals(
+            NewPageTemplate(false, PaperSize.LETTER, landscape = true, PageStyle.GRAPH, Color.of(0xff, 0xff, 0x80)),
+            chosen.last(),
+        )
     }
 
     @Test

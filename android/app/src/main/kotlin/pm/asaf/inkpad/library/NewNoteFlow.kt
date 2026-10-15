@@ -16,6 +16,7 @@ import pm.asaf.inkpad.R
 import pm.asaf.inkpad.core.model.PaperSize
 import pm.asaf.inkpad.core.store.DocumentStore
 import pm.asaf.inkpad.core.store.StoreEntry
+import pm.asaf.inkpad.settings.PagePreferences
 
 /** The new-note dialog for the last folder of [path] (from a library root), with a suggested [name]. */
 data class NewNoteRequest(
@@ -28,14 +29,14 @@ data class NewNoteRequest(
 }
 
 /**
- * Creating a note: the dialog's suggestions ([request]), then the file. Paper size and
- * orientation are remembered in [preferences]. [onCreated] gets the new note's file and
- * folder path; [onError] a message.
+ * Creating a note: the dialog's suggestions ([request]), then the file. Its page follows the
+ * new page template in [pages]; the paper size and orientation chosen are remembered there.
+ * [onCreated] gets the new note's file and folder path; [onError] a message.
  */
 class NewNoteFlow(
     private val context: Context,
     private val store: DocumentStore,
-    private val preferences: SharedPreferences,
+    private val pages: PagePreferences,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val onCreated: (file: StoreEntry.File, path: List<FolderRef>) -> Unit,
@@ -50,8 +51,8 @@ class NewNoteFlow(
     fun start(path: List<FolderRef>) {
         scope.launch {
             val name = withContext(io) { NewNoteCreator.suggestedName(store, path.last()) }
-            val paper = PaperSize.entries.getOrNull(preferences.getInt(PAPER_KEY, 0)) ?: PaperSize.A4
-            state.value = NewNoteRequest(path, name, paper, preferences.getBoolean(LANDSCAPE_KEY, false))
+            val template = pages.template.value
+            state.value = NewNoteRequest(path, name, template.paper, template.landscape)
         }
     }
 
@@ -67,11 +68,8 @@ class NewNoteFlow(
     ) {
         val request = state.value ?: return
         state.value = null
-        preferences
-            .edit()
-            .putInt(PAPER_KEY, paper.ordinal)
-            .putBoolean(LANDSCAPE_KEY, landscape)
-            .apply()
+        val template = pages.template.value.copy(paper = paper, landscape = landscape)
+        pages.setTemplate(template)
         scope.launch {
             val created =
                 withContext(io) {
@@ -80,8 +78,7 @@ class NewNoteFlow(
                             store,
                             request.folder,
                             name,
-                            paper,
-                            landscape,
+                            template,
                             NewNoteCreator.creator(context),
                         )
                     }
@@ -97,7 +94,5 @@ class NewNoteFlow(
 
     private companion object {
         const val TAG = "NewNoteFlow"
-        const val PAPER_KEY = "paper"
-        const val LANDSCAPE_KEY = "landscape"
     }
 }

@@ -101,6 +101,11 @@
     <string name="more">More: %1$s</string>
     <string name="edit_color">Change colour %1$s</string>
     <string name="stroke_widths">Widths in the toolbar</string>
+    <string name="new_pages">New pages</string>
+    <string name="copy_current_page">Copy the page before</string>
+    <string name="copy_current_page_summary">New pages get the size and background of the page they follow, as in Xournal++</string>
+    <string name="template_for_notes">New notes:</string>
+    <string name="template_for_pages">New notes and new pages:</string>
     <string name="stylus">Stylus</string>
     <string name="stylus_button">Holding the side button</string>
     <string name="button_erases">Erases</string>

@@ -61,17 +61,7 @@ fun NewNoteDialog(
                     keyboardActions = KeyboardActions(onDone = { if (name.text.isNotBlank()) create() }),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                Text(stringResource(R.string.paper_size), style = MaterialTheme.typography.labelLarge)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (size in PaperSize.entries) {
-                        FilterChip(
-                            selected = size == paper,
-                            onClick = { paper = size },
-                            label = { Text(stringResource(size.label)) },
-                        )
-                    }
-                }
-                Orientation(landscape) { landscape = it }
+                PaperChoice(paper, landscape, { paper = it }) { landscape = it }
             }
         },
         confirmButton = {
@@ -79,6 +69,27 @@ fun NewNoteDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
     )
+}
+
+/** The paper size and orientation, as chips and a segmented button. */
+@Composable
+internal fun PaperChoice(
+    paper: PaperSize,
+    landscape: Boolean,
+    onPaper: (PaperSize) -> Unit,
+    onLandscape: (Boolean) -> Unit,
+) {
+    Text(stringResource(R.string.paper_size), style = MaterialTheme.typography.labelLarge)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (size in PaperSize.entries) {
+            FilterChip(
+                selected = size == paper,
+                onClick = { onPaper(size) },
+                label = { Text(stringResource(size.label)) },
+            )
+        }
+    }
+    Orientation(landscape, onLandscape)
 }
 
 @Composable

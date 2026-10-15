@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import pm.asaf.inkpad.R
+import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.StylusButton
 import pm.asaf.inkpad.library.LibraryRoot
@@ -43,7 +44,7 @@ import pm.asaf.inkpad.library.SortOrder
 
 /**
  * The library folders (add, remove, reorder), how notes are sorted, input, the toolbar's
- * colours and widths, and the stylus.
+ * colours and widths, new pages, and the stylus.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,7 @@ fun SettingsScreen(
     fingerDraws: Boolean,
     stylusButton: StylusButton,
     toolbar: ToolbarSettings,
+    newPages: NewPageTemplate,
     actions: SettingsActions,
     onBack: () -> Unit,
 ) {
@@ -103,6 +105,9 @@ fun SettingsScreen(
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.stroke_widths))
             WidthChoices(toolbar.sizes, actions.sizeVisible)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.new_pages))
+            NewPagesSection(newPages, actions.newPages)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.stylus))
             ButtonChoices(stylusButton, actions.stylusButton)

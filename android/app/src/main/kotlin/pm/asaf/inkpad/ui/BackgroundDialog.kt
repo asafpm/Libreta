@@ -69,16 +69,7 @@ fun BackgroundDialog(
     var color by remember { mutableStateOf(solid?.color ?: Color.WHITE) }
     var allPages by remember { mutableStateOf(false) }
     var picking by remember { mutableStateOf(false) }
-    // Small samples of each ruling, drawn as pages are.
-    val previews =
-        remember {
-            val renderer = newRenderer()
-            STYLES.associate { (ruling, _) ->
-                val sample =
-                    Page(SAMPLE_WIDTH, SAMPLE_HEIGHT, Background.Solid(Color.WHITE, ruling), listOf(Layer(emptyList())))
-                ruling to renderer.renderToBitmap(sample, PREVIEW_ZOOM).asImageBitmap()
-            }
-        }
+    val previews = rememberRulingPreviews(newRenderer)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.page_background)) },
@@ -118,7 +109,7 @@ fun BackgroundDialog(
 
 /** The rulings, as small samples ([previews]); [style] chosen. */
 @Composable
-private fun RulingChoices(
+internal fun RulingChoices(
     style: PageStyle,
     previews: Map<PageStyle, ImageBitmap>,
     onChoose: (PageStyle) -> Unit,
@@ -150,7 +141,7 @@ private fun RulingChoices(
 
 /** The paper colours, [color] chosen (shown too if it is none of them), and a picker ([onPick]). */
 @Composable
-private fun PaperChoices(
+internal fun PaperChoices(
     color: Color,
     onChoose: (Color) -> Unit,
     onPick: () -> Unit,
@@ -178,6 +169,18 @@ private fun PaperChoices(
         IconButton(onClick = onPick) { Icon(AddIcon, stringResource(R.string.add_color)) }
     }
 }
+
+/** Small samples of each ruling, drawn as pages are. */
+@Composable
+internal fun rememberRulingPreviews(newRenderer: () -> PageRenderer): Map<PageStyle, ImageBitmap> =
+    remember {
+        val renderer = newRenderer()
+        STYLES.associate { (ruling, _) ->
+            val sample =
+                Page(SAMPLE_WIDTH, SAMPLE_HEIGHT, Background.Solid(Color.WHITE, ruling), listOf(Layer(emptyList())))
+            ruling to renderer.renderToBitmap(sample, PREVIEW_ZOOM).asImageBitmap()
+        }
+    }
 
 /** Xournal++'s rulings, with names. */
 private val STYLES =
