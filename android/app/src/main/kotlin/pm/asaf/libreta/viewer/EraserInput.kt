@@ -29,10 +29,10 @@ internal fun ToolSettings.toolFor(
 /** Erasing for [InkInput]: one pointer erases until it lifts, other pointers (a palm) are ignored. */
 internal class EraserInput(
     private val host: InkInput.Host,
-) {
+) : PointerInput {
     private var pointerId: Int? = null
 
-    val isActive: Boolean get() = pointerId != null
+    override val isActive: Boolean get() = pointerId != null
 
     /** Starts erasing with pointer [index] of [event]. */
     fun begin(
@@ -46,7 +46,7 @@ internal class EraserInput(
     }
 
     /** Handles [event] while erasing; returns false once erasing has ended. */
-    fun onTouchEvent(event: MotionEvent): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         val index = pointerId?.let { event.findPointerIndex(it) } ?: return false
         when {
             // Kept even when cancelled: the erasing was seen as it went.

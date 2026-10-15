@@ -9,6 +9,7 @@ import android.graphics.Paint
 import android.text.TextPaint
 import pm.asaf.libreta.core.geometry.Size
 import pm.asaf.libreta.core.geometry.TextMeasurer
+import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Element
 import kotlin.math.ceil
 
@@ -48,6 +49,15 @@ internal class TextPainter(
         }
     }
 
+    /** Where lines of [font] at [size] go, in points: the first baseline below the top, and the line height. */
+    fun lineMetrics(
+        font: String,
+        size: Double,
+    ): LineMetrics {
+        val lines = lines(Element.Text("", font, size, 0.0, 0.0, Color.BLACK))
+        return LineMetrics(lines.firstBaseline.toDouble(), lines.lineHeight.toDouble())
+    }
+
     private fun lines(text: Element.Text): Lines {
         val paint =
             TextPaint().apply {
@@ -64,3 +74,9 @@ internal class TextPainter(
         return Lines(paint, text.text.split('\n'), ceil(ascent), ceil(ascent + descent))
     }
 }
+
+/** How lines of text are placed, in points: the first baseline below the text's top, and the distance between lines. */
+data class LineMetrics(
+    val firstBaseline: Double,
+    val lineHeight: Double,
+)

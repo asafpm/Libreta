@@ -71,6 +71,7 @@ fun ToolBar(
             ToolButton(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter, controls)
             ToolButton(Tool.ERASER, EraserIcon, R.string.tool_eraser, controls)
             ToolButton(Tool.SELECT, SelectIcon, R.string.tool_select, controls)
+            ToolButton(Tool.TEXT, TextIcon, R.string.tool_text, controls)
             Separator()
             when (tools.tool) {
                 Tool.PEN -> {
@@ -90,7 +91,7 @@ fun ToolBar(
                 }
 
                 Tool.TEXT -> {
-                    Unit
+                    TextOptions(controls) { picking = true }
                 }
             }
             if (controls.fingerButton) {
@@ -203,10 +204,10 @@ private fun RowScope.EraserOptions(controls: ToolControls) {
 }
 
 @Composable
-private fun Separator() = VerticalDivider(Modifier.padding(horizontal = 6.dp).size(width = 1.dp, height = 28.dp))
+internal fun Separator() = VerticalDivider(Modifier.padding(horizontal = 6.dp).size(width = 1.dp, height = 28.dp))
 
 @Composable
-private fun Swatch(
+internal fun Swatch(
     color: InkColor,
     name: String,
     selected: Boolean,

@@ -146,6 +146,18 @@ val ExportIcon: ImageVector =
         lineTo(16f, 8f)
     }
 
+/** Text: a T. */
+@Suppress("MagicNumber") // path coordinates
+val TextIcon: ImageVector =
+    lineIcon("Text") {
+        moveTo(5f, 5f)
+        lineTo(19f, 5f)
+        moveTo(12f, 5f)
+        lineTo(12f, 20f)
+        moveTo(9f, 20f)
+        lineTo(15f, 20f)
+    }
+
 /** Freehand: a squiggle. */
 @Suppress("MagicNumber") // path coordinates
 val FreehandIcon: ImageVector =

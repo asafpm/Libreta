@@ -178,6 +178,9 @@ internal class Inking(
 
     val selection = SelectionTool(selectionHost).apply { density = view.resources.displayMetrics.density }
 
+    /** Text typed or changed with the text tool. */
+    val textEditing = TextEditing(selectionHost)
+
     /** What can be done with the selection. */
     val selectionCommands: SelectionCommands by lazy { SelectionCommands(selection, selectionHost) }
 
@@ -234,6 +237,13 @@ internal class Inking(
                 }
 
                 override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
+
+                override fun tapText(
+                    viewX: Float,
+                    viewY: Float,
+                ) = textEditing.tap(viewX, viewY, tools.text)
+
+                override val touchSlop: Float = TAP_DP * view.resources.displayMetrics.density
             },
         )
 
@@ -258,6 +268,7 @@ internal class Inking(
 
     /** The view moved: wet ink of finished strokes would be out of place, and the selection moved on screen. */
     fun viewportChanged() {
+        textEditing.viewportChanged()
         if (selection.selected != null) onSelection?.invoke()
         if (wetFramesLeft > 0) {
             wetFramesLeft = 0
@@ -266,6 +277,7 @@ internal class Inking(
     }
 
     fun reset() {
+        textEditing.cancel()
         selection.clear()
         pending.clear()
         inView = null
@@ -404,6 +416,9 @@ internal class Inking(
     private companion object {
         /** Frames the page draws a committed stroke before its wet ink goes (frames take a few to show). */
         const val WET_INK_FRAMES = 4
+
+        /** A pointer moving less than this (dp) taps. */
+        const val TAP_DP = 10f
     }
 }
 

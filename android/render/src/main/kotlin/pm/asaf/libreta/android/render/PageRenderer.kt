@@ -5,6 +5,7 @@ package pm.asaf.libreta.android.render
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Typeface
 import pm.asaf.libreta.core.geometry.ElementGeometry
 import pm.asaf.libreta.core.geometry.TextMeasurer
 import pm.asaf.libreta.core.geometry.intersects
@@ -31,6 +32,15 @@ class PageRenderer(
 
     /** Measures text the way it is drawn, e.g. for bounding boxes. */
     val textMeasurer: TextMeasurer get() = texts
+
+    /** The typeface text in [font] is drawn with. */
+    fun typeface(font: String): Typeface = fonts.typeface(font)
+
+    /** Where lines of [font] at [size] (points) are drawn. */
+    fun lineMetrics(
+        font: String,
+        size: Double,
+    ): LineMetrics = texts.lineMetrics(font, size)
 
     /**
      * Draws [page] onto [canvas] with page coordinates scaled by [zoom] (pixels per point),

@@ -33,7 +33,7 @@ internal class StrokeInk(
  */
 internal class ShapeInput(
     private val host: InkInput.Host,
-) {
+) : PointerInput {
     private class Shaping(
         val pointerId: Int,
         val page: PageMapping,
@@ -47,7 +47,7 @@ internal class ShapeInput(
 
     private var shaping: Shaping? = null
 
-    val isActive: Boolean get() = shaping != null
+    override val isActive: Boolean get() = shaping != null
 
     /**
      * Starts a shape of [tools]' drawing type at pointer [index] of [event], in the
@@ -91,7 +91,7 @@ internal class ShapeInput(
     }
 
     /** Handles [event] while drawing a shape; returns false once the pointer is done. */
-    fun onTouchEvent(event: MotionEvent): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         val active = shaping ?: return false
         val index = event.findPointerIndex(active.pointerId)
         when {

@@ -128,10 +128,14 @@ class DocumentView
         var tools: ToolSettings
             get() = inking.tools
             set(value) {
-                // Another tool: nothing selected any more.
+                // Another tool: nothing selected any more, and no text edited.
                 if (value.tool != Tool.SELECT) inking.selection.clear()
+                if (value.tool == Tool.TEXT) inking.textEditing.restyle(value.text) else inking.textEditing.finish()
                 inking.tools = value
             }
+
+        /** Text typed or changed with the text tool. */
+        val text: ViewText by lazy { ViewText(inking.textEditing) }
 
         /** The pen new strokes are written with. */
         var pen: PenSettings

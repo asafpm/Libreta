@@ -3,6 +3,7 @@
 package pm.asaf.libreta.ui
 
 import android.graphics.RectF
+import android.widget.EditText
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -359,12 +360,19 @@ private fun UndoButtons(
     view: DocumentView?,
 ) {
     val undo by session.undoState.collectAsState()
+    // Text being typed is finished first: it is a step of its own.
     IconButton(
-        onClick = { session.undo()?.let { view?.show(it, session) } },
+        onClick = {
+            view?.text?.finish()
+            session.undo()?.let { view?.show(it, session) }
+        },
         enabled = view != null && undo.canUndo,
     ) { Icon(UndoIcon, stringResource(R.string.undo)) }
     IconButton(
-        onClick = { session.redo()?.let { view?.show(it, session) } },
+        onClick = {
+            view?.text?.finish()
+            session.redo()?.let { view?.show(it, session) }
+        },
         enabled = view != null && undo.canRedo,
     ) { Icon(RedoIcon, stringResource(R.string.redo)) }
 }
@@ -435,14 +443,25 @@ private fun NoteCanvas(
                     onLayerView = session::setLayerView
                     onCurrentPage = { panels.current = it }
                     onSelection = { panels.selection = selection.bounds }
+                    text.onStyle = { style -> tools.onChange { it.copy(text = style) } }
                     position.get()?.let { restore(it) }
                 }
             val ink = LowLatencyCanvasView(context)
             view.wetInk = LowLatencyWetInk(ink)
+            // Text is typed over the page; it takes its own touches.
+            val text = EditText(context)
+            view.text.field = text
             document = view
             onView(view)
             FrameLayout(context).apply {
                 addView(view)
+                addView(
+                    text,
+                    FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
                 addView(ink)
             }
         },
@@ -453,6 +472,7 @@ private fun NoteCanvas(
         },
         onRelease = {
             document?.let { released ->
+                released.text.finish()
                 position.set(released.anchor)
                 state.session.keepVersions(released.versions)
                 released.close()

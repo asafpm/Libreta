@@ -108,6 +108,13 @@
     <string name="tool_highlighter">Highlighter</string>
     <string name="tool_eraser">Eraser</string>
     <string name="tool_select">Select</string>
+    <string name="tool_text">Text</string>
+    <string name="font_sans">Sans</string>
+    <string name="font_serif">Serif</string>
+    <string name="font_mono">Mono</string>
+    <string name="bold">Bold</string>
+    <string name="italic">Italic</string>
+    <string name="text_size">%1$s pt</string>
     <string name="select_rectangle">Rectangle</string>
     <string name="select_lasso">Lasso</string>
     <string name="cut">Cut</string>

@@ -11,10 +11,10 @@ import android.view.MotionEvent
  */
 internal class SelectionInput(
     private val host: InkInput.Host,
-) {
+) : PointerInput {
     private var pointerId: Int? = null
 
-    val isActive: Boolean get() = pointerId != null
+    override val isActive: Boolean get() = pointerId != null
 
     fun begin(
         event: MotionEvent,
@@ -25,7 +25,7 @@ internal class SelectionInput(
     }
 
     /** Handles [event] while selecting; returns false once the pointer is done. */
-    fun onTouchEvent(event: MotionEvent): Boolean {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
         val tool = host.selectionTool
         val index = pointerId?.let { event.findPointerIndex(it) } ?: return false
         when {

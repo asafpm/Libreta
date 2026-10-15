@@ -93,6 +93,15 @@ internal class InkInput(
 
         /** The document's page [index] (its background places the grid shapes snap to). */
         fun page(index: Int): Page
+
+        /** A tap with the text tool at a view point: edits text there. */
+        fun tapText(
+            viewX: Float,
+            viewY: Float,
+        )
+
+        /** How far (pixels) a pointer moves before a tap is no longer one. */
+        val touchSlop: Float
     }
 
     /** One stroke in progress. */
@@ -137,12 +146,15 @@ internal class InkInput(
     private val eraser = EraserInput(host)
     private val selection = SelectionInput(host)
     private val shapes = ShapeInput(host)
+    private val textTap = TextTapInput(host)
+    private val pointerInputs = listOf<PointerInput>(eraser, selection, shapes)
 
     /** The rest of this touch sequence is ignored (e.g. it started off the pages). */
     private var ignoring = false
 
     /** Whether a stroke is being written, or erasing goes on. */
-    val isActive: Boolean get() = writing != null || eraser.isActive || selection.isActive || shapes.isActive
+    val isActive: Boolean
+        get() = writing != null || textTap.isActive || pointerInputs.any { it.isActive }
 
     /**
      * Handles [event] if it belongs to writing; false leaves it to the gestures. A touch
@@ -150,6 +162,7 @@ internal class InkInput(
      */
     fun onTouchEvent(event: MotionEvent): Boolean {
         val active = writing
+        val busy = pointerInputs.firstOrNull { it.isActive }
         return when {
             ignoring -> {
                 true.also { if (event.isSequenceEnd()) ignoring = false }
@@ -159,18 +172,18 @@ internal class InkInput(
                 continueStroke(active, event)
             }
 
-            eraser.isActive -> {
-                if (!eraser.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+            busy != null -> {
+                if (!busy.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
                 true
             }
 
-            selection.isActive -> {
-                if (!selection.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+            textTap.isActive -> {
+                textTap.onTouchEvent(event)
                 true
             }
 
-            shapes.isActive -> {
-                if (!shapes.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+            event.startsText(host.tools) -> {
+                textTap.begin(event, event.actionIndex)
                 true
             }
 
@@ -414,6 +427,14 @@ private val WHITE = Color.of(255, 255, 255)
 private const val STILL_PX = 6f
 private const val HOLD_MS = 500L
 private const val MIN_STRAIGHT_PX = 24f
+
+/** Whether this touch goes down with the text tool: a stylus or a finger, which may tap to edit text. */
+private fun MotionEvent.startsText(tools: ToolSettings): Boolean {
+    val type = getToolType(actionIndex)
+    return actionMasked == MotionEvent.ACTION_DOWN &&
+        tools.toolFor(this, actionIndex) == Tool.TEXT &&
+        (type == MotionEvent.TOOL_TYPE_STYLUS || type == MotionEvent.TOOL_TYPE_FINGER)
+}
 
 private fun MotionEvent.isSequenceEnd() =
     actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL
