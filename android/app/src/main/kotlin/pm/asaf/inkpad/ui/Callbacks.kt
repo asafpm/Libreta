@@ -73,3 +73,24 @@ class ViewerPosition(
     val get: () -> ViewportAnchor?,
     val set: (ViewportAnchor?) -> Unit,
 )
+
+/** What the page panel does. */
+class PageActions(
+    val goTo: (Int) -> Unit,
+    val insertAfter: (Int) -> Unit,
+    val duplicate: (Int) -> Unit,
+    val delete: (Int) -> Unit,
+    val move: (Int, Int) -> Unit,
+    val background: (Int) -> Unit,
+)
+
+/** What the layer sheet does, for the page it shows. */
+class LayerActions(
+    val select: (Int) -> Unit,
+    val setHidden: (Int, Boolean) -> Unit,
+    val rename: (Int, String) -> Unit,
+    val add: (below: Boolean) -> Unit,
+    val delete: () -> Unit,
+    val move: (up: Boolean) -> Unit,
+    val mergeDown: () -> Unit,
+)

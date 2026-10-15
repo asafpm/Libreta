@@ -132,6 +132,8 @@ class InkpadAppTest {
         compose.onNodeWithText("Physics.xopp").performClick()
         eventually { model.note.value is NoteState.Loaded }
         assertEquals(8, (model.note.value as NoteState.Loaded).document.pages.size)
+        // On a narrow screen, the note's actions are in a menu.
+        compose.onNodeWithContentDescription("More").performClick()
         compose.onNodeWithText("Fit width").assertIsDisplayed()
     }
 

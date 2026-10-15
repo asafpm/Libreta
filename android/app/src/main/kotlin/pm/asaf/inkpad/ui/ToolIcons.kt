@@ -102,6 +102,125 @@ val RemoveIcon: ImageVector =
         lineTo(19f, 12f)
     }
 
+/** Pages: two sheets, one behind the other. */
+@Suppress("MagicNumber") // path coordinates
+val PagesIcon: ImageVector =
+    lineIcon("Pages") {
+        moveTo(8f, 3f)
+        lineTo(19f, 3f)
+        lineTo(19f, 17f)
+        moveTo(5f, 6f)
+        lineTo(15f, 6f)
+        lineTo(15f, 21f)
+        lineTo(5f, 21f)
+        close()
+    }
+
+/** Insert page: a sheet with a plus. */
+@Suppress("MagicNumber") // path coordinates
+val AddPageIcon: ImageVector =
+    lineIcon("Add page") {
+        moveTo(6f, 3f)
+        lineTo(18f, 3f)
+        lineTo(18f, 21f)
+        lineTo(6f, 21f)
+        close()
+        moveTo(12f, 8f)
+        lineTo(12f, 16f)
+        moveTo(8f, 12f)
+        lineTo(16f, 12f)
+    }
+
+/** Duplicate: two sheets, the front one with a plus. */
+@Suppress("MagicNumber") // path coordinates
+val DuplicateIcon: ImageVector =
+    lineIcon("Duplicate") {
+        moveTo(4f, 15f)
+        lineTo(4f, 4f)
+        lineTo(15f, 4f)
+        moveTo(8f, 8f)
+        lineTo(20f, 8f)
+        lineTo(20f, 20f)
+        lineTo(8f, 20f)
+        close()
+        moveTo(14f, 11f)
+        lineTo(14f, 17f)
+        moveTo(11f, 14f)
+        lineTo(17f, 14f)
+    }
+
+/** Page background: a ruled sheet. */
+@Suppress("MagicNumber") // path coordinates
+val BackgroundIcon: ImageVector =
+    lineIcon("Background") {
+        moveTo(5f, 3f)
+        lineTo(19f, 3f)
+        lineTo(19f, 21f)
+        lineTo(5f, 21f)
+        close()
+        moveTo(8f, 8f)
+        lineTo(16f, 8f)
+        moveTo(8f, 12f)
+        lineTo(16f, 12f)
+        moveTo(8f, 16f)
+        lineTo(16f, 16f)
+    }
+
+/** Layers: stacked sheets seen at an angle. */
+@Suppress("MagicNumber") // path coordinates
+val LayersIcon: ImageVector =
+    lineIcon("Layers") {
+        moveTo(12f, 3f)
+        lineTo(21f, 8f)
+        lineTo(12f, 13f)
+        lineTo(3f, 8f)
+        close()
+        moveTo(3f, 12f)
+        lineTo(12f, 17f)
+        lineTo(21f, 12f)
+        moveTo(3f, 16f)
+        lineTo(12f, 21f)
+        lineTo(21f, 16f)
+    }
+
+/** Shown: an open eye. */
+@Suppress("MagicNumber") // path coordinates
+val EyeIcon: ImageVector =
+    lineIcon("Shown") {
+        moveTo(2f, 12f)
+        quadTo(12f, 2f, 22f, 12f)
+        quadTo(12f, 22f, 2f, 12f)
+        close()
+        moveTo(12f, 9f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 15f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, 12f, 9f)
+    }
+
+/** Hidden: a crossed-out eye. */
+@Suppress("MagicNumber") // path coordinates
+val EyeOffIcon: ImageVector =
+    lineIcon("Hidden") {
+        moveTo(2f, 12f)
+        quadTo(12f, 2f, 22f, 12f)
+        quadTo(12f, 22f, 2f, 12f)
+        close()
+        moveTo(4f, 4f)
+        lineTo(20f, 20f)
+    }
+
+/** Merge down: an arrow onto a line. */
+@Suppress("MagicNumber") // path coordinates
+val MergeDownIcon: ImageVector =
+    lineIcon("Merge down") {
+        moveTo(12f, 3f)
+        lineTo(12f, 15f)
+        moveTo(7f, 10f)
+        lineTo(12f, 15f)
+        lineTo(17f, 10f)
+        moveTo(4f, 20f)
+        lineTo(20f, 20f)
+    }
+
 /** An icon drawn with 2-unit lines on a 24 x 24 grid. */
 @Suppress("MagicNumber") // grid sizes
 private fun lineIcon(

@@ -6,12 +6,16 @@ import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,28 +26,42 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.graphics.lowlatency.LowLatencyCanvasView
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.R
 import pm.asaf.inkpad.android.render.RenderThreads
+import pm.asaf.inkpad.core.model.NewPageTemplate
+import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.files.NoteCommands
 import pm.asaf.inkpad.files.NoteSession
+import pm.asaf.inkpad.files.PageThumbnails
 import pm.asaf.inkpad.viewer.DocumentView
+import pm.asaf.inkpad.viewer.LayerView
 import pm.asaf.inkpad.viewer.LowLatencyWetInk
 
 /**
  * A note, shown in a [DocumentView], with a notice when its background files could not be
- * found ([onAddFolder] asks for the note's folder when it is outside the library).
+ * found ([onAddFolder] asks for the note's folder when it is outside the library), a page
+ * panel and a layer sheet. New pages follow [template].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,8 +73,13 @@ fun NoteScreen(
     tools: ToolControls,
     onAddFolder: () -> Unit,
     onBack: () -> Unit,
+    template: NewPageTemplate = NewPageTemplate(),
 ) {
     var view by remember { mutableStateOf<DocumentView?>(null) }
+    val loaded = state as? NoteState.Loaded
+    val currentTemplate by rememberUpdatedState(template)
+    val commands = loaded?.let { remember(it.session) { NoteCommands(it.session, { view }, { currentTemplate }) } }
+    val panels = remember { NotePanels() }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -67,12 +90,8 @@ fun NoteScreen(
                     ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
                 },
                 actions = {
-                    val loaded = state as? NoteState.Loaded
-                    if (loaded != null) UndoButtons(loaded.session, view)
-                    TextButton(
-                        onClick = { view?.fitWidth() },
-                        enabled = view != null,
-                    ) { Text(stringResource(R.string.fit_width)) }
+                    if (loaded != null && commands != null) UndoButtons(loaded.session, view)
+                    NoteActions(panels, commands, view)
                 },
             )
         },
@@ -88,14 +107,178 @@ fun NoteScreen(
                 }
 
                 is NoteState.Loaded -> {
-                    Column(Modifier.fillMaxSize()) {
-                        ToolBar(tools, Modifier.fillMaxWidth())
-                        FilesNotice(state, onAddFolder)
-                        NoteCanvas(state, threads, position, tools, { view = it }, Modifier.weight(1f).fillMaxWidth())
+                    Row(Modifier.fillMaxSize()) {
+                        if (panels.pages && commands != null) {
+                            NotePagePanel(state, panels, commands) { view?.scrollToPage(it) }
+                        }
+                        Column(Modifier.weight(1f).fillMaxHeight()) {
+                            ToolBar(tools, Modifier.fillMaxWidth())
+                            FilesNotice(state, onAddFolder)
+                            NoteCanvas(
+                                state,
+                                threads,
+                                position,
+                                tools,
+                                panels,
+                                { view = it },
+                                Modifier.weight(1f).fillMaxWidth(),
+                            )
+                        }
                     }
+                    if (commands != null) NoteDialogs(state, panels, commands)
                 }
             }
         }
+    }
+}
+
+/** What is open around the note, and the page in view. */
+@Stable
+private class NotePanels {
+    var pages by mutableStateOf(false)
+    var layers by mutableStateOf(false)
+    var current by mutableIntStateOf(0)
+
+    /** The page whose background is being chosen. */
+    var background by mutableStateOf<Int?>(null)
+}
+
+/**
+ * The page panel, new page, layers and fit width: buttons on wide screens, a menu on narrow
+ * ones (the note's name keeps some room).
+ */
+@Composable
+private fun NoteActions(
+    panels: NotePanels,
+    commands: NoteCommands?,
+    view: DocumentView?,
+) {
+    val enabled = view != null
+    val actions =
+        if (commands == null) {
+            emptyList()
+        } else {
+            listOf<Triple<ImageVector, Int, () -> Unit>>(
+                Triple(PagesIcon, R.string.pages) { panels.pages = !panels.pages },
+                Triple(AddPageIcon, R.string.insert_page) {
+                    commands.pages.insertPageAfter(panels.current)
+                    panels.current += 1
+                },
+                Triple(LayersIcon, R.string.layers) { panels.layers = true },
+            )
+        }
+    if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
+        for ((icon, label, action) in actions) {
+            IconButton(onClick = action, enabled = enabled) { Icon(icon, stringResource(label)) }
+        }
+        TextButton(onClick = { view?.fitWidth() }, enabled = enabled) { Text(stringResource(R.string.fit_width)) }
+    } else {
+        var open by remember { mutableStateOf(false) }
+        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            for ((icon, label, action) in actions) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(label)) },
+                    leadingIcon = { Icon(icon, contentDescription = null) },
+                    enabled = enabled,
+                    onClick = {
+                        open = false
+                        action()
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.fit_width)) },
+                enabled = enabled,
+                onClick = {
+                    open = false
+                    view?.fitWidth()
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotePagePanel(
+    state: NoteState.Loaded,
+    panels: NotePanels,
+    commands: NoteCommands,
+    goTo: (Int) -> Unit,
+) {
+    val session = state.session
+    // Read for its changes: the pages are the session's.
+    session.changes.collectAsState().value
+    val scope = rememberCoroutineScope()
+    val thumbnails = remember(state) { PageThumbnails(scope, THUMBNAIL_THREAD, state.files::newRenderer) }
+    PagePanel(
+        session.document.pages,
+        panels.current,
+        thumbnails,
+        // The page acted on becomes the current one, even if the view can't scroll to it.
+        PageActions(
+            goTo = {
+                panels.current = it
+                goTo(it)
+            },
+            insertAfter = {
+                commands.pages.insertPageAfter(it)
+                panels.current = it + 1
+            },
+            duplicate = commands.pages::duplicatePage,
+            delete = {
+                commands.pages.deletePage(it)
+                panels.current = it.coerceAtMost(session.document.pages.lastIndex)
+            },
+            move = { from, to ->
+                commands.pages.movePage(from, to)
+                panels.current = to
+            },
+            background = { panels.background = it },
+        ),
+    )
+}
+
+/** The layer sheet and the background dialog, when open. */
+@Composable
+private fun NoteDialogs(
+    state: NoteState.Loaded,
+    panels: NotePanels,
+    commands: NoteCommands,
+) {
+    val session = state.session
+    session.changes.collectAsState().value
+    val layers by session.layers.collectAsState()
+    val pages = session.document.pages
+    val current = panels.current.coerceIn(0, pages.lastIndex)
+    if (panels.layers) {
+        LayerSheet(
+            page = pages[current],
+            number = current + 1,
+            view = layers.getOrNull(current) ?: LayerView.of(pages[current]),
+            actions =
+                LayerActions(
+                    select = { commands.layers.selectLayer(current, it) },
+                    setHidden = { layer, hidden -> commands.layers.setLayerHidden(current, layer, hidden) },
+                    rename = { layer, name -> commands.layers.renameLayer(current, layer, name) },
+                    add = { below -> commands.layers.addLayer(current, below) },
+                    delete = { commands.layers.removeSelectedLayer(current) },
+                    move = { up -> commands.layers.moveSelectedLayer(current, up) },
+                    mergeDown = { commands.layers.mergeSelectedLayerDown(current) },
+                ),
+            onDismiss = { panels.layers = false },
+        )
+    }
+    panels.background?.let { index ->
+        BackgroundDialog(
+            current = pages.getOrNull(index)?.background,
+            newRenderer = state.files::newRenderer,
+            onApply = { background, all ->
+                commands.pages.setBackground(if (all) pages.indices.toList() else listOf(index), background)
+                panels.background = null
+            },
+            onDismiss = { panels.background = null },
+        )
     }
 }
 
@@ -107,13 +290,22 @@ private fun UndoButtons(
 ) {
     val undo by session.undoState.collectAsState()
     IconButton(
-        onClick = { session.undo()?.let { view?.showDocument(it) } },
+        onClick = { session.undo()?.let { view?.show(it, session) } },
         enabled = view != null && undo.canUndo,
     ) { Icon(UndoIcon, stringResource(R.string.undo)) }
     IconButton(
-        onClick = { session.redo()?.let { view?.showDocument(it) } },
+        onClick = { session.redo()?.let { view?.show(it, session) } },
         enabled = view != null && undo.canRedo,
     ) { Icon(RedoIcon, stringResource(R.string.redo)) }
+}
+
+/** Shows [pages] after an undo or redo, with the layers as [session] shows them. */
+private fun DocumentView.show(
+    pages: List<Page>,
+    session: NoteSession,
+) {
+    showDocument(pages)
+    layerViews = session.layers.value
 }
 
 /** Why backgrounds are missing, if they are. */
@@ -150,6 +342,7 @@ private fun NoteCanvas(
     threads: RenderThreads,
     position: ViewerPosition,
     tools: ToolControls,
+    panels: NotePanels,
     onView: (DocumentView?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -170,6 +363,7 @@ private fun NoteCanvas(
                     )
                     onEdit = session::edited
                     onLayerView = session::setLayerView
+                    onCurrentPage = { panels.current = it }
                     position.get()?.let { restore(it) }
                 }
             val ink = LowLatencyCanvasView(context)
@@ -198,3 +392,10 @@ private fun NoteCanvas(
         modifier = modifier,
     )
 }
+
+/** Page thumbnails render one at a time: renderers aren't thread-safe. */
+@OptIn(ExperimentalCoroutinesApi::class)
+private val THUMBNAIL_THREAD = Dispatchers.Default.limitedParallelism(1)
+
+/** From this width the note's actions are buttons. */
+private const val WIDE_SCREEN_DP = 600

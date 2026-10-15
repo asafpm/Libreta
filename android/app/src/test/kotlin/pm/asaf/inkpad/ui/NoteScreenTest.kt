@@ -18,6 +18,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -37,16 +38,19 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLooper
 import pm.asaf.inkpad.AppViewModel
 import pm.asaf.inkpad.NoteState
 import pm.asaf.inkpad.android.render.RenderThreads
 import pm.asaf.inkpad.core.format.XoppReader
+import pm.asaf.inkpad.core.model.Background
 import pm.asaf.inkpad.core.model.Color
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.EraserSettings
 import pm.asaf.inkpad.core.model.EraserType
+import pm.asaf.inkpad.core.model.PageStyle
 import pm.asaf.inkpad.core.model.PenSize
 import pm.asaf.inkpad.core.model.Tool
 import pm.asaf.inkpad.files.Autosave
@@ -54,6 +58,7 @@ import pm.asaf.inkpad.library.FakeDocumentsProvider
 import pm.asaf.inkpad.library.LibraryRoot
 import pm.asaf.inkpad.library.LibraryRoots
 import pm.asaf.inkpad.viewer.DocumentView
+import pm.asaf.inkpad.viewer.LayerView
 import java.io.File
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
@@ -298,6 +303,77 @@ class NoteScreenTest {
         assertEquals(listOf("Fine", "Medium", "Thick", "Very thick"), names)
         compose.onNodeWithContentDescription("Width: Thick").performScrollTo().performClick()
         compose.onNodeWithContentDescription("Width: Medium").assertDoesNotExist()
+    }
+
+    private fun AppViewModel.pages() = (note.value as NoteState.Loaded).session.document.pages
+
+    private fun clickFirst(description: String) =
+        compose.onAllNodesWithContentDescription(description)[0].performClick()
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun pagesAreInsertedDuplicatedMovedAndDeleted() {
+        val model = openLecture()
+        val first = model.pages().single()
+        compose.onNodeWithContentDescription("Pages").performClick()
+        compose.onNodeWithContentDescription("Page 1").assertIsSelected()
+        clickFirst("Insert a page after this one")
+        compose.waitForIdle()
+        // Like the page it follows, empty; and in view.
+        val pages = model.pages()
+        assertEquals(2, pages.size)
+        assertEquals(first.background, pages[1].background)
+        assertEquals(listOf(0), pages[1].layers.map { it.elements.size })
+        compose.onNodeWithContentDescription("Page 2").assertIsSelected()
+
+        clickFirst("Move page up")
+        assertEquals(first, model.pages()[1])
+        clickFirst("Duplicate page")
+        assertEquals(3, model.pages().size)
+        clickFirst("Delete page")
+        assertEquals(2, model.pages().size)
+
+        // A graph background on every page.
+        clickFirst("Page background")
+        compose.onNodeWithText("Graph").performClick()
+        compose.onNodeWithText("Apply to all pages").performClick()
+        compose.onNodeWithText("OK").performClick()
+        assertTrue(model.pages().all { (it.background as Background.Solid).style == PageStyle.GRAPH })
+
+        // All undone, step by step.
+        repeat(5) { compose.onNodeWithContentDescription("Undo").performClick() }
+        assertEquals(listOf(first), model.pages())
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun layersAreChosenHiddenRenamedAndReordered() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        val session = (model.note.value as NoteState.Loaded).session
+        val before = model.pages()[0].layers.map { it.elements.size }
+        compose.onNodeWithContentDescription("Layers").performClick()
+        // The note's layers: Exercise below Solution. Write on Exercise, hide Solution.
+        compose.onNodeWithContentDescription("Write on Exercise").performClick()
+        compose.onNodeWithContentDescription("Hide Solution").performClick()
+        assertEquals(LayerView(0, setOf(1)), session.layers.value[0])
+        compose.onNodeWithText("Exercise").performClick()
+        compose.onNodeWithTag("layer name").performTextReplacement("Notes")
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Add a layer above").performClick()
+        // The new layer, between the two, is the one written on.
+        assertEquals(listOf("Notes", null, "Solution"), model.pages()[0].layers.map { it.name })
+        assertEquals(LayerView(1, setOf(2)), session.layers.value[0])
+        compose.onNodeWithContentDescription("Write on Layer 2").assertIsSelected()
+        compose.onNodeWithText("Delete layer").performClick()
+        compose.onNodeWithText("Move layer up").performClick()
+        assertEquals(listOf("Solution", "Notes"), model.pages()[0].layers.map { it.name })
+        assertEquals(LayerView(1, setOf(0)), session.layers.value[0])
+        compose.onNodeWithText("Move layer down").performClick()
+        // Touches go to the page view, under the sheet.
+        write(view)
+        assertEquals(listOf(before[0] + 1, before[1]), model.pages()[0].layers.map { it.elements.size })
+        assertEquals(view.layerViews, session.layers.value)
     }
 
     private companion object {
