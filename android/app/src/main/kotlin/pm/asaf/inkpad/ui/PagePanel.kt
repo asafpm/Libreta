@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,8 +24,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,6 +59,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import kotlinx.coroutines.delay
@@ -71,9 +69,9 @@ import pm.asaf.inkpad.files.PageThumbnails
 import kotlin.math.abs
 
 /**
- * The note's pages as thumbnails (tap one to go there, or hold and drag it to move it), and
- * commands for the [current] one: insert a page after it, duplicate, delete, move, and change
- * its background.
+ * The note's pages as thumbnails (tap one to go there, or hold and drag it to move it, as a
+ * hint says), and commands for the [current] one: insert a page after it, duplicate, delete,
+ * and change its background.
  */
 @Composable
 fun PagePanel(
@@ -99,6 +97,15 @@ fun PagePanel(
     ) {
         Column {
             PageCommands(pages.size, current, actions)
+            if (pages.size > 1) {
+                Text(
+                    stringResource(R.string.drag_pages_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp),
+                )
+            }
             HorizontalDivider()
             EdgeScrolling(drag)
             LazyColumn(
@@ -119,28 +126,17 @@ fun PagePanel(
     }
 }
 
-/** The current page's commands; moving up and down side by side. */
+/** The current page's commands. */
 @Composable
 private fun PageCommands(
     count: Int,
     current: Int,
     actions: PageActions,
 ) {
-    // Groups wrap as a whole on a narrow panel.
     FlowRow(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth().padding(4.dp)) {
-        Row {
-            Action(AddPageIcon, R.string.insert_page) { actions.insertAfter(current) }
-            Action(DuplicateIcon, R.string.duplicate_page) { actions.duplicate(current) }
-            Action(Icons.Filled.Delete, R.string.delete_page, enabled = count > 1) { actions.delete(current) }
-        }
-        Row {
-            Action(Icons.Filled.KeyboardArrowUp, R.string.move_page_up, enabled = current > 0) {
-                actions.move(current, current - 1)
-            }
-            Action(Icons.Filled.KeyboardArrowDown, R.string.move_page_down, enabled = current < count - 1) {
-                actions.move(current, current + 1)
-            }
-        }
+        Action(AddPageIcon, R.string.insert_page) { actions.insertAfter(current) }
+        Action(DuplicateIcon, R.string.duplicate_page) { actions.duplicate(current) }
+        Action(Icons.Filled.Delete, R.string.delete_page, enabled = count > 1) { actions.delete(current) }
         Action(BackgroundIcon, R.string.page_background) { actions.background(current) }
     }
 }

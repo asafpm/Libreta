@@ -10,11 +10,13 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -25,6 +27,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
@@ -326,7 +329,16 @@ class NoteScreenTest {
         assertEquals(listOf(0), pages[1].layers.map { it.elements.size })
         compose.onNodeWithContentDescription("Page 2").assertIsSelected()
 
-        clickFirst("Move page up")
+        // Page 2 held and dragged onto page 1.
+        val above = compose.onNodeWithContentDescription("Page 1").getBoundsInRoot()
+        val held = compose.onNodeWithContentDescription("Page 2").getBoundsInRoot()
+        val distance = with(compose.density) { (above.top - held.top).toPx() }
+        compose.onNodeWithContentDescription("Page 2").performTouchInput {
+            down(center)
+            advanceEventTime(viewConfiguration.longPressTimeoutMillis + 100)
+            repeat(DRAG_STEPS) { moveBy(Offset(0f, distance / DRAG_STEPS)) }
+            up()
+        }
         assertEquals(first, model.pages()[1])
         clickFirst("Duplicate page")
         assertEquals(3, model.pages().size)
@@ -450,5 +462,6 @@ class NoteScreenTest {
 
     private companion object {
         const val TIMEOUT = 10_000L
+        const val DRAG_STEPS = 10
     }
 }

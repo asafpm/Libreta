@@ -5,10 +5,12 @@ package pm.asaf.inkpad.ui
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
@@ -64,15 +66,21 @@ class PagePanelTest {
     }
 
     @Test
-    fun movingUpAndDownAreSideBySide() {
+    fun commandsAreInOneRowAndAHintTellsHowToMovePages() {
         show()
-        val up = compose.onNodeWithContentDescription("Move page up").getBoundsInRoot()
-        val down = compose.onNodeWithContentDescription("Move page down").getBoundsInRoot()
-        assertEquals(up.top, down.top)
-        assertTrue(down.left > up.right && down.left - up.right < 16.dp)
-        // All commands in one row.
-        assertEquals(up.top, compose.onNodeWithContentDescription("Insert a page after this one").getBoundsInRoot().top)
-        assertEquals(up.top, compose.onNodeWithContentDescription("Page background").getBoundsInRoot().top)
+        val top = compose.onNodeWithContentDescription("Insert a page after this one").getBoundsInRoot().top
+        for (command in listOf("Duplicate page", "Delete page", "Page background")) {
+            assertEquals(command, top, compose.onNodeWithContentDescription(command).getBoundsInRoot().top)
+        }
+        // Pages are moved by dragging them, as the hint says, not by buttons.
+        compose.onNodeWithText(HINT).assertIsDisplayed()
+        compose.onNodeWithContentDescription("Move page up").assertDoesNotExist()
+    }
+
+    @Test
+    fun aSinglePageHasNoHint() {
+        show(count = 1)
+        compose.onNodeWithText(HINT).assertDoesNotExist()
     }
 
     @Test
@@ -122,6 +130,7 @@ class PagePanelTest {
     }
 
     private companion object {
+        const val HINT = "Hold a page and drag it to move it"
         const val STEPS = 20
     }
 }

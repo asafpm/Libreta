@@ -44,8 +44,7 @@
     <string name="insert_page">Insert a page after this one</string>
     <string name="duplicate_page">Duplicate page</string>
     <string name="delete_page">Delete page</string>
-    <string name="move_page_up">Move page up</string>
-    <string name="move_page_down">Move page down</string>
+    <string name="drag_pages_hint">Hold a page and drag it to move it</string>
     <string name="page_background">Page background</string>
     <string name="apply_to_all_pages">Apply to all pages</string>
     <string name="ruling">Ruling</string>
