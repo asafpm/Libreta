@@ -141,6 +141,8 @@ private fun RowScope.InkOptions(
     controls: ToolControls,
     onAddColor: () -> Unit,
 ) {
+    ShapeMenu(controls)
+    Separator()
     val swatches = (controls.fixedColors + controls.recentColors + color).distinct()
     for (swatch in swatches) {
         Swatch(swatch, colorName(swatch), selected = swatch == color) { controls.onColor(swatch) }

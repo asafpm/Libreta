@@ -232,6 +232,8 @@ internal class Inking(
                     inView = stroke?.let { page to it }
                     view.invalidate()
                 }
+
+                override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
             },
         )
 

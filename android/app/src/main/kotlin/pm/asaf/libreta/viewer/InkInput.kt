@@ -4,13 +4,17 @@ package pm.asaf.libreta.viewer
 
 import android.view.MotionEvent
 import pm.asaf.libreta.core.geometry.InkSample
+import pm.asaf.libreta.core.geometry.ShapePoint
 import pm.asaf.libreta.core.geometry.StrokeBuilder
 import pm.asaf.libreta.core.model.Color
+import pm.asaf.libreta.core.model.DrawingType
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserType
+import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.StrokeTool
 import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.ToolSettings
+import kotlin.math.hypot
 
 /** Where a page is on screen while a stroke is written: page units to view pixels and back. */
 internal class PageMapping(
@@ -86,19 +90,45 @@ internal class InkInput(
             page: Int,
             stroke: Element.Stroke?,
         )
+
+        /** The document's page [index] (its background places the grid shapes snap to). */
+        fun page(index: Int): Page
     }
 
     /** One stroke in progress. */
     private class Writing(
         val pointerId: Int,
         val page: PageMapping,
+        val ink: StrokeInk,
         val builder: StrokeBuilder,
         val color: Int,
         val byFinger: Boolean,
         val pressure: Boolean,
         /** Drawn by the view rather than as wet ink. */
         val inView: Boolean,
-    )
+    ) {
+        /** Where and when the pen last moved more than a jitter: held there long enough, the stroke straightens. */
+        private var stillX = Float.NaN
+        private var stillY = Float.NaN
+        private var stillSince = 0L
+
+        /** Whether the pen has stayed put long enough, far enough from where the stroke began, to straighten it. */
+        fun heldStill(
+            event: MotionEvent,
+            index: Int,
+        ): Boolean {
+            val x = event.getX(index)
+            val y = event.getY(index)
+            if (stillX.isNaN() || hypot(x - stillX, y - stillY) > STILL_PX) {
+                stillX = x
+                stillY = y
+                stillSince = event.eventTime
+                return false
+            }
+            val length = hypot(page.toViewX(builder.x(0)) - x, page.toViewY(builder.y(0)) - y)
+            return event.eventTime - stillSince >= HOLD_MS && length >= MIN_STRAIGHT_PX
+        }
+    }
 
     private enum class Ink { PEN, HIGHLIGHTER, WHITEOUT }
 
@@ -106,12 +136,13 @@ internal class InkInput(
 
     private val eraser = EraserInput(host)
     private val selection = SelectionInput(host)
+    private val shapes = ShapeInput(host)
 
     /** The rest of this touch sequence is ignored (e.g. it started off the pages). */
     private var ignoring = false
 
     /** Whether a stroke is being written, or erasing goes on. */
-    val isActive: Boolean get() = writing != null || eraser.isActive || selection.isActive
+    val isActive: Boolean get() = writing != null || eraser.isActive || selection.isActive || shapes.isActive
 
     /**
      * Handles [event] if it belongs to writing; false leaves it to the gestures. A touch
@@ -135,6 +166,11 @@ internal class InkInput(
 
             selection.isActive -> {
                 if (!selection.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
+                true
+            }
+
+            shapes.isActive -> {
+                if (!shapes.onTouchEvent(event)) ignoring = !event.isSequenceEnd()
                 true
             }
 
@@ -180,6 +216,11 @@ internal class InkInput(
                 selection.begin(event, index)
             }
 
+            tools.drawingType != DrawingType.FREEHAND -> {
+                // Like Xournal++, nothing is drawn off the pages.
+                if (!shapes.begin(event, index, tools, chosen)) ignoring = !event.isSequenceEnd()
+            }
+
             chosen == Tool.HIGHLIGHTER -> {
                 begin(event, index, finger, Ink.HIGHLIGHTER)
             }
@@ -207,25 +248,19 @@ internal class InkInput(
         }
         val tools = host.tools
         // Like Xournal++: whiteout is a white eraser stroke, and only the pen uses pressure.
-        val (color, builder) =
+        val strokeInk =
             when (ink) {
-                Ink.PEN -> {
-                    tools.pen.color to StrokeBuilder(StrokeTool.PEN, tools.pen.color, tools.pen.size.width)
-                }
-
-                Ink.WHITEOUT -> {
-                    WHITE to StrokeBuilder(StrokeTool.ERASER, WHITE, tools.eraser.width)
-                }
-
-                Ink.HIGHLIGHTER -> {
-                    val highlighter = tools.highlighter
-                    highlighter.color to StrokeBuilder(StrokeTool.HIGHLIGHTER, highlighter.color, highlighter.width)
-                }
+                Ink.PEN -> StrokeInk(StrokeTool.PEN, tools.pen.color, tools.pen.size.width)
+                Ink.WHITEOUT -> StrokeInk(StrokeTool.ERASER, WHITE, tools.eraser.width)
+                Ink.HIGHLIGHTER -> StrokeInk(StrokeTool.HIGHLIGHTER, tools.highlighter.color, tools.highlighter.width)
             }
+        val color = strokeInk.color
+        val builder = StrokeBuilder(strokeInk.tool, color, strokeInk.width)
         val stroke =
             Writing(
                 pointerId = event.getPointerId(index),
                 page = page,
+                ink = strokeInk,
                 builder = builder,
                 color = android.graphics.Color.argb(color.alpha, color.red, color.green, color.blue),
                 byFinger = byFinger,
@@ -275,7 +310,22 @@ internal class InkInput(
                 first,
                 stroke.builder.add(sample(stroke, event.getX(index), event.getY(index), event.getPressure(index))),
             )
+        if (stroke.heldStill(event, index)) {
+            straighten(stroke, event)
+            return
+        }
         add(stroke, first, prediction(stroke, event))
+    }
+
+    /** Turns [stroke] into a straight line from where it began, following the pen until it lifts. */
+    private fun straighten(
+        stroke: Writing,
+        event: MotionEvent,
+    ) {
+        writing = null
+        if (stroke.inView) host.drawInView(stroke.page.page, null) else host.wetInk.cancel()
+        val start = ShapePoint(stroke.builder.x(0), stroke.builder.y(0))
+        shapes.straighten(stroke.pointerId, stroke.page, stroke.ink, start, event)
     }
 
     private fun finish(
@@ -359,6 +409,11 @@ internal class InkInput(
 }
 
 private val WHITE = Color.of(255, 255, 255)
+
+/** Held within this many pixels for [HOLD_MS], a freehand stroke straightens, if it is [MIN_STRAIGHT_PX] long. */
+private const val STILL_PX = 6f
+private const val HOLD_MS = 500L
+private const val MIN_STRAIGHT_PX = 24f
 
 private fun MotionEvent.isSequenceEnd() =
     actionMasked == MotionEvent.ACTION_UP || actionMasked == MotionEvent.ACTION_CANCEL

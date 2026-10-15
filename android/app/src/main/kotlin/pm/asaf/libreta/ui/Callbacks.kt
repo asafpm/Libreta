@@ -95,6 +95,8 @@ class ToolControls(
     val onEraserType: (EraserType) -> Unit,
     val onSelectMode: (SelectMode) -> Unit,
     val onFingerDraws: (Boolean) -> Unit,
+    /** Changes other settings, e.g. the drawing type or text's font. */
+    val onChange: ((ToolSettings) -> ToolSettings) -> Unit = {},
 )
 
 /** Where the viewer was, kept by the caller so that it survives rotation. */

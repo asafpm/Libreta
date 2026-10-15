@@ -146,6 +146,77 @@ val ExportIcon: ImageVector =
         lineTo(16f, 8f)
     }
 
+/** Freehand: a squiggle. */
+@Suppress("MagicNumber") // path coordinates
+val FreehandIcon: ImageVector =
+    lineIcon("Freehand") {
+        moveTo(3f, 17f)
+        curveTo(6f, 7f, 9f, 7f, 11f, 13f)
+        curveTo(13f, 19f, 17f, 19f, 21f, 7f)
+    }
+
+/** A straight line. */
+@Suppress("MagicNumber") // path coordinates
+val LineIcon: ImageVector =
+    lineIcon("Line") {
+        moveTo(4f, 20f)
+        lineTo(20f, 4f)
+    }
+
+/** A rectangle. */
+@Suppress("MagicNumber") // path coordinates
+val RectangleIcon: ImageVector =
+    lineIcon("Rectangle") {
+        moveTo(3f, 6f)
+        lineTo(21f, 6f)
+        lineTo(21f, 18f)
+        lineTo(3f, 18f)
+        close()
+    }
+
+/** An ellipse. */
+@Suppress("MagicNumber") // path coordinates
+val EllipseIcon: ImageVector =
+    lineIcon("Ellipse") {
+        moveTo(3f, 12f)
+        arcTo(9f, 6f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 21f, y1 = 12f)
+        arcTo(9f, 6f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 3f, y1 = 12f)
+    }
+
+/** An arrow. */
+@Suppress("MagicNumber") // path coordinates
+val ArrowIcon: ImageVector =
+    lineIcon("Arrow") {
+        moveTo(4f, 20f)
+        lineTo(20f, 4f)
+        moveTo(11f, 4f)
+        lineTo(20f, 4f)
+        lineTo(20f, 13f)
+    }
+
+/** A double arrow. */
+@Suppress("MagicNumber") // path coordinates
+val DoubleArrowIcon: ImageVector =
+    lineIcon("Double arrow") {
+        moveTo(4f, 20f)
+        lineTo(20f, 4f)
+        moveTo(12f, 4f)
+        lineTo(20f, 4f)
+        lineTo(20f, 12f)
+        moveTo(4f, 12f)
+        lineTo(4f, 20f)
+        lineTo(12f, 20f)
+    }
+
+/** A coordinate system: two axes. */
+@Suppress("MagicNumber") // path coordinates
+val AxesIcon: ImageVector =
+    lineIcon("Coordinate system") {
+        moveTo(5f, 3f)
+        lineTo(5f, 19f)
+        lineTo(21f, 19f)
+    }
+
 /** New folder: a folder with a plus. */
 @Suppress("MagicNumber") // path coordinates
 val NewFolderIcon: ImageVector =
