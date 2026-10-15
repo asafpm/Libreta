@@ -8,6 +8,10 @@ dependencies {
     api(project(":core:model"))
     api(project(":core:geometry"))
     implementation(libs.androidx.exifinterface)
+    // Reading PDFs (page sizes) and writing annotated ones. BouncyCastle only serves PDFs
+    // encrypted with certificates, which are rare: left out (about 10 MB); password-protected
+    // PDFs use the platform's ciphers.
+    implementation(libs.pdfbox.android) { exclude(group = "org.bouncycastle") }
     implementation(libs.kotlinx.coroutines.android)
 
     // Sample documents in screenshot tests.

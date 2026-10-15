@@ -80,6 +80,35 @@ class LibraryTest {
     }
 
     @Test
+    fun pdfsAreListedUnlessTheyHaveANote() {
+        copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+        copy("pdf_annotation.xopp.bg.pdf", "slides.PDF", 2_000_000)
+        copy("pdf_annotation.xopp.bg.pdf", "annotated.pdf", 1_000_000)
+        copy("pdf_annotation.xopp", "annotated.pdf.xopp", 1_000_000)
+        val listed = FolderListing.list(store, root)
+        // "annotated.pdf" has a note, which stands for it.
+        assertEquals(listOf("paper.pdf", "slides.PDF", "annotated.pdf.xopp"), listed.map { it.name })
+        assertTrue(listed[0] is LibraryEntry.Pdf && listed[1] is LibraryEntry.Pdf && listed[2] is LibraryEntry.Document)
+    }
+
+    @Test
+    fun pdfsHavePreviews() =
+        runTest {
+            BlankPdfPages.install()
+            try {
+                copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+                val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
+                val io = StandardTestDispatcher(testScheduler)
+                val preview =
+                    PreviewCache(context, store, temporary.newFolder("previews"), io).previews(pdf).toList().single()
+                // Its first page, landscape like the PDF.
+                assertTrue("${preview.width} x ${preview.height}", preview.width > preview.height)
+            } finally {
+                BlankPdfPages.uninstall()
+            }
+        }
+
+    @Test
     fun rootsKeepTheirOrder() {
         val preferences = context.getSharedPreferences("roots-test", Context.MODE_PRIVATE)
         val roots = LibraryRoots(preferences)

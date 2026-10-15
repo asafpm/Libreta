@@ -19,6 +19,8 @@ import pm.asaf.libreta.library.SortOrder
 class LibraryActions(
     val openFolder: (LibraryEntry.Folder) -> Unit,
     val openDocument: (LibraryEntry.Document) -> Unit,
+    /** Opens a PDF's note, made the first time. */
+    val openPdf: (LibraryEntry.Pdf) -> Unit,
 )
 
 /** Things [SettingsScreen] can change. */

@@ -20,6 +20,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -34,6 +35,7 @@ import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.Screen
 import pm.asaf.libreta.android.render.RenderThreads
 import pm.asaf.libreta.core.store.StoreId
+import pm.asaf.libreta.library.BlankPdfPages
 import pm.asaf.libreta.library.FakeDocumentsProvider
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.LibraryRoots
@@ -56,12 +58,16 @@ class LibretaAppTest {
     fun setUp() {
         directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
+        BlankPdfPages.install()
         application
             .getSharedPreferences("library", Context.MODE_PRIVATE)
             .edit()
             .clear()
             .commit()
     }
+
+    @After
+    fun tearDown() = BlankPdfPages.uninstall()
 
     private fun show(): AppViewModel {
         // Note pages are not rendered: that is tested elsewhere, and slow here.
@@ -123,6 +129,26 @@ class LibretaAppTest {
         compose.onNodeWithContentDescription("Back").performClick()
         waitForText("Lecture 1.xopp")
         assertTrue(model.screens.value.last() is Screen.Folder)
+    }
+
+    @Test
+    fun aPdfOpensInANoteMadeNextToIt() {
+        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        val model = show()
+        waitForText("paper.pdf")
+        compose.onNodeWithText("paper.pdf").performClick()
+        eventually { model.note.value is NoteState.Loaded }
+        compose.onNodeWithText("paper.xopp").assertIsDisplayed()
+        val page = (model.note.value as NoteState.Loaded).document.pages.single()
+        assertEquals(792.0, page.width, 0.5)
+        assertTrue(File(directory, "paper.xopp").isFile)
+
+        // Back in the folder, the note stands for the PDF.
+        compose.onNodeWithContentDescription("Back").performClick()
+        waitForText("paper.xopp")
+        compose.onNodeWithText("paper.pdf").assertDoesNotExist()
     }
 
     /** "New folder", with its text on wide screens, its icon on narrow ones. */

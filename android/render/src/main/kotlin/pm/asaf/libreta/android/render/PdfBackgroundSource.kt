@@ -7,8 +7,6 @@ import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
-import android.graphics.pdf.PdfRenderer
-import android.os.ParcelFileDescriptor
 import android.util.LruCache
 import pm.asaf.libreta.core.model.Background
 import java.io.Closeable
@@ -26,8 +24,7 @@ class PdfBackgroundSource(
     private val images: BackgroundSource = BackgroundSource.None,
 ) : BackgroundSource,
     Closeable {
-    private val descriptor = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY)
-    private val renderer = PdfRenderer(descriptor)
+    private val renderer = PdfPageRenderer.open(pdfFile)
 
     /** A PDF page rendered, and its size in points. */
     private class Rendered(
@@ -56,38 +53,35 @@ class PdfBackgroundSource(
         return true
     }
 
+    /** The size of PDF page [pageNumber] (from 1) in points, or null if there is no such page. */
+    @Synchronized
+    fun pageSize(pageNumber: Long): Pair<Double, Double>? {
+        val index = (pageNumber - 1).toInt()
+        if (pageNumber < 1 || index >= pageCount) return null
+        return renderer.pageSize(index)
+    }
+
     @Synchronized
     private fun renderPage(
         index: Int,
         zoom: Float,
     ): Rendered =
-        cache.get(index to zoom) ?: renderer.openPage(index).use { page ->
-            Rendered(render(page, zoom), page.width.toFloat(), page.height.toFloat()).also {
-                cache.put(index to zoom, it)
-            }
+        cache.get(index to zoom) ?: run {
+            val (width, height) = renderer.pageSize(index)
+            // Like Xournal++, never below one pixel per point.
+            val scale = maxOf(zoom, 1f)
+            val bitmap =
+                Bitmap.createBitmap(
+                    ceil(width * scale).toInt(),
+                    ceil(height * scale).toInt(),
+                    Bitmap.Config.ARGB_8888,
+                )
+            renderer.render(index, bitmap, Matrix().apply { setScale(scale, scale) })
+            Rendered(bitmap, width.toFloat(), height.toFloat()).also { cache.put(index to zoom, it) }
         }
 
-    private fun render(
-        page: PdfRenderer.Page,
-        zoom: Float,
-    ): Bitmap {
-        // Like Xournal++, never below one pixel per point.
-        val scale = maxOf(zoom, 1f)
-        val bitmap =
-            Bitmap.createBitmap(
-                ceil(page.width * scale).toInt(),
-                ceil(page.height * scale).toInt(),
-                Bitmap.Config.ARGB_8888,
-            )
-        page.render(bitmap, null, Matrix().apply { setScale(scale, scale) }, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-        return bitmap
-    }
-
     @Synchronized
-    override fun close() {
-        renderer.close()
-        descriptor.close()
-    }
+    override fun close() = renderer.close()
 
     private companion object {
         const val CACHE_SIZE = 8

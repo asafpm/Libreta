@@ -15,11 +15,18 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okio.ByteString.Companion.encodeUtf8
 import okio.Source
+import okio.buffer
+import okio.sink
 import pm.asaf.libreta.android.render.BitmapLru
+import pm.asaf.libreta.android.render.PageRenderer
+import pm.asaf.libreta.android.render.PdfBackgroundSource
 import pm.asaf.libreta.android.render.TileRenderer
 import pm.asaf.libreta.core.format.XoppFormatException
 import pm.asaf.libreta.core.format.XoppPreview
 import pm.asaf.libreta.core.format.XoppReader
+import pm.asaf.libreta.core.model.Background
+import pm.asaf.libreta.core.model.Layer
+import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.store.DocumentStore
 import pm.asaf.libreta.files.DocumentFiles
 import pm.asaf.libreta.files.DocumentLocation
@@ -27,15 +34,17 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Previews of library documents: page 1 rendered at the thumbnail width, kept in memory and
- * on disk (JPEG: pages are opaque) per version of the file. Until it is rendered, the small
- * preview Xournal++ embeds in files is shown.
+ * Previews of library documents and PDFs: page 1 rendered at the thumbnail width, kept in
+ * memory and on disk (JPEG: pages are opaque) per version of the file. Until it is rendered,
+ * the small preview Xournal++ embeds in files is shown. [locate] finds where a document is
+ * in the library, so that background files outside its folder are found too.
  */
 class PreviewCache(
     context: Context,
     private val store: DocumentStore,
     private val directory: File = File(context.cacheDir, "previews"),
     private val io: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(2),
+    private val locate: (LibraryEntry.Document) -> DocumentLocation? = { null },
 ) {
     private val memory = BitmapLru<String>(MEMORY_BYTES)
 
@@ -45,13 +54,13 @@ class PreviewCache(
     private val rendering = Mutex()
 
     /** The finished preview, if it is in memory. */
-    fun cached(document: LibraryEntry.Document): Bitmap? = memory[keyOf(document)]
+    fun cached(document: LibraryEntry.File): Bitmap? = memory[keyOf(document)]
 
     /**
      * Previews of [document], better ones later: the finished preview if cached, otherwise
      * the embedded preview (if any) and then the rendered one. Empty if the file can't be read.
      */
-    fun previews(document: LibraryEntry.Document): Flow<Bitmap> =
+    fun previews(document: LibraryEntry.File): Flow<Bitmap> =
         flow {
             val key = keyOf(document)
             val file = File(directory, key.encodeUtf8().sha256().hex() + ".jpg")
@@ -59,8 +68,13 @@ class PreviewCache(
             if (finished != null) {
                 emit(finished)
             } else {
-                embedded(document)?.let { emit(it) }
-                render(document)?.let { rendered ->
+                if (document is LibraryEntry.Document) embedded(document)?.let { emit(it) }
+                val rendered =
+                    when (document) {
+                        is LibraryEntry.Document -> render(document)
+                        is LibraryEntry.Pdf -> renderPdf(document)
+                    }
+                rendered?.let { rendered ->
                     memory.put(key, rendered)
                     save(rendered, file)
                     emit(rendered)
@@ -68,7 +82,7 @@ class PreviewCache(
             }
         }.flowOn(io)
 
-    private fun keyOf(document: LibraryEntry.Document) = "${document.id.value}|${document.version}"
+    private fun keyOf(document: LibraryEntry.File) = "${document.id.value}|${document.version}"
 
     private fun decode(file: File): Bitmap? = if (file.isFile) BitmapFactory.decodeFile(file.path) else null
 
@@ -80,8 +94,8 @@ class PreviewCache(
     private suspend fun render(document: LibraryEntry.Document): Bitmap? {
         val read = readOrNull(document) { XoppReader.read(it) }
         val page = read?.document?.pages?.firstOrNull() ?: return null
-        // Background files next to the note are found; paths leaving its folder are not.
-        val files = DocumentFiles.open(context, store, read, DocumentLocation(listOf(document.parent), document.name))
+        val location = locate(document) ?: DocumentLocation(listOf(document.parent), document.name)
+        val files = DocumentFiles.open(context, store, read, location)
         return try {
             rendering.withLock { TileRenderer.renderThumbnail(files.newRenderer(), page) }
         } finally {
@@ -89,8 +103,29 @@ class PreviewCache(
         }
     }
 
+    /** A PDF's first page, as a note on it shows it. */
+    private suspend fun renderPdf(pdf: LibraryEntry.Pdf): Bitmap? {
+        val copy = File.createTempFile("preview", ".pdf", context.cacheDir)
+        return try {
+            store.read(pdf.id).use { source -> copy.sink().buffer().use { it.writeAll(source) } }
+            PdfBackgroundSource(copy).use { source ->
+                source.pageSize(1)?.let { (width, height) ->
+                    val page = Page(width, height, Background.Pdf(1), listOf(Layer(emptyList())))
+                    rendering.withLock { TileRenderer.renderThumbnail(PageRenderer(context, source), page) }
+                }
+            }
+        } catch (e: IOException) {
+            null.also { logFailure(pdf, e) }
+        } catch (e: SecurityException) {
+            // Locked with a password.
+            null.also { logFailure(pdf, e) }
+        } finally {
+            copy.delete()
+        }
+    }
+
     private fun <T> readOrNull(
-        document: LibraryEntry.Document,
+        document: LibraryEntry.File,
         read: (Source) -> T?,
     ): T? =
         try {
@@ -102,7 +137,7 @@ class PreviewCache(
         }
 
     private fun logFailure(
-        document: LibraryEntry.Document,
+        document: LibraryEntry.File,
         e: Exception,
     ) = Log.w(TAG, "No preview for ${document.name}", e)
 

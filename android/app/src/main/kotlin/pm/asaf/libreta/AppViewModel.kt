@@ -40,9 +40,11 @@ import pm.asaf.libreta.files.SaveResult
 import pm.asaf.libreta.library.FolderListing
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
+import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.NewFolderFlow
 import pm.asaf.libreta.library.NewNoteCreator
 import pm.asaf.libreta.library.NewNoteFlow
+import pm.asaf.libreta.library.PdfNotes
 import pm.asaf.libreta.library.PreviewCache
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.PagePreferences
@@ -111,7 +113,8 @@ class AppViewModel
         /** Where notes are: the folders granted through the Storage Access Framework. */
         private val store = SafDocumentStore(application.contentResolver)
         val library = Library(store, application.contentResolver, preferences, viewModelScope, io)
-        val previews = PreviewCache(application, store)
+        val previews =
+            PreviewCache(application, store, locate = { NoteLoader.locate(store, library.roots.value, it.id, it.name) })
         val tools = ToolPreferences(preferences)
         val colors = ColorPreferences(preferences)
         val pages = PagePreferences(preferences)
@@ -202,6 +205,23 @@ class AppViewModel
         // New notes
 
         // The open note
+
+        /** Opens the note of [pdf] (in the folder at the end of [path]), made the first time. */
+        fun openPdf(
+            pdf: LibraryEntry.Pdf,
+            path: List<FolderRef>,
+        ) {
+            viewModelScope.launch {
+                withContext(io) { runCatching { PdfNotes.open(context, store, pdf, NewNoteCreator.creator(context)) } }
+                    .onSuccess { file ->
+                        library.refresh(path.last())
+                        open(Screen.Note(file.id, file.name, DocumentLocation(path, file.name)))
+                    }.onFailure { e ->
+                        Log.w(TAG, "Cannot open ${pdf.name}", e)
+                        errorState.value = context.getString(R.string.error_open_pdf, pdf.name)
+                    }
+            }
+        }
 
         /** Opens a note from another app ("Open with"), finding it in the library if it is there. */
         fun openExternal(id: StoreId) {

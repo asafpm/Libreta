@@ -76,6 +76,7 @@ private fun libraryActions(
         val folders = parent?.path ?: listOf(entry.parent)
         model.open(Screen.Note(entry.id, entry.name, DocumentLocation(folders, entry.name)))
     },
+    openPdf = { entry -> model.openPdf(entry, parent?.path ?: listOf(entry.parent)) },
 )
 
 @Composable

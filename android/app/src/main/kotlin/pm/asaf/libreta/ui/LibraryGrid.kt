@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -143,6 +144,7 @@ fun LazyGridScope.folderItems(
                 when (entry) {
                     is LibraryEntry.Folder -> FolderCard(entry) { actions.openFolder(entry) }
                     is LibraryEntry.Document -> DocumentCard(entry, previews) { actions.openDocument(entry) }
+                    is LibraryEntry.Pdf -> DocumentCard(entry, previews) { actions.openPdf(entry) }
                 }
             }
         }
@@ -173,9 +175,10 @@ private fun FolderCard(
     }
 }
 
+/** A note or a PDF (labelled so), with a preview of its first page. */
 @Composable
 private fun DocumentCard(
-    entry: LibraryEntry.Document,
+    entry: LibraryEntry.File,
     previews: PreviewCache,
     onClick: () -> Unit,
 ) {
@@ -191,6 +194,7 @@ private fun DocumentCard(
                         .padding(12.dp),
             ) {
                 PreviewImage(entry, previews)
+                if (entry is LibraryEntry.Pdf) PdfLabel(Modifier.align(Alignment.TopEnd))
             }
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
@@ -219,8 +223,23 @@ private fun DocumentCard(
 }
 
 @Composable
+private fun PdfLabel(modifier: Modifier) {
+    Surface(
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        shape = MaterialTheme.shapes.extraSmall,
+        modifier = modifier,
+    ) {
+        Text(
+            stringResource(R.string.pdf),
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+        )
+    }
+}
+
+@Composable
 private fun PreviewImage(
-    entry: LibraryEntry.Document,
+    entry: LibraryEntry.File,
     previews: PreviewCache,
 ) {
     val bitmap: Bitmap? by produceState(previews.cached(entry), entry) {

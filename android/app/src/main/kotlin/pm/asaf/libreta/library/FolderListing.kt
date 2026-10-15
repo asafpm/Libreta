@@ -2,6 +2,7 @@
 
 package pm.asaf.libreta.library
 
+import pm.asaf.libreta.core.model.NewNote
 import pm.asaf.libreta.core.store.DocumentStore
 import pm.asaf.libreta.core.store.FileVersion
 import pm.asaf.libreta.core.store.StoreEntry
@@ -13,7 +14,7 @@ data class FolderRef(
     val name: String,
 )
 
-/** A subfolder or a Xournal++ document, as listed in a folder. */
+/** A subfolder, a Xournal++ document or a PDF, as listed in a folder. */
 sealed interface LibraryEntry {
     val name: String
 
@@ -28,14 +29,28 @@ sealed interface LibraryEntry {
         override val name: String get() = folder.name
     }
 
-    data class Document(
-        val id: StoreId,
-        override val name: String,
-        val version: FileVersion,
-        val parent: FolderRef,
-    ) : LibraryEntry {
+    /** A file shown with a preview of its first page. */
+    sealed interface File : LibraryEntry {
+        val id: StoreId
+        val version: FileVersion
+        val parent: FolderRef
         override val modified: Long get() = version.modified
     }
+
+    data class Document(
+        override val id: StoreId,
+        override val name: String,
+        override val version: FileVersion,
+        override val parent: FolderRef,
+    ) : File
+
+    /** A PDF, to annotate in a note of its own. */
+    data class Pdf(
+        override val id: StoreId,
+        override val name: String,
+        override val version: FileVersion,
+        override val parent: FolderRef,
+    ) : File
 }
 
 enum class SortOrder { MODIFIED, NAME }
@@ -46,9 +61,14 @@ object FolderListing {
 
     fun isDocumentName(name: String): Boolean = EXTENSIONS.any { name.endsWith(it, ignoreCase = true) }
 
+    fun isPdfName(name: String): Boolean = name.endsWith(PDF, ignoreCase = true)
+
+    private const val PDF = ".pdf"
+
     /**
-     * The subfolders (by name) and then the documents (by [order]; newest first for
-     * [SortOrder.MODIFIED]) of [folder]. Hidden entries are left out.
+     * The subfolders (by name) and then the documents and PDFs (by [order]; newest first for
+     * [SortOrder.MODIFIED]) of [folder]. Hidden entries are left out, and so are PDFs that
+     * have a note (Xournal++'s names for it): the note stands for them.
      */
     fun list(
         store: DocumentStore,
@@ -63,17 +83,23 @@ object FolderListing {
                     }
 
                     is StoreEntry.File -> {
-                        if (isDocumentName(
-                                entry.name,
-                            )
-                        ) {
-                            LibraryEntry.Document(entry.id, entry.name, entry.version, folder)
-                        } else {
-                            null
+                        when {
+                            isDocumentName(entry.name) -> {
+                                LibraryEntry.Document(entry.id, entry.name, entry.version, folder)
+                            }
+
+                            isPdfName(entry.name) -> {
+                                LibraryEntry.Pdf(entry.id, entry.name, entry.version, folder)
+                            }
+
+                            else -> {
+                                null
+                            }
                         }
                     }
                 }
             }
+        val names = entries.map { it.name }.toSet()
         val folders =
             entries.filterIsInstance<LibraryEntry.Folder>().sortedWith(
                 compareBy(
@@ -82,7 +108,10 @@ object FolderListing {
                     it.name
                 },
             )
-        val documents = entries.filterIsInstance<LibraryEntry.Document>()
+        val documents =
+            entries.filterIsInstance<LibraryEntry.File>().filterNot { entry ->
+                entry is LibraryEntry.Pdf && NewNote.notesForPdf(entry.name).any { it in names }
+            }
         val sorted =
             when (order) {
                 SortOrder.MODIFIED -> documents.sortedByDescending { it.modified }
