@@ -5,7 +5,6 @@
 
 package pm.asaf.inkpad.viewer
 
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.DashPathEffect
 import android.graphics.Matrix
@@ -89,26 +88,24 @@ internal class SelectionOverlay {
     }
 
     /**
-     * A selection being moved: its [bitmap] (rendered at [bitmapZoom] over [selection]'s box) and
-     * the box outline, as [transform] puts them, on the page at [mapping].
+     * A selection being moved: its [image] (over [selection]'s box) and the box outline, as
+     * [transform] puts them, on the page at [mapping].
      */
-    @Suppress("LongParameterList") // what is drawn, where and how
     fun drawMoving(
         canvas: Canvas,
-        bitmap: Bitmap?,
-        bitmapZoom: Float,
+        image: SelectionImage?,
         selection: SelectionBox,
         mapping: PageMapping,
         transform: SelectionTransform,
     ) {
         val box = selection.box
         val pageToView = toView(transform, mapping)
-        if (bitmap != null) {
+        if (image != null) {
             val matrix = Matrix()
-            matrix.setScale(1 / bitmapZoom, 1 / bitmapZoom)
+            matrix.setScale(1 / image.zoom, 1 / image.zoom)
             matrix.postTranslate(box.left.toFloat(), box.top.toFloat())
             matrix.postConcat(pageToView)
-            canvas.drawBitmap(bitmap, matrix, bitmapPaint)
+            canvas.drawBitmap(image.bitmap, matrix, bitmapPaint)
         }
         val corners =
             floatArrayOf(

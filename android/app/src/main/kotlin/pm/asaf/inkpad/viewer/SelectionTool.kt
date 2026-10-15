@@ -117,6 +117,7 @@ internal class SelectionTool(
     private var area: Area? = null
     private var gesture: SelectionGesture? = null
     private val overlay = SelectionOverlay()
+    private val image = KeptSelectionImage(host)
 
     /** Handle sizes, in view pixels. */
     var density: Float = 1f
@@ -149,7 +150,7 @@ internal class SelectionTool(
                     viewX,
                     viewY,
                     host,
-                ).also { it.start(MIN_SIZE / mapping.zoom) }
+                ).also { it.start(MIN_SIZE / mapping.zoom, image.of(current, mapping.zoom)) }
             host.redraw()
             return
         }
@@ -175,13 +176,17 @@ internal class SelectionTool(
     ) {
         gesture?.let { moving ->
             gesture = null
-            selected = moving.commit(viewX, viewY) ?: selected
+            moving.commit(viewX, viewY)?.let {
+                if (!moving.moved) image.forget()
+                selected = it
+            }
             host.changed()
         }
         area?.let { drawn ->
             area = null
             finish(drawn)
         }
+        image.prepare(selected)
         host.redraw()
     }
 
@@ -198,6 +203,7 @@ internal class SelectionTool(
     /** Nothing selected any more. */
     fun clear() {
         cancel()
+        image.forget()
         if (selected != null) {
             selected = null
             host.changed()
@@ -212,6 +218,8 @@ internal class SelectionTool(
         val layer = host.layer(page)
         val measurer = host.renderer?.textMeasurer ?: return
         selected = Selected.of(page, host.page(page), layer, indices, measurer)
+        image.forget()
+        image.prepare(selected)
         host.changed()
     }
 
@@ -293,6 +301,7 @@ internal class SelectionTool(
                 Selecting.enclosed(shape, elements, measurer)
             }
         selected = Selected.of(index, host.page(index), layer, indices, measurer)
+        image.forget()
         host.changed()
     }
 

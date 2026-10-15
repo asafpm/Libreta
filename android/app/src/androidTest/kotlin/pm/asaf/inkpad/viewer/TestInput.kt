@@ -17,15 +17,20 @@ internal class TestInput(
     private val instrumentation: Instrumentation,
     private val view: View,
 ) {
-    /** A touch by [tool] through [points] (view pixels), an event every [eventMs], held [holdMs] before lifting. */
+    /**
+     * A touch by [tool] through [points] (view pixels), an event every [eventMs], held [holdMs]
+     * before lifting; [buttons] gives each point's button state. Returns how long the view took
+     * over each event, in milliseconds.
+     */
     fun touch(
         points: List<Pair<Float, Float>>,
         tool: Int = MotionEvent.TOOL_TYPE_STYLUS,
         eventMs: Long = EVENT_MS,
         holdMs: Long = 0,
-    ) {
+        buttons: (Int) -> Int = { 0 },
+    ): List<Double> {
         val down = SystemClock.uptimeMillis()
-        points.forEachIndexed { index, (x, y) ->
+        return points.mapIndexed { index, (x, y) ->
             val action =
                 when (index) {
                     0 -> MotionEvent.ACTION_DOWN
@@ -33,7 +38,9 @@ internal class TestInput(
                     else -> MotionEvent.ACTION_MOVE
                 }
             if (index > 0) SystemClock.sleep(if (index == points.lastIndex) eventMs + holdMs else eventMs)
-            send(down, action, x, y, tool)
+            val start = System.nanoTime()
+            send(down, action, x, y, tool, buttons(index))
+            (System.nanoTime() - start) / NANOS_PER_MS
         }
     }
 
@@ -62,6 +69,7 @@ internal class TestInput(
         x: Float,
         y: Float,
         tool: Int,
+        buttons: Int,
     ) {
         val properties =
             MotionEvent.PointerProperties().apply {
@@ -91,7 +99,7 @@ internal class TestInput(
                 arrayOf(properties),
                 arrayOf(coordinates),
                 0,
-                0,
+                buttons,
                 1f,
                 1f,
                 0,
@@ -109,5 +117,6 @@ internal class TestInput(
         const val PRESSURE = 0.6f
         const val SEARCH = 20
         const val COLOR_TOLERANCE = 40
+        const val NANOS_PER_MS = 1_000_000.0
     }
 }

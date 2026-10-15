@@ -4,7 +4,6 @@
 
 package pm.asaf.inkpad.viewer
 
-import android.graphics.Bitmap
 import android.graphics.Canvas
 import pm.asaf.inkpad.core.geometry.SelectionHandle
 import pm.asaf.inkpad.core.geometry.SelectionTransform
@@ -14,14 +13,11 @@ import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.SelectionOperations
 import pm.asaf.inkpad.core.model.applying
 import pm.asaf.inkpad.core.model.followedBy
-import kotlin.math.ceil
-import kotlin.math.min
-import kotlin.math.sqrt
 
 /**
  * [selected] held by [handle] at a view point and dragged: moved (onto another page too),
  * scaled or rotated. Meanwhile the elements are left out of their page and drawn from a
- * bitmap, transformed. Pressing the stylus button while moving leaves a copy where the
+ * [SelectionImage], transformed. Pressing the stylus button while moving leaves a copy where the
  * selection is. Released, it is one edit.
  */
 internal class SelectionGesture(
@@ -46,31 +42,23 @@ internal class SelectionGesture(
     private var target: Int? = selected.page
     private val stamps = ArrayList<Stamp>()
     private var button = false
-    private var bitmap: Bitmap? = null
-    private var bitmapZoom = 1f
+    private var image: SelectionImage? = null
 
-    /** Takes the elements off their page, into a bitmap; the box keeps at least [minSize] (points). */
-    fun start(minSize: Double) {
+    /** Whether the selection was only moved: it looks the same, so its [image] still serves. */
+    val moved: Boolean
+        get() = transform.fx == 1.0 && transform.fy == 1.0 && transform.angle == 0.0
+
+    /**
+     * Takes the elements off their page, drawn from [image] instead; the box keeps at least
+     * [minSize] (points).
+     */
+    fun start(
+        minSize: Double,
+        image: SelectionImage?,
+    ) {
         this.minSize = minSize
+        this.image = image
         host.hide(HiddenElements(selected.page, selected.layer, selected.indices.toSet()))
-        val renderer = host.renderer ?: return
-        val box = selected.box.box
-        val width = box.right - box.left
-        val height = box.bottom - box.top
-        // Sharp at the current zoom, unless that would be huge.
-        val zoom = min(mapping.zoom, sqrt(MAX_PIXELS / (width * height))).toFloat()
-        bitmapZoom = zoom
-        bitmap =
-            Bitmap
-                .createBitmap(
-                    ceil(width * zoom).toInt().coerceAtLeast(1),
-                    ceil(height * zoom).toInt().coerceAtLeast(1),
-                    Bitmap.Config.ARGB_8888,
-                ).also {
-                    val canvas = Canvas(it)
-                    canvas.translate((-box.left * zoom).toFloat(), (-box.top * zoom).toFloat())
-                    renderer.renderElements(selected.elements, canvas, zoom)
-                }
     }
 
     /** The finger is at a view point; [button]: the stylus button is held (pressing it stamps a copy). */
@@ -142,7 +130,7 @@ internal class SelectionGesture(
             }
         val done = edit?.followedBy(result.edit) ?: result.edit
         host.edit(done)
-        bitmap = null
+        image = null
         val measurer = host.renderer?.textMeasurer ?: return null
         return Selected.of(
             result.page,
@@ -155,7 +143,7 @@ internal class SelectionGesture(
 
     /** Nothing done: the elements go back to their page. */
     fun abandon() {
-        bitmap = null
+        image = null
         host.hide(null)
     }
 
@@ -163,9 +151,9 @@ internal class SelectionGesture(
         canvas: Canvas,
         overlay: SelectionOverlay,
     ) {
-        val image = bitmap
-        for (stamp in stamps) overlay.drawMoving(canvas, image, bitmapZoom, selected.box, mapping, stamp.transform)
-        overlay.drawMoving(canvas, image, bitmapZoom, selected.box, mapping, transform)
+        val image = image
+        for (stamp in stamps) overlay.drawMoving(canvas, image, selected.box, mapping, stamp.transform)
+        overlay.drawMoving(canvas, image, selected.box, mapping, transform)
     }
 
     /** The elements transformed by [transform], placed on page [page]. */
@@ -176,10 +164,5 @@ internal class SelectionGesture(
         val (dx, dy) = host.offset(selected.page, page)
         val there = transform.copy(dx = transform.dx + dx, dy = transform.dy + dy)
         return selected.elements.map(there::apply)
-    }
-
-    private companion object {
-        /** The most pixels a selection's bitmap has. */
-        const val MAX_PIXELS = 16_000_000.0
     }
 }
