@@ -146,6 +146,43 @@ val ExportIcon: ImageVector =
         lineTo(16f, 8f)
     }
 
+/** A picture: a frame with a mountain and the sun. */
+@Suppress("MagicNumber") // path coordinates
+val ImageIcon: ImageVector =
+    lineIcon("Image") {
+        moveTo(3f, 5f)
+        lineTo(21f, 5f)
+        lineTo(21f, 19f)
+        lineTo(3f, 19f)
+        close()
+        moveTo(3f, 16f)
+        lineTo(9f, 11f)
+        lineTo(14f, 16f)
+        moveTo(13f, 14f)
+        lineTo(16f, 12f)
+        lineTo(21f, 16f)
+        moveTo(16f, 9f)
+        lineTo(16.5f, 9f)
+    }
+
+/** A camera. */
+@Suppress("MagicNumber") // path coordinates
+val CameraIcon: ImageVector =
+    lineIcon("Camera") {
+        moveTo(3f, 8f)
+        lineTo(7f, 8f)
+        lineTo(9f, 5f)
+        lineTo(15f, 5f)
+        lineTo(17f, 8f)
+        lineTo(21f, 8f)
+        lineTo(21f, 19f)
+        lineTo(3f, 19f)
+        close()
+        moveTo(12f, 10f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 12f, y1 = 16f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, x1 = 12f, y1 = 10f)
+    }
+
 /** Text: a T. */
 @Suppress("MagicNumber") // path coordinates
 val TextIcon: ImageVector =

@@ -2,9 +2,13 @@
 
 package pm.asaf.libreta.viewer
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Canvas
+import android.net.Uri
 import android.util.AttributeSet
+import android.view.DragEvent
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
@@ -136,6 +140,34 @@ class DocumentView
 
         /** Text typed or changed with the text tool. */
         val text: ViewText by lazy { ViewText(inking.textEditing) }
+
+        /** Called with a picture dropped from another app, and where (view pixels); null: none accepted. */
+        var onImageDropped: ((uri: Uri, viewX: Float, viewY: Float) -> Unit)? = null
+
+        override fun onDragEvent(event: DragEvent): Boolean {
+            val dropped = onImageDropped ?: return false
+            return when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> {
+                    event.clipDescription?.hasMimeType(IMAGES) == true
+                }
+
+                DragEvent.ACTION_DROP -> {
+                    val uri =
+                        event.clipData
+                            ?.takeIf { it.itemCount > 0 }
+                            ?.getItemAt(0)
+                            ?.uri
+                    // Reading another app's picture needs its permission.
+                    context.activity()?.requestDragAndDropPermissions(event)
+                    uri?.let { dropped(it, event.x, event.y) }
+                    uri != null
+                }
+
+                else -> {
+                    true
+                }
+            }
+        }
 
         /** The pen new strokes are written with. */
         var pen: PenSettings
@@ -560,3 +592,13 @@ private class ScrollRange(
             }
     }
 }
+
+/** The activity a view's context belongs to. */
+private fun Context.activity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.activity()
+        else -> null
+    }
+
+private const val IMAGES = "image/*"

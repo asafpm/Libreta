@@ -10,6 +10,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
+import okio.ByteString.Companion.encodeUtf8
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -26,6 +27,7 @@ import pm.asaf.libreta.android.render.TileCache
 import pm.asaf.libreta.core.geometry.DocumentLayout
 import pm.asaf.libreta.core.geometry.Size
 import pm.asaf.libreta.core.model.Background
+import pm.asaf.libreta.core.model.Bounds
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.Edit
@@ -297,6 +299,36 @@ class SelectionToolTest {
                 .last()
                 .elements,
         )
+    }
+
+    @Test
+    fun picturesAreInsertedInViewSelected() {
+        val data = "picture".encodeUtf8()
+        view.selection.insertImage(0, data, 100, 50)
+        assertEquals(1, edits.size)
+        val image = topElements().last() as Element.Image
+        assertEquals(data, image.data)
+        // A pixel a point, centred on the page (all of it in view).
+        assertEquals(Bounds(247.5, 175.0, 347.5, 225.0), image.bounds)
+        assertEquals(listOf(image), view.selection.elements)
+        // Larger than what is in view: made to fit.
+        view.selection.insertImage(0, data, 3000, 1500)
+        val big = topElements().last() as Element.Image
+        assertClose(595.0, big.bounds.right - big.bounds.left)
+        assertClose(297.5, big.bounds.bottom - big.bounds.top)
+    }
+
+    @Test
+    fun droppedPicturesGoWhereTheyAreDroppedOnThePage() {
+        val data = "picture".encodeUtf8()
+        view.selection.insertImage(0, data, 100, 50, at = toView(1, 300.0, 200.0))
+        val image = topElements(1).single() as Element.Image
+        assertClose(250.0, image.bounds.left, 0.01)
+        assertClose(175.0, image.bounds.top, 0.01)
+        assertClose(100.0, image.bounds.right - image.bounds.left, 0.01)
+        // Near the corner: kept on the page.
+        view.selection.insertImage(0, data, 100, 50, at = toView(0, 10.0, 10.0))
+        assertEquals(Bounds(0.0, 0.0, 100.0, 50.0), (topElements().last() as Element.Image).bounds)
     }
 
     @Test

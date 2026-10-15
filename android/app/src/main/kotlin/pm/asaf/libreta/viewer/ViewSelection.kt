@@ -3,6 +3,7 @@
 package pm.asaf.libreta.viewer
 
 import android.graphics.RectF
+import okio.ByteString
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.PenSize
@@ -37,6 +38,19 @@ class ViewSelection internal constructor(
         color: Color? = null,
         size: PenSize? = null,
     ) = commands.restyle(color, size)
+
+    /**
+     * A picture ([data], [width] × [height] pixels) added as an image on page [page], centred
+     * on its visible part (or on [at], view pixels, on the page there), no larger than what is
+     * in view; selected (one edit).
+     */
+    fun insertImage(
+        page: Int,
+        data: ByteString,
+        width: Int,
+        height: Int,
+        at: Pair<Float, Float>? = null,
+    ) = commands.insertImage(page, data, width, height, at)
 
     /** [elements] centred on the visible part of page [page], selected (one edit). */
     fun paste(

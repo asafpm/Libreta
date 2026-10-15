@@ -4,8 +4,10 @@
 
 package pm.asaf.libreta.viewer
 
+import okio.ByteString
 import pm.asaf.libreta.core.geometry.Selecting
 import pm.asaf.libreta.core.geometry.SelectionTransform
+import pm.asaf.libreta.core.model.Bounds
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.Element
@@ -65,6 +67,40 @@ internal class SelectionCommands(
     ) {
         val placing = placement(page, elements) ?: return
         add(page, elements.map(placing::apply))
+    }
+
+    /**
+     * A picture ([data], [width] × [height] pixels) added as an image, one pixel a point but no
+     * larger than the part of the page in view, like Xournal++. It is centred on [at] (view
+     * pixels) if given, on the page's visible part otherwise ([page]), kept on the page, and
+     * selected.
+     */
+    fun insertImage(
+        page: Int,
+        data: ByteString,
+        width: Int,
+        height: Int,
+        at: Pair<Float, Float>? = null,
+    ) {
+        val dropped = at?.let { (x, y) -> host.pageAt(x, y) }
+        val index = dropped?.page ?: page
+        val visible = host.visibleArea(index) ?: return
+        val sheet = host.page(index)
+        val scale =
+            minOf(
+                1.0,
+                (visible.right - visible.left) / width,
+                (visible.bottom - visible.top) / height,
+                sheet.width / width,
+                sheet.height / height,
+            )
+        val w = width * scale
+        val h = height * scale
+        val centerX = at?.let { dropped?.toPageX(it.first) } ?: ((visible.left + visible.right) / 2)
+        val centerY = at?.let { dropped?.toPageY(it.second) } ?: ((visible.top + visible.bottom) / 2)
+        val left = (centerX - w / 2).coerceIn(0.0, max(0.0, sheet.width - w))
+        val top = (centerY - h / 2).coerceIn(0.0, max(0.0, sheet.height - h))
+        add(index, listOf(Element.Image(Bounds(left, top, left + w, top + h), data)))
     }
 
     /** Moves [elements] to the middle of page [page]'s visible part, kept on the page; null if not shown. */

@@ -89,22 +89,15 @@ fun NoteScreen(
     val currentTemplate by rememberUpdatedState(template)
     val commands = loaded?.let { remember(it.session) { NoteCommands(it.session, { view }, { currentTemplate }) } }
     val panels = remember { NotePanels() }
-    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
-    // Pasted with the selection tool, so that it can be moved at once.
-    val paste = {
-        clipboard?.paste()?.let { elements ->
-            tools.onTool(Tool.SELECT)
-            view?.selection?.paste(panels.current, elements)
-        }
-        Unit
-    }
+    val paste = rememberPaste(clipboard, tools, panels) { view }
     val export = rememberExportActions(exports, loaded, name) { view }
+    val images = rememberImageActions({ view }, { panels.current }) { tools.onTool(Tool.SELECT) }
     ExportProgress(exports)
     Scaffold(
         topBar = {
             NoteTopBar(name, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
-                NoteActions(panels, commands, view, if (canPaste) paste else null, export)
+                NoteActions(panels, commands, view, TopBarActions(paste, export, images))
             }
         },
     ) { padding ->
@@ -131,9 +124,12 @@ fun NoteScreen(
                             FilesNotice(state, onAddFolder)
                             Box(Modifier.weight(1f).fillMaxWidth()) {
                                 val canvas = Modifier.fillMaxSize()
-                                NoteCanvas(state, threads, position, tools, panels, { view = it }, canvas)
+                                NoteCanvas(state, threads, position, tools, panels, { shown ->
+                                    view = shown
+                                    shown?.onImageDropped = images.drop
+                                }, canvas)
                                 panels.selection?.let { anchor ->
-                                    SelectionBar(anchor, selectionActions({ view }, clipboard, paste, canPaste))
+                                    SelectionBar(anchor, selectionActions({ view }, clipboard, paste))
                                 }
                             }
                         }
@@ -165,8 +161,8 @@ private fun NoteTopBar(
 private fun selectionActions(
     view: () -> DocumentView?,
     clipboard: NoteClipboard?,
-    paste: () -> Unit,
-    canPaste: Boolean,
+    /** Null when there is nothing to paste. */
+    paste: (() -> Unit)?,
 ) = SelectionActions(
     cut = {
         view()?.selection?.let {
@@ -175,10 +171,41 @@ private fun selectionActions(
         }
     },
     copy = { view()?.selection?.let { clipboard?.copy(it.elements) } },
-    paste = paste,
-    canPaste = canPaste,
+    paste = paste ?: {},
+    canPaste = paste != null,
     duplicate = { view()?.selection?.duplicate() },
     delete = { view()?.selection?.delete() },
+)
+
+/**
+ * Pastes the clipboard's elements on the page in view, with the selection tool so that they
+ * can be moved at once; null while there is nothing to paste.
+ */
+@Composable
+private fun rememberPaste(
+    clipboard: NoteClipboard?,
+    tools: ToolControls,
+    panels: NotePanels,
+    view: () -> DocumentView?,
+): (() -> Unit)? {
+    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
+    if (!canPaste) return null
+    return {
+        clipboard?.paste()?.let { elements ->
+            tools.onTool(Tool.SELECT)
+            view()?.selection?.paste(panels.current, elements)
+        }
+    }
+}
+
+/**
+ * The top bar's commands that depend on more than the note: pasting (null: nothing to paste),
+ * exporting and pictures.
+ */
+private class TopBarActions(
+    val paste: (() -> Unit)?,
+    val export: ExportActions?,
+    val images: ImageActions,
 )
 
 /** A command of the note's top bar. */
@@ -212,11 +239,12 @@ private fun NoteActions(
     panels: NotePanels,
     commands: NoteCommands?,
     view: DocumentView?,
-    /** Pastes the clipboard's elements; null when there are none. */
-    paste: (() -> Unit)?,
-    export: ExportActions?,
+    more: TopBarActions,
 ) {
     val enabled = view != null
+    val paste = more.paste
+    val export = more.export
+    val take = more.images.takePhoto
     val actions =
         if (commands == null) {
             emptyList()
@@ -229,9 +257,15 @@ private fun NoteActions(
                 },
                 NoteAction(LayersIcon, R.string.layers) { panels.layers = true },
                 NoteAction(PasteIcon, R.string.paste, paste != null) { paste?.invoke() },
-                NoteAction(ExportIcon, R.string.export_pdf, export != null) { export?.save?.invoke() },
-                NoteAction(Icons.Filled.Share, R.string.share_pdf, export != null) { export?.share?.invoke() },
-            )
+                NoteAction(ImageIcon, R.string.insert_image) { more.images.insert() },
+            ) +
+                listOfNotNull(
+                    take?.let { NoteAction(CameraIcon, R.string.take_photo) { it() } },
+                ) +
+                listOf(
+                    NoteAction(ExportIcon, R.string.export_pdf, export != null) { export?.save?.invoke() },
+                    NoteAction(Icons.Filled.Share, R.string.share_pdf, export != null) { export?.share?.invoke() },
+                )
         }
     if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
         for (action in actions) {

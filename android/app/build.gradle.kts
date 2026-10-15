@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.graphics.core)
     implementation(libs.androidx.input.motionprediction)
+    implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.kotlinx.coroutines.test)
 

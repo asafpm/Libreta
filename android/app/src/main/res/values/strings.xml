@@ -18,6 +18,9 @@
     <string name="shape_axes">Coordinate system</string>
     <string name="opened_pdfs">Opened PDFs</string>
     <string name="export_pdf">Export PDF…</string>
+    <string name="insert_image">Insert image</string>
+    <string name="take_photo">Take photo</string>
+    <string name="error_insert_image">Couldn\'t insert the picture</string>
     <string name="share_pdf">Share as PDF</string>
     <string name="exporting_pdf">Exporting PDF…</string>
     <string name="exported">PDF exported</string>

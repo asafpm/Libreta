@@ -5,6 +5,7 @@ package pm.asaf.libreta.ui
 import android.app.Application
 import android.content.Context
 import android.content.Intent
+import android.provider.MediaStore
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -472,6 +473,20 @@ class NoteScreenTest {
         assertEquals("application/pdf", picker.type)
         assertEquals("Lecture.pdf", picker.getStringExtra(Intent.EXTRA_TITLE))
         compose.onNodeWithContentDescription("Share as PDF").assertIsEnabled()
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun insertingAPictureOpensThePicker() {
+        openLecture()
+        compose.onNodeWithContentDescription("Insert image").performClick()
+        val picker = Shadows.shadowOf(compose.activity).nextStartedActivityForResult.intent
+        // The photo picker, or the documents picker where there is none.
+        assertTrue(
+            picker.action,
+            picker.action in
+                setOf(MediaStore.ACTION_PICK_IMAGES, Intent.ACTION_OPEN_DOCUMENT, Intent.ACTION_GET_CONTENT),
+        )
     }
 
     private companion object {
