@@ -41,6 +41,8 @@ class Library(
     private val preferences: SharedPreferences,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
+    /** Where notes of PDFs opened from other apps are kept (shown when there are any). */
+    val opened: FolderRef? = null,
 ) {
     private val configured = LibraryRoots(preferences)
     val roots: StateFlow<List<LibraryRoot>> = configured.roots
@@ -52,8 +54,11 @@ class Library(
         MutableStateFlow(SortOrder.entries.getOrNull(preferences.getInt(SORT_KEY, 0)) ?: SortOrder.MODIFIED)
     val sortOrder: StateFlow<SortOrder> = order.asStateFlow()
 
-    /** Lists the top folder of every root again. */
-    fun refreshRoots() = roots.value.filterIsInstance<LibraryRoot.Local>().forEach { refresh(it.folder) }
+    /** Lists the top folder of every root again, and the opened PDFs. */
+    fun refreshRoots() {
+        roots.value.filterIsInstance<LibraryRoot.Local>().forEach { refresh(it.folder) }
+        opened?.let(::refresh)
+    }
 
     /** Lists [folder] again; its previous contents stay shown meanwhile. */
     fun refresh(folder: FolderRef) {

@@ -85,9 +85,12 @@ class LibraryTest {
         copy("pdf_annotation.xopp.bg.pdf", "slides.PDF", 2_000_000)
         copy("pdf_annotation.xopp.bg.pdf", "annotated.pdf", 1_000_000)
         copy("pdf_annotation.xopp", "annotated.pdf.xopp", 1_000_000)
+        // A note carrying its PDF, as Xournal++ attaches one.
+        copy("pdf_annotation.xopp", "carrying.xopp", 500_000)
+        copy("pdf_annotation.xopp.bg.pdf", "carrying.xopp.bg.pdf", 500_000)
         val listed = FolderListing.list(store, root)
-        // "annotated.pdf" has a note, which stands for it.
-        assertEquals(listOf("paper.pdf", "slides.PDF", "annotated.pdf.xopp"), listed.map { it.name })
+        // "annotated.pdf" has a note, which stands for it; "carrying.xopp.bg.pdf" is part of its note.
+        assertEquals(listOf("paper.pdf", "slides.PDF", "annotated.pdf.xopp", "carrying.xopp"), listed.map { it.name })
         assertTrue(listed[0] is LibraryEntry.Pdf && listed[1] is LibraryEntry.Pdf && listed[2] is LibraryEntry.Document)
     }
 

@@ -11,6 +11,7 @@ import pm.asaf.libreta.core.model.SelectMode
 import pm.asaf.libreta.core.model.StylusButton
 import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.ToolSettings
+import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.SortOrder
@@ -21,6 +22,24 @@ class LibraryActions(
     val openDocument: (LibraryEntry.Document) -> Unit,
     /** Opens a PDF's note, made the first time. */
     val openPdf: (LibraryEntry.Pdf) -> Unit,
+    /** Moves a note elsewhere; null where notes don't move (a card menu offers it otherwise). */
+    val move: ((LibraryEntry.Document) -> Unit)? = null,
+    /** Deletes a note; null where notes aren't deleted from the library. */
+    val delete: ((LibraryEntry.Document) -> Unit)? = null,
+) {
+    fun copy(
+        move: ((LibraryEntry.Document) -> Unit)?,
+        delete: ((LibraryEntry.Document) -> Unit)?,
+    ) = LibraryActions(openFolder, openDocument, openPdf, move, delete)
+}
+
+/** What can be done with the notes of PDFs opened from other apps, kept in [folder]. */
+class OpenedNotes(
+    val folder: FolderRef,
+    /** Lists a library folder, for choosing where to move a note. */
+    val list: (FolderRef) -> Unit,
+    val move: (LibraryEntry.Document, FolderRef) -> Unit,
+    val delete: (LibraryEntry.Document) -> Unit,
 )
 
 /** Things [SettingsScreen] can change. */

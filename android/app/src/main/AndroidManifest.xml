@@ -42,7 +42,26 @@
                 <data android:pathPattern=".*\\..*\\.xoj" />
                 <data android:pathPattern=".*\\..*\\..*\\.xoj" />
             </intent-filter>
+            <!-- "Open with" for PDFs, to annotate. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:mimeType="application/pdf" />
+            </intent-filter>
         </activity>
+        <!-- Notes of PDFs opened from other apps, kept in the app's storage. It offers no
+             roots, so the system file picker doesn't show it. -->
+        <provider
+            android:name=".store.OpenedPdfsProvider"
+            android:authorities="${applicationId}.opened"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
     </application>
 
 </manifest>

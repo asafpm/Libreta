@@ -76,7 +76,7 @@ private fun libraryActions(
         val folders = parent?.path ?: listOf(entry.parent)
         model.open(Screen.Note(entry.id, entry.name, DocumentLocation(folders, entry.name)))
     },
-    openPdf = { entry -> model.openPdf(entry, parent?.path ?: listOf(entry.parent)) },
+    openPdf = { entry -> model.pdfs.open(entry, parent?.path ?: listOf(entry.parent)) },
 )
 
 @Composable
@@ -95,6 +95,10 @@ private fun Home(
         onNewNote = { folder -> model.newNotes.start(listOf(folder)) },
         onAddFolder = addFolder,
         onSettings = { model.open(Screen.Settings) },
+        opened =
+            model.library.opened?.let { folder ->
+                OpenedNotes(folder, model.library::refresh, model.pdfs::move, model.pdfs::delete)
+            },
     )
 }
 

@@ -68,7 +68,8 @@ object FolderListing {
     /**
      * The subfolders (by name) and then the documents and PDFs (by [order]; newest first for
      * [SortOrder.MODIFIED]) of [folder]. Hidden entries are left out, and so are PDFs that
-     * have a note (Xournal++'s names for it): the note stands for them.
+     * have a note (Xournal++'s names for it), which stands for them, and the PDFs notes carry
+     * (`note.xopp.bg.pdf`).
      */
     fun list(
         store: DocumentStore,
@@ -100,6 +101,7 @@ object FolderListing {
                 }
             }
         val names = entries.map { it.name }.toSet()
+        val notes = entries.filterIsInstance<LibraryEntry.Document>().map { it.name + "." }
         val folders =
             entries.filterIsInstance<LibraryEntry.Folder>().sortedWith(
                 compareBy(
@@ -110,7 +112,8 @@ object FolderListing {
             )
         val documents =
             entries.filterIsInstance<LibraryEntry.File>().filterNot { entry ->
-                entry is LibraryEntry.Pdf && NewNote.notesForPdf(entry.name).any { it in names }
+                entry is LibraryEntry.Pdf &&
+                    (NewNote.notesForPdf(entry.name).any { it in names } || notes.any { entry.name.startsWith(it) })
             }
         val sorted =
             when (order) {

@@ -26,10 +26,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
@@ -37,7 +41,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -67,6 +74,14 @@ fun LibraryGrid(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         content = content,
     )
+}
+
+/** A heading across the grid. */
+fun LazyGridScope.sectionTitle(
+    key: String,
+    title: String,
+) = item(key = "header:$key", span = { GridItemSpan(maxLineSpan) }) {
+    Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
 }
 
 /** A heading across the grid, with "New folder" and "New note" buttons. */
@@ -143,8 +158,8 @@ fun LazyGridScope.folderItems(
             items(state.entries, key = { "$key/${it.name}" }) { entry ->
                 when (entry) {
                     is LibraryEntry.Folder -> FolderCard(entry) { actions.openFolder(entry) }
-                    is LibraryEntry.Document -> DocumentCard(entry, previews) { actions.openDocument(entry) }
-                    is LibraryEntry.Pdf -> DocumentCard(entry, previews) { actions.openPdf(entry) }
+                    is LibraryEntry.Document -> DocumentCard(entry, previews, actions) { actions.openDocument(entry) }
+                    is LibraryEntry.Pdf -> DocumentCard(entry, previews, actions) { actions.openPdf(entry) }
                 }
             }
         }
@@ -156,107 +171,4 @@ private fun LazyGridScope.fullWidth(
     content: @Composable () -> Unit,
 ) = item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
 
-@Composable
-private fun FolderCard(
-    entry: LibraryEntry.Folder,
-    onClick: () -> Unit,
-) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
-            Icon(FolderIcon, contentDescription = stringResource(R.string.folder), modifier = Modifier.size(32.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(
-                entry.name,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.titleSmall,
-            )
-        }
-    }
-}
-
-/** A note or a PDF (labelled so), with a preview of its first page. */
-@Composable
-private fun DocumentCard(
-    entry: LibraryEntry.File,
-    previews: PreviewCache,
-    onClick: () -> Unit,
-) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(PREVIEW_ASPECT)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(12.dp),
-            ) {
-                PreviewImage(entry, previews)
-                if (entry is LibraryEntry.Pdf) PdfLabel(Modifier.align(Alignment.TopEnd))
-            }
-            Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                Text(
-                    entry.name,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall,
-                )
-                if (entry.modified > 0) {
-                    val context = LocalContext.current
-                    val date =
-                        DateUtils.formatDateTime(
-                            context,
-                            entry.modified,
-                            DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME,
-                        )
-                    Text(
-                        date,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PdfLabel(modifier: Modifier) {
-    Surface(
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        shape = MaterialTheme.shapes.extraSmall,
-        modifier = modifier,
-    ) {
-        Text(
-            stringResource(R.string.pdf),
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-        )
-    }
-}
-
-@Composable
-private fun PreviewImage(
-    entry: LibraryEntry.File,
-    previews: PreviewCache,
-) {
-    val bitmap: Bitmap? by produceState(previews.cached(entry), entry) {
-        previews.previews(entry).collect { value = it }
-    }
-    bitmap?.let {
-        Image(
-            bitmap = it.asImageBitmap(),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.border(1.dp, Color(BORDER)),
-        )
-    }
-}
-
 private val CARD_WIDTH = 180.dp
-
-// Room for a portrait A4 page, with the padding.
-private const val PREVIEW_ASPECT = 0.75f
-private const val BORDER = 0x22000000

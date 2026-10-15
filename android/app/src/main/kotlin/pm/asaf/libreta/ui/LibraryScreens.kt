@@ -13,12 +13,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,8 +28,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,10 +43,14 @@ import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.FolderState
+import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.PreviewCache
 
-/** The home screen: each library root with its folders and notes, or a prompt to add one. */
+/**
+ * The home screen: each library root with its folders and notes, or a prompt to add one; and
+ * the notes of PDFs opened from other apps ([opened]), if there are any.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -51,7 +62,13 @@ fun HomeScreen(
     onNewNote: (FolderRef) -> Unit,
     onAddFolder: () -> Unit,
     onSettings: () -> Unit,
+    opened: OpenedNotes? = null,
 ) {
+    var moving by remember { mutableStateOf<LibraryEntry.Document?>(null) }
+    var deleting by remember { mutableStateOf<LibraryEntry.Document?>(null) }
+    val locals = roots.filterIsInstance<LibraryRoot.Local>()
+    val openedState = opened?.let { folders[it.folder] }
+    val anyOpened = (openedState as? FolderState.Loaded)?.entries?.isNotEmpty() == true
     Scaffold(
         topBar = {
             TopAppBar(
@@ -62,17 +79,61 @@ fun HomeScreen(
             )
         },
     ) { padding ->
-        val locals = roots.filterIsInstance<LibraryRoot.Local>()
-        if (locals.isEmpty()) {
+        if (locals.isEmpty() && !anyOpened) {
             NoFolders(onAddFolder, Modifier.padding(padding))
         } else {
             LibraryGrid(Modifier.padding(padding)) {
+                if (locals.isEmpty()) item(key = "add", span = { GridItemSpan(maxLineSpan) }) { NoFolders(onAddFolder) }
                 for (root in locals) {
                     sectionHeader(root.id, root.name, { onNewFolder(root.folder) }) { onNewNote(root.folder) }
                     folderItems(root.id, folders[root.folder], previews, actions)
                 }
+                if (opened != null && anyOpened) {
+                    sectionTitle("opened", opened.folder.name)
+                    val movable = actions.copy(move = { moving = it }, delete = { deleting = it })
+                    folderItems("opened", openedState, previews, movable)
+                }
             }
         }
+    }
+    if (opened !=
+        null
+    ) {
+        OpenedNoteDialogs(opened, locals, folders, moving, deleting, { moving = null }) { deleting = null }
+    }
+}
+
+/** Choosing where to move a note, and confirming one is deleted. */
+@Suppress("LongParameterList") // the notes, where they can go, and the dialogs' state
+@Composable
+private fun OpenedNoteDialogs(
+    opened: OpenedNotes,
+    roots: List<LibraryRoot.Local>,
+    folders: Map<FolderRef, FolderState>,
+    moving: LibraryEntry.Document?,
+    deleting: LibraryEntry.Document?,
+    onMoved: () -> Unit,
+    onDeleted: () -> Unit,
+) {
+    moving?.let { note ->
+        MoveToFolderDialog(note, roots, folders, opened.list, { target ->
+            onMoved()
+            opened.move(note, target)
+        }, onMoved)
+    }
+    deleting?.let { note ->
+        AlertDialog(
+            onDismissRequest = onDeleted,
+            title = { Text(stringResource(R.string.delete_opened_title, note.name)) },
+            text = { Text(stringResource(R.string.delete_opened_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleted()
+                    opened.delete(note)
+                }) { Text(stringResource(R.string.delete)) }
+            },
+            dismissButton = { TextButton(onClick = onDeleted) { Text(stringResource(R.string.cancel)) } },
+        )
     }
 }
 

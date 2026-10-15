@@ -8,12 +8,15 @@ import android.provider.DocumentsContract
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
@@ -150,6 +153,91 @@ class LibretaAppTest {
         waitForText("paper.xopp")
         compose.onNodeWithText("paper.pdf").assertDoesNotExist()
     }
+
+    /** A PDF in Downloads, outside the library ("Notes"), shared by another app. */
+    private fun sharedPdf(): StoreId {
+        FakeDocumentsProvider.install(temporary.root)
+        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(temporary.root, "Downloads/paper.pdf"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri("Notes"), "Notes"))
+        return FakeDocumentsProvider.fileId("Downloads/paper.pdf")
+    }
+
+    private fun openShared(
+        model: AppViewModel,
+        pdf: StoreId,
+    ) {
+        compose.runOnIdle { model.openExternal(pdf) }
+        eventually { model.screens.value.last() is Screen.Note && model.note.value is NoteState.Loaded }
+        compose.onNodeWithContentDescription("Back").performClick()
+        scrollTo("Opened PDFs")
+    }
+
+    /** Scrolls the library to [text], once it is there (it may be below the screen). */
+    private fun scrollTo(text: String) =
+        compose.waitUntil(TIMEOUT) {
+            runCatching { compose.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text)) }.isSuccess
+        }
+
+    @Test
+    fun pdfsFromOtherAppsKeepTheirNoteInTheAppUntilMoved() {
+        val pdf = sharedPdf()
+        val model = show()
+        compose.runOnIdle { model.openExternal(pdf) }
+        eventually { model.note.value is NoteState.Loaded }
+        assertEquals(
+            792.0,
+            (model.note.value as NoteState.Loaded)
+                .document.pages
+                .single()
+                .width,
+            0.5,
+        )
+        // Nothing is added to the user's folders.
+        assertEquals(emptyList<String>(), directory.list()?.toList())
+        assertEquals(listOf("paper.pdf"), File(temporary.root, "Downloads").list()?.toList())
+
+        // On the home screen, apart; then moved into the library with its PDF.
+        compose.onNodeWithContentDescription("Back").performClick()
+        waitForText("Opened PDFs")
+        compose.onNodeWithText("paper.xopp").assertIsDisplayed()
+        compose.onNodeWithContentDescription("More for paper.xopp").performClick()
+        compose.onNodeWithText("Move to a folder…").performClick()
+        compose.onNode(hasText("Notes") and hasClickAction()).performClick()
+        compose.onNodeWithText("Move here").performClick()
+        eventually { File(directory, "paper.xopp").isFile && File(directory, "paper.xopp.bg.pdf").isFile }
+        waitForGone("Opened PDFs")
+        // Opening the shared PDF again makes a new note in the app.
+        openShared(model, pdf)
+    }
+
+    @Test
+    fun aNoteOfAPdfFromAnotherAppCanBeDeleted() {
+        val pdf = sharedPdf()
+        val model = show()
+        openShared(model, pdf)
+        compose.onNodeWithContentDescription("More for paper.xopp").performClick()
+        compose.onNodeWithText("Delete").performClick()
+        compose.onNodeWithText("Delete paper.xopp?").assertIsDisplayed()
+        compose.onNodeWithText("Delete").performClick()
+        waitForGone("Opened PDFs")
+        // The shared PDF is left alone.
+        assertTrue(File(temporary.root, "Downloads/paper.pdf").isFile)
+    }
+
+    @Test
+    fun aPdfFromAnotherAppThatIsInTheLibraryGetsItsNoteThere() {
+        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        val model = show()
+        compose.runOnIdle { model.openExternal(FakeDocumentsProvider.fileId("paper.pdf")) }
+        eventually { model.note.value is NoteState.Loaded }
+        assertTrue(File(directory, "paper.xopp").isFile)
+    }
+
+    private fun waitForGone(text: String) =
+        compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isEmpty() }
 
     /** "New folder", with its text on wide screens, its icon on narrow ones. */
     private fun newFolder() =

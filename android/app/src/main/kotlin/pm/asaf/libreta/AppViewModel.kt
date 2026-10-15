@@ -37,18 +37,18 @@ import pm.asaf.libreta.files.NoteLoader
 import pm.asaf.libreta.files.NoteSaver
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.files.SaveResult
-import pm.asaf.libreta.library.FolderListing
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
-import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.NewFolderFlow
 import pm.asaf.libreta.library.NewNoteCreator
 import pm.asaf.libreta.library.NewNoteFlow
-import pm.asaf.libreta.library.PdfNotes
+import pm.asaf.libreta.library.OpenedPdfs
+import pm.asaf.libreta.library.PdfNotesFlow
 import pm.asaf.libreta.library.PreviewCache
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.PagePreferences
 import pm.asaf.libreta.settings.ToolPreferences
+import pm.asaf.libreta.store.OpenedPdfsProvider
 import pm.asaf.libreta.store.SafDocumentStore
 import java.io.File
 import java.io.IOException
@@ -112,7 +112,14 @@ class AppViewModel
 
         /** Where notes are: the folders granted through the Storage Access Framework. */
         private val store = SafDocumentStore(application.contentResolver)
-        val library = Library(store, application.contentResolver, preferences, viewModelScope, io)
+        private val openedPdfs =
+            OpenedPdfs(
+                application,
+                store,
+                FolderRef(OpenedPdfsProvider.folder(application), application.getString(R.string.opened_pdfs)),
+            )
+        val library =
+            Library(store, application.contentResolver, preferences, viewModelScope, io, openedPdfs.folder)
         val previews =
             PreviewCache(application, store, locate = { NoteLoader.locate(store, library.roots.value, it.id, it.name) })
         val tools = ToolPreferences(preferences)
@@ -147,6 +154,19 @@ class AppViewModel
                 io,
                 onCreated = { parent -> library.refresh(parent) },
                 onError = { errorState.value = it },
+            )
+
+        /** Opening PDFs in notes, and the notes of PDFs from other apps. */
+        val pdfs =
+            PdfNotesFlow(
+                application,
+                store,
+                library,
+                openedPdfs,
+                viewModelScope,
+                io,
+                onOpen = { showNote(it) },
+                onMessage = { errorState.value = it },
             )
 
         private val noteState = MutableStateFlow<NoteState?>(null)
@@ -206,34 +226,29 @@ class AppViewModel
 
         // The open note
 
-        /** Opens the note of [pdf] (in the folder at the end of [path]), made the first time. */
-        fun openPdf(
-            pdf: LibraryEntry.Pdf,
-            path: List<FolderRef>,
-        ) {
+        /**
+         * Opens a note from another app ("Open with"), finding it in the library if it is there.
+         * A PDF opens in its note: next to it in the library, or else kept in the app.
+         */
+        fun openExternal(id: StoreId) {
             viewModelScope.launch {
-                withContext(io) { runCatching { PdfNotes.open(context, store, pdf, NewNoteCreator.creator(context)) } }
-                    .onSuccess { file ->
-                        library.refresh(path.last())
-                        open(Screen.Note(file.id, file.name, DocumentLocation(path, file.name)))
-                    }.onFailure { e ->
-                        Log.w(TAG, "Cannot open ${pdf.name}", e)
-                        errorState.value = context.getString(R.string.error_open_pdf, pdf.name)
-                    }
+                val name = withContext(io) { NoteLoader.nameOf(store, id) }
+                if (pdfs.isPdf(id, name)) {
+                    pdfs.openShared(id, name)
+                } else {
+                    val screen =
+                        withContext(
+                            io,
+                        ) { Screen.Note(id, name, NoteLoader.locate(store, library.roots.value, id, name)) }
+                    showNote(screen)
+                }
             }
         }
 
-        /** Opens a note from another app ("Open with"), finding it in the library if it is there. */
-        fun openExternal(id: StoreId) {
-            viewModelScope.launch {
-                val screen =
-                    withContext(io) {
-                        val name = NoteLoader.nameOf(store, id)
-                        Screen.Note(id, name, NoteLoader.locate(store, library.roots.value, id, name))
-                    }
-                if (stack.value.last() is Screen.Note) back()
-                open(screen)
-            }
+        /** Shows [screen] in place of the note shown, if any. */
+        private fun showNote(screen: Screen.Note) {
+            if (stack.value.last() is Screen.Note) back()
+            open(screen)
         }
 
         /** Adds the folder of the open note to the library, then opens the note again to find its files. */
