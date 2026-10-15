@@ -187,6 +187,7 @@ private fun Note(
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
         template = newPages,
+        clipboard = model.clipboard,
     )
 }
 

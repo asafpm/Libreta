@@ -31,6 +31,7 @@ import pm.asaf.inkpad.files.Autosave
 import pm.asaf.inkpad.files.Backups
 import pm.asaf.inkpad.files.DocumentFiles
 import pm.asaf.inkpad.files.DocumentLocation
+import pm.asaf.inkpad.files.NoteClipboard
 import pm.asaf.inkpad.files.NoteFile
 import pm.asaf.inkpad.files.NoteLoader
 import pm.asaf.inkpad.files.NoteSaver
@@ -113,6 +114,9 @@ class AppViewModel
         val tools = ToolPreferences(preferences)
         val colors = ColorPreferences(preferences)
         val pages = PagePreferences(preferences)
+
+        /** Elements copied, to paste in any note. */
+        val clipboard = NoteClipboard(application)
 
         private val stack = MutableStateFlow<List<Screen>>(listOf(Screen.Home))
         val screens: StateFlow<List<Screen>> = stack.asStateFlow()

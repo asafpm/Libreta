@@ -11,6 +11,7 @@ import pm.asaf.inkpad.core.geometry.Selecting
 import pm.asaf.inkpad.core.geometry.SelectionBox
 import pm.asaf.inkpad.core.geometry.SelectionShape
 import pm.asaf.inkpad.core.geometry.TextMeasurer
+import pm.asaf.inkpad.core.model.Bounds
 import pm.asaf.inkpad.core.model.Edit
 import pm.asaf.inkpad.core.model.Element
 import pm.asaf.inkpad.core.model.Page
@@ -93,6 +94,9 @@ internal class SelectionTool(
             from: Int,
             to: Int,
         ): Pair<Double, Double>
+
+        /** The part of page [index] on screen, in page units; null if none. */
+        fun visibleArea(index: Int): Bounds?
 
         fun redraw()
 

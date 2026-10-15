@@ -169,7 +169,7 @@ class DocumentView
             }
 
         /** What is selected (with the selection tool). */
-        val selection: ViewSelection by lazy { ViewSelection(inking.selection) }
+        val selection: ViewSelection by lazy { ViewSelection(inking.selection, inking.selectionCommands) }
 
         /** Called when the selection changes, goes, or moves on screen. */
         var onSelection: (() -> Unit)?

@@ -102,3 +102,13 @@ class LayerActions(
     val move: (up: Boolean) -> Unit,
     val mergeDown: () -> Unit,
 )
+
+/** What the selection bar does. */
+class SelectionActions(
+    val cut: () -> Unit,
+    val copy: () -> Unit,
+    val paste: () -> Unit,
+    val canPaste: Boolean,
+    val duplicate: () -> Unit,
+    val delete: () -> Unit,
+)

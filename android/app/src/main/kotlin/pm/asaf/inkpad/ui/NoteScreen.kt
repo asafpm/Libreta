@@ -2,10 +2,12 @@
 
 package pm.asaf.inkpad.ui
 
+import android.graphics.RectF
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,6 +52,8 @@ import pm.asaf.inkpad.R
 import pm.asaf.inkpad.android.render.RenderThreads
 import pm.asaf.inkpad.core.model.NewPageTemplate
 import pm.asaf.inkpad.core.model.Page
+import pm.asaf.inkpad.core.model.Tool
+import pm.asaf.inkpad.files.NoteClipboard
 import pm.asaf.inkpad.files.NoteCommands
 import pm.asaf.inkpad.files.NoteSession
 import pm.asaf.inkpad.files.PageThumbnails
@@ -73,26 +77,28 @@ fun NoteScreen(
     onAddFolder: () -> Unit,
     onBack: () -> Unit,
     template: NewPageTemplate = NewPageTemplate(),
+    clipboard: NoteClipboard? = null,
 ) {
     var view by remember { mutableStateOf<DocumentView?>(null) }
     val loaded = state as? NoteState.Loaded
     val currentTemplate by rememberUpdatedState(template)
     val commands = loaded?.let { remember(it.session) { NoteCommands(it.session, { view }, { currentTemplate }) } }
     val panels = remember { NotePanels() }
+    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
+    // Pasted with the selection tool, so that it can be moved at once.
+    val paste = {
+        clipboard?.paste()?.let { elements ->
+            tools.onTool(Tool.SELECT)
+            view?.selection?.paste(panels.current, elements)
+        }
+        Unit
+    }
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
-                },
-                actions = {
-                    if (loaded != null && commands != null) UndoButtons(loaded.session, view)
-                    NoteActions(panels, commands, view)
-                },
-            )
+            NoteTopBar(name, onBack) {
+                if (loaded != null && commands != null) UndoButtons(loaded.session, view)
+                NoteActions(panels, commands, view, if (canPaste) paste else null)
+            }
         },
     ) { padding ->
         Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(padding).fillMaxSize()) {
@@ -111,17 +117,18 @@ fun NoteScreen(
                             NotePagePanel(state, panels, commands) { view?.scrollToPage(it) }
                         }
                         Column(Modifier.weight(1f).fillMaxHeight()) {
-                            ToolBar(tools, Modifier.fillMaxWidth())
-                            FilesNotice(state, onAddFolder)
-                            NoteCanvas(
-                                state,
-                                threads,
-                                position,
+                            ToolBar(
                                 tools,
-                                panels,
-                                { view = it },
-                                Modifier.weight(1f).fillMaxWidth(),
-                            )
+                                Modifier.fillMaxWidth(),
+                            ) { color, size -> view?.selection?.restyle(color, size) }
+                            FilesNotice(state, onAddFolder)
+                            Box(Modifier.weight(1f).fillMaxWidth()) {
+                                val canvas = Modifier.fillMaxSize()
+                                NoteCanvas(state, threads, position, tools, panels, { view = it }, canvas)
+                                panels.selection?.let { anchor ->
+                                    SelectionBar(anchor, selectionActions({ view }, clipboard, paste, canPaste))
+                                }
+                            }
                         }
                     }
                     if (commands != null) NoteDialogs(state, panels, commands)
@@ -130,6 +137,50 @@ fun NoteScreen(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NoteTopBar(
+    name: String,
+    onBack: () -> Unit,
+    actions: @Composable RowScope.() -> Unit,
+) {
+    TopAppBar(
+        title = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = {
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+        },
+        actions = actions,
+    )
+}
+
+/** The selection bar's commands on [view]'s selection; cut and copy put it on [clipboard]. */
+private fun selectionActions(
+    view: () -> DocumentView?,
+    clipboard: NoteClipboard?,
+    paste: () -> Unit,
+    canPaste: Boolean,
+) = SelectionActions(
+    cut = {
+        view()?.selection?.let {
+            clipboard?.copy(it.elements)
+            it.delete()
+        }
+    },
+    copy = { view()?.selection?.let { clipboard?.copy(it.elements) } },
+    paste = paste,
+    canPaste = canPaste,
+    duplicate = { view()?.selection?.duplicate() },
+    delete = { view()?.selection?.delete() },
+)
+
+/** A command of the note's top bar. */
+private class NoteAction(
+    val icon: ImageVector,
+    val label: Int,
+    val enabled: Boolean = true,
+    val run: () -> Unit,
+)
 
 /** What is open around the note, and the page in view. */
 @Stable
@@ -140,6 +191,9 @@ private class NotePanels {
 
     /** The page whose background is being chosen. */
     var background by mutableStateOf<Int?>(null)
+
+    /** The selection's box on the canvas, in pixels; null if nothing is selected. */
+    var selection by mutableStateOf<RectF?>(null)
 }
 
 /**
@@ -151,38 +205,43 @@ private fun NoteActions(
     panels: NotePanels,
     commands: NoteCommands?,
     view: DocumentView?,
+    /** Pastes the clipboard's elements; null when there are none. */
+    paste: (() -> Unit)?,
 ) {
     val enabled = view != null
     val actions =
         if (commands == null) {
             emptyList()
         } else {
-            listOf<Triple<ImageVector, Int, () -> Unit>>(
-                Triple(PagesIcon, R.string.pages) { panels.pages = !panels.pages },
-                Triple(AddPageIcon, R.string.insert_page) {
+            listOf(
+                NoteAction(PagesIcon, R.string.pages) { panels.pages = !panels.pages },
+                NoteAction(AddPageIcon, R.string.insert_page) {
                     commands.pages.insertPageAfter(panels.current)
                     panels.current += 1
                 },
-                Triple(LayersIcon, R.string.layers) { panels.layers = true },
+                NoteAction(LayersIcon, R.string.layers) { panels.layers = true },
+                NoteAction(PasteIcon, R.string.paste, paste != null) { paste?.invoke() },
             )
         }
     if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
-        for ((icon, label, action) in actions) {
-            IconButton(onClick = action, enabled = enabled) { Icon(icon, stringResource(label)) }
+        for (action in actions) {
+            IconButton(onClick = action.run, enabled = enabled && action.enabled) {
+                Icon(action.icon, stringResource(action.label))
+            }
         }
         TextButton(onClick = { view?.fitWidth() }, enabled = enabled) { Text(stringResource(R.string.fit_width)) }
     } else {
         var open by remember { mutableStateOf(false) }
         IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for ((icon, label, action) in actions) {
+            for (action in actions) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(label)) },
-                    leadingIcon = { Icon(icon, contentDescription = null) },
-                    enabled = enabled,
+                    text = { Text(stringResource(action.label)) },
+                    leadingIcon = { Icon(action.icon, contentDescription = null) },
+                    enabled = enabled && action.enabled,
                     onClick = {
                         open = false
-                        action()
+                        action.run()
                     },
                 )
             }
@@ -363,6 +422,7 @@ private fun NoteCanvas(
                     onEdit = session::edited
                     onLayerView = session::setLayerView
                     onCurrentPage = { panels.current = it }
+                    onSelection = { panels.selection = selection.bounds }
                     position.get()?.let { restore(it) }
                 }
             val ink = LowLatencyCanvasView(context)

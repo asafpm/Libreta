@@ -87,6 +87,11 @@
     <string name="tool_select">Select</string>
     <string name="select_rectangle">Rectangle</string>
     <string name="select_lasso">Lasso</string>
+    <string name="cut">Cut</string>
+    <string name="copy">Copy</string>
+    <string name="paste">Paste</string>
+    <string name="duplicate">Duplicate</string>
+    <string name="delete">Delete</string>
     <string name="eraser_standard">Standard</string>
     <string name="eraser_whiteout">Whiteout</string>
     <string name="eraser_delete_stroke">Delete stroke</string>

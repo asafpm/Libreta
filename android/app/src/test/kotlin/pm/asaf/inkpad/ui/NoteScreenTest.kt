@@ -386,6 +386,68 @@ class NoteScreenTest {
         assertEquals(false, model.tools.fingerDraws.value)
     }
 
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun selectionsAreCopiedDeletedPastedDuplicatedAndRestyled() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        val original = model.pages()
+        compose.onNodeWithContentDescription("Select").performClick()
+        compose.waitForIdle()
+        // A rectangle over the whole page: everything on the layer written on.
+        compose.runOnIdle {
+            // From just inside the page's top-left corner (selections start on a page) to its bottom right.
+            val viewport = checkNotNull(view.viewport)
+            val page = model.pages()[0]
+            val x0 = (-viewport.offsetX * viewport.zoom + 40).toFloat()
+            val y0 = (-viewport.offsetY * viewport.zoom + 40).toFloat()
+            val x1 = (x0 + page.width * viewport.zoom - 80).toFloat()
+            val y1 = (y0 + page.height * viewport.zoom - 80).toFloat()
+            stylus(view, MotionEvent.ACTION_DOWN, 3000, 3000, x0, y0)
+            for (step in 1..8) {
+                stylus(
+                    view,
+                    MotionEvent.ACTION_MOVE,
+                    3000,
+                    3000L + step * 10,
+                    x0 + (x1 - x0) * step / 8,
+                    y0 + (y1 - y0) * step / 8,
+                )
+            }
+            stylus(view, MotionEvent.ACTION_UP, 3000, 3100, x1, y1)
+        }
+
+        fun layerSize() =
+            model
+                .pages()[0]
+                .layers
+                .last()
+                .elements.size
+        val all = layerSize()
+        val selected = view.selection.elements
+        assertTrue(selected.isNotEmpty())
+        compose.onNodeWithText("Copy").performClick()
+        assertTrue(model.clipboard.hasElements.value)
+        compose.onNodeWithText("Delete").performClick()
+        assertEquals(all - selected.size, layerSize())
+        // Pasted back, centred in view, on top: selected.
+        compose.onNodeWithContentDescription("Paste").performClick()
+        assertEquals(all, layerSize())
+        assertEquals(selected.size, view.selection.elements.size)
+        compose.onNodeWithText("Duplicate").performClick()
+        assertEquals(all + selected.size, layerSize())
+        // A colour from the tool bar recolours the selection's strokes.
+        compose.onNodeWithContentDescription("Colour: Red").performScrollTo().performClick()
+        assertTrue(
+            view.selection.elements
+                .filterIsInstance<Element.Stroke>()
+                .all { it.color == Color.of(237, 83, 83) },
+        )
+        // All undone, step by step.
+        repeat(4) { compose.onNodeWithContentDescription("Undo").performClick() }
+        assertEquals(original, model.pages())
+    }
+
     private companion object {
         const val TIMEOUT = 10_000L
     }

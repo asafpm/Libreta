@@ -238,6 +238,27 @@ val SelectIcon: ImageVector =
         }
     }
 
+/** Paste: a clipboard. */
+@Suppress("MagicNumber") // path coordinates
+val PasteIcon: ImageVector =
+    lineIcon("Paste") {
+        moveTo(9f, 4f)
+        lineTo(5f, 4f)
+        lineTo(5f, 21f)
+        lineTo(19f, 21f)
+        lineTo(19f, 4f)
+        lineTo(15f, 4f)
+        moveTo(9f, 3f)
+        lineTo(15f, 3f)
+        lineTo(15f, 6f)
+        lineTo(9f, 6f)
+        close()
+        moveTo(9f, 12f)
+        lineTo(15f, 12f)
+        moveTo(9f, 16f)
+        lineTo(15f, 16f)
+    }
+
 /** An icon drawn with 2-unit lines on a 24 x 24 grid. */
 @Suppress("MagicNumber") // grid sizes
 private fun lineIcon(

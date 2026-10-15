@@ -106,63 +106,80 @@ internal class Inking(
     /** Called when the selection changes, goes, or moves on screen. */
     var onSelection: (() -> Unit)? = null
 
-    val selection =
-        SelectionTool(
-            object : SelectionTool.Host {
-                override fun pageAt(
-                    viewX: Float,
-                    viewY: Float,
-                ): PageMapping? = mappingAt(viewX, viewY)
+    private val selectionHost =
+        object : SelectionTool.Host {
+            override fun pageAt(
+                viewX: Float,
+                viewY: Float,
+            ): PageMapping? = mappingAt(viewX, viewY)
 
-                override fun mappingOf(index: Int): PageMapping? = host.state?.let { placedPage(it, index) }
+            override fun mappingOf(index: Int): PageMapping? = host.state?.let { placedPage(it, index) }
 
-                override val pages: List<Page> get() = checkNotNull(host.state).pages.all
+            override val pages: List<Page> get() = checkNotNull(host.state).pages.all
 
-                override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
+            override fun page(index: Int): Page = checkNotNull(host.state).pages[index]
 
-                override fun layer(index: Int): Int = checkNotNull(host.state).pages.view(index).selected
+            override fun layer(index: Int): Int = checkNotNull(host.state).pages.view(index).selected
 
-                override val renderer: PageRenderer? get() = this@Inking.renderer
+            override val renderer: PageRenderer? get() = this@Inking.renderer
 
-                override fun hide(hidden: HiddenElements?) {
-                    val state = host.state ?: return
-                    val page = hidden?.page ?: state.pages.hiddenElements?.page ?: return
-                    replacePage(page) { hiddenElements = hidden }
-                }
+            override fun hide(hidden: HiddenElements?) {
+                val state = host.state ?: return
+                val page = hidden?.page ?: state.pages.hiddenElements?.page ?: return
+                replacePage(page) { hiddenElements = hidden }
+            }
 
-                override fun edit(edit: Edit) {
-                    onEdit?.invoke(edit)
-                    // The last state of each page changed; what was left out is back, moved.
-                    val pages = edit.changes.filterIsInstance<PageChange>().associate { it.index to it.after }
-                    for ((index, page) in pages) {
-                        replacePage(index) {
-                            hiddenElements = null
-                            this[index] = page
-                        }
-                    }
-                    host.state?.pages?.hiddenElements?.let { hidden ->
-                        replacePage(hidden.page) { hiddenElements = null }
+            override fun edit(edit: Edit) {
+                onEdit?.invoke(edit)
+                // The last state of each page changed; what was left out is back, moved.
+                val pages = edit.changes.filterIsInstance<PageChange>().associate { it.index to it.after }
+                for ((index, page) in pages) {
+                    replacePage(index) {
+                        hiddenElements = null
+                        this[index] = page
                     }
                 }
-
-                override fun offset(
-                    from: Int,
-                    to: Int,
-                ): Pair<Double, Double> {
-                    val layout = checkNotNull(host.state).layout
-                    val a = layout.pageBounds(from)
-                    val b = layout.pageBounds(to)
-                    return (a.left - b.left) to (a.top - b.top)
+                host.state?.pages?.hiddenElements?.let { hidden ->
+                    replacePage(hidden.page) { hiddenElements = null }
                 }
+            }
 
-                override fun redraw() = view.invalidate()
+            override fun offset(
+                from: Int,
+                to: Int,
+            ): Pair<Double, Double> {
+                val layout = checkNotNull(host.state).layout
+                val a = layout.pageBounds(from)
+                val b = layout.pageBounds(to)
+                return (a.left - b.left) to (a.top - b.top)
+            }
 
-                override fun changed() {
-                    onSelection?.invoke()
-                    view.invalidate()
-                }
-            },
-        ).apply { density = view.resources.displayMetrics.density }
+            override fun visibleArea(index: Int): Bounds? {
+                val state = host.state ?: return null
+                val page = state.layout.pageBounds(index)
+                val visible = state.viewport.visible
+                val area =
+                    Bounds(
+                        maxOf(visible.left, page.left) - page.left,
+                        maxOf(visible.top, page.top) - page.top,
+                        minOf(visible.right, page.right) - page.left,
+                        minOf(visible.bottom, page.bottom) - page.top,
+                    )
+                return area.takeIf { it.right > it.left && it.bottom > it.top }
+            }
+
+            override fun redraw() = view.invalidate()
+
+            override fun changed() {
+                onSelection?.invoke()
+                view.invalidate()
+            }
+        }
+
+    val selection = SelectionTool(selectionHost).apply { density = view.resources.displayMetrics.density }
+
+    /** What can be done with the selection. */
+    val selectionCommands: SelectionCommands by lazy { SelectionCommands(selection, selectionHost) }
 
     val input =
         InkInput(

@@ -56,6 +56,8 @@ import pm.asaf.inkpad.core.model.Color as InkColor
 fun ToolBar(
     controls: ToolControls,
     modifier: Modifier = Modifier,
+    /** Restyles the selection (with the selection tool): a colour or a width, null for neither. */
+    onRestyle: (InkColor?, PenSize?) -> Unit = { _, _ -> },
 ) {
     val tools = controls.tools
     var picking by remember { mutableStateOf(false) }
@@ -84,7 +86,7 @@ fun ToolBar(
                 }
 
                 Tool.SELECT -> {
-                    SelectOptions(controls)
+                    SelectOptions(controls, onRestyle) { picking = true }
                 }
             }
             if (controls.fingerButton) {
@@ -105,6 +107,7 @@ fun ToolBar(
             onPick = {
                 picking = false
                 controls.onCustomColor(it)
+                if (tools.tool == Tool.SELECT) onRestyle(it, null)
             },
             onDismiss = { picking = false },
         )
@@ -147,13 +150,29 @@ private fun RowScope.InkOptions(
 
 /** How the selection tool encloses what it selects. */
 @Composable
-private fun SelectOptions(controls: ToolControls) {
+private fun RowScope.SelectOptions(
+    controls: ToolControls,
+    onRestyle: (InkColor?, PenSize?) -> Unit,
+    onAddColor: () -> Unit,
+) {
     for ((mode, label) in SELECT_MODES) {
         FilterChip(
             selected = controls.tools.selectMode == mode,
             onClick = { controls.onSelectMode(mode) },
             label = { Text(stringResource(label)) },
         )
+    }
+    Separator()
+    // Colours and widths restyle the selection, as in Xournal++.
+    for (swatch in (controls.fixedColors + controls.recentColors).distinct()) {
+        Swatch(swatch, colorName(swatch), selected = false) { onRestyle(swatch, null) }
+    }
+    IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
+    Separator()
+    for (option in PenSize.entries.filter { it in controls.visibleSizes }) {
+        WidthOption(option, MaterialTheme.colorScheme.onSurfaceVariant, CircleShape, selected = false) {
+            onRestyle(null, option)
+        }
     }
 }
 
