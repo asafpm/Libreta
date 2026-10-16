@@ -25,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -83,7 +84,8 @@ fun HomeScreen(
             LibraryGrid(Modifier.padding(padding)) {
                 if (locals.isEmpty()) item(key = "add", span = { GridItemSpan(maxLineSpan) }) { NoFolders(onAddFolder) }
                 for (root in locals) {
-                    sectionHeader(root.id, root.name, { onNewFolder(root.folder) }) { onNewNote(root.folder) }
+                    val drop = actions.manage?.drop
+                    sectionHeader(root.folder, root.name, drop, { onNewFolder(root.folder) }) { onNewNote(root.folder) }
                     folderItems(root.id, folders[root.folder], previews, actions)
                 }
                 if (opened != null && anyOpened) {
@@ -135,7 +137,7 @@ fun FolderScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Breadcrumbs(path, onBreadcrumb) },
+                title = { Breadcrumbs(path, actions.manage?.drop, onBreadcrumb) },
                 navigationIcon = {
                     IconButton(
                         onClick = onBack,
@@ -155,21 +157,32 @@ fun FolderScreen(
     }
 }
 
-/** Folder names from the root down; tapping one goes back to it ([onClick] gets its index). */
+/**
+ * Folder names from the root down; tapping one goes back to it ([onClick] gets its index),
+ * and cards dropped on one move up into it ([onDrop]).
+ */
 @Composable
 private fun Breadcrumbs(
     path: List<FolderRef>,
+    onDrop: ((LibraryEntry, FolderRef) -> Unit)?,
     onClick: (Int) -> Unit,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.horizontalScroll(rememberScrollState())) {
         path.forEachIndexed { index, folder ->
             if (index > 0) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
-            val last = index == path.lastIndex
-            Text(
-                folder.name,
-                color = if (last) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary,
-                modifier = if (last) Modifier else Modifier.clickable { onClick(index) },
-            )
+            if (index == path.lastIndex) {
+                Text(folder.name, color = MaterialTheme.colorScheme.onSurface)
+            } else {
+                val style = LocalTextStyle.current
+                val color = MaterialTheme.colorScheme.primary
+                Box(Modifier.clickable { onClick(index) }) {
+                    if (onDrop == null) {
+                        DropLabel(folder.name, over = false, style, color)
+                    } else {
+                        DropTarget(folder, onDrop) { over -> DropLabel(folder.name, over, style, color) }
+                    }
+                }
+            }
         }
     }
 }

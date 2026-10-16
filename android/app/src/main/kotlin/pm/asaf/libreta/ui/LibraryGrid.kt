@@ -7,6 +7,7 @@ import android.text.format.DateUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
@@ -40,6 +42,7 @@ import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -50,12 +53,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
+import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.FolderState
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.PreviewCache
@@ -66,14 +72,25 @@ fun LibraryGrid(
     modifier: Modifier = Modifier,
     content: LazyGridScope.() -> Unit,
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(CARD_WIDTH),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        content = content,
-    )
+    val state = rememberLazyGridState()
+    val tracker = remember { DragTracker() }
+    val follower = remember(tracker) { DragFollower(tracker) }
+    ScrollWhileDragging(tracker, state)
+    CompositionLocalProvider(LocalDragTracker provides tracker) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(CARD_WIDTH),
+            state = state,
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned { tracker.area = it.boundsInRoot() }
+                    .dragAndDropTarget(DragFollower::accepts, follower),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            content = content,
+        )
+    }
 }
 
 /** A heading across the grid. */
@@ -84,20 +101,30 @@ fun LazyGridScope.sectionTitle(
     Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp))
 }
 
-/** A heading across the grid, with "New folder" and "New note" buttons. */
+/**
+ * The heading of [folder] across the grid, with "New folder" and "New note" buttons; cards
+ * dropped on it move there ([onDrop]).
+ */
 fun LazyGridScope.sectionHeader(
-    key: String,
+    folder: FolderRef,
     title: String,
+    onDrop: ((LibraryEntry, FolderRef) -> Unit)?,
     onNewFolder: () -> Unit,
     onNewNote: () -> Unit,
 ) {
-    item(key = "header:$key", span = { GridItemSpan(maxLineSpan) }) {
+    item(key = "header:${folder.id.value}", span = { GridItemSpan(maxLineSpan) }) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(top = 8.dp),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+            Box(Modifier.weight(1f)) {
+                if (onDrop == null) {
+                    Text(title, style = MaterialTheme.typography.titleLarge)
+                } else {
+                    DropTarget(folder, onDrop) { over -> DropLabel(title, over, MaterialTheme.typography.titleLarge) }
+                }
+            }
             NewFolderButton(onNewFolder)
             NewNoteButton(onNewNote)
         }

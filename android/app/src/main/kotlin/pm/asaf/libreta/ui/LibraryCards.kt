@@ -4,9 +4,12 @@ package pm.asaf.libreta.ui
 
 import android.graphics.Bitmap
 import android.text.format.DateUtils
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -47,11 +52,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,14 +71,43 @@ import pm.asaf.libreta.library.FolderState
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.PreviewCache
 
-/** A folder, with a menu if [actions] has one. */
+/**
+ * A folder, with a menu if [actions] has one; then it can also be dragged, and cards dropped
+ * on it move into it.
+ */
 @Composable
 internal fun FolderCard(
     entry: LibraryEntry.Folder,
     actions: LibraryActions,
     onClick: () -> Unit,
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    val manage = actions.manage
+    if (manage == null) {
+        FolderCardContent(entry, actions, over = false, onClick)
+    } else {
+        DropTarget(entry.folder, manage.drop) { over -> FolderCardContent(entry, actions, over, onClick) }
+    }
+}
+
+/** A folder's card, highlighted while a card is held [over] it. */
+@Composable
+private fun FolderCardContent(
+    entry: LibraryEntry.Folder,
+    actions: LibraryActions,
+    over: Boolean,
+    onClick: () -> Unit,
+) {
+    EntryCard(
+        entry.takeIf { actions.manage != null },
+        onClick,
+        colors =
+            if (over) {
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            } else {
+                CardDefaults.cardColors()
+            },
+        border = if (over) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp)) {
             Icon(FolderIcon, contentDescription = stringResource(R.string.folder), modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(12.dp))
@@ -91,7 +131,7 @@ internal fun DocumentCard(
     actions: LibraryActions,
     onClick: () -> Unit,
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    EntryCard(entry.takeIf { actions.manage != null }, onClick) {
         Column {
             Box(
                 contentAlignment = Alignment.Center,
@@ -130,6 +170,40 @@ internal fun DocumentCard(
             }
         }
     }
+}
+
+/**
+ * A card, which can be picked up with a long press and dragged if [draggable] is given (the
+ * entry it shows); the whole card is shown while it is.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EntryCard(
+    draggable: LibraryEntry?,
+    onClick: () -> Unit,
+    colors: CardColors = CardDefaults.cardColors(),
+    border: BorderStroke? = null,
+    content: @Composable () -> Unit,
+) {
+    val look = rememberGraphicsLayer()
+    val view = LocalView.current
+    val density = LocalDensity.current
+    Card(
+        colors = colors,
+        border = border,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .drawWithContent {
+                    look.record { this@drawWithContent.drawContent() }
+                    drawLayer(look)
+                }.clip(CardDefaults.shape)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClickLabel = draggable?.let { stringResource(R.string.drag_to_move) },
+                    onLongClick = draggable?.let { { startDrag(view, it, look, density) } },
+                ),
+    ) { content() }
 }
 
 /** Renaming, moving and deleting [entry]. */

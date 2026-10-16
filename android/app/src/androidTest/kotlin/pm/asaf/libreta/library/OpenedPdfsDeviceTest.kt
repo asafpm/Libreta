@@ -44,7 +44,7 @@ class OpenedPdfsDeviceTest {
             }
         } finally {
             val notes = FolderListing.list(store, folder).filterIsInstance<LibraryEntry.Document>()
-            notes.filter { it.id == note.id }.forEach(opened::delete)
+            notes.filter { it.id == note.id }.forEach { LibraryFiles(store).delete(it, alsoPdf = true) }
             store.delete(shared.id)
         }
         assertTrue(store.list(folder.id).none { it.name.startsWith("device test") || it.name == "shared.pdf.tmp" })
