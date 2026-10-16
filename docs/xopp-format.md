@@ -275,7 +275,11 @@ the original count all survive.
 
 **Libreta:** keeps the original encoded bytes (PNG or JPEG) and writes them back
 unchanged as standard base64. Converting JPEG to PNG for compatibility with
-very old readers is not done.
+very old readers is not done. Pictures it inserts are JPEG or PNG: kept as they
+are when small and upright, otherwise turned upright (Xournal++ ignores EXIF
+orientation), made at most 4 megapixels, and stored as JPEG (PNG if they have
+transparency). Their box is one point a pixel, like Xournal++'s, but no larger
+than the part of the page in view.
 
 ### `<teximage>` — `LoadHandler.cpp:711-733, 1092-1098`, `SaveHandler.cpp:205-215`
 - **Attribute order on write:** `text left top right bottom`.

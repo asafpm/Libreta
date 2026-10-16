@@ -86,7 +86,21 @@ Xournal++ live in `testdata/xournalpp/`.
 - `android/app/src/main/.../files/NoteCommands.kt`: the selected layer after layer commands,
   `src/core/control/layer/LayerController.cpp`.
 - `core/model/src/commonMain/.../PenSettings.kt`: pen and eraser widths, colour and
-  eraser types of `src/core/control/ToolHandler.cpp`, palette of `palettes/xournalpp.gpl`.
+  eraser types of `src/core/control/ToolHandler.cpp`, drawing types of
+  `src/core/control/ToolEnums.h`, the text default of `src/core/control/settings/Settings.cpp`,
+  palette of `palettes/xournalpp.gpl`.
+- `core/geometry/src/commonMain/.../Shapes.kt`: port of the shapes of
+  `src/core/control/tools/RulerHandler.cpp`, `RectangleHandler.cpp`, `EllipseHandler.cpp`,
+  `ArrowHandler.cpp` and `CoordinateSystemHandler.cpp`, with the snapping of
+  `src/core/model/Snapping.cpp` and `src/core/control/tools/SnapToGridInputHandler.cpp`.
+- `android/app/src/main/.../viewer/ShapeInput.kt`: drawing a shape, of
+  `src/core/control/tools/BaseShapeHandler.cpp`.
+- `android/app/src/main/.../viewer/TextEditing.kt`: editing text with the text tool, of
+  `src/core/control/tools/TextEditor.cpp` and `src/core/gui/PageView.cpp`.
+- `android/app/src/main/.../viewer/PageRecolor.kt`: the recolouring of `src/util/Recolor.cpp`.
+- `android/app/src/main/.../ui/KeyboardShortcuts.kt`: the keyboard shortcuts of
+  `ui/mainmenubar.xml`, `src/core/control/actions/ActionProperties.h` and
+  `src/core/gui/XournalView.cpp`.
 - `android/app/src/main/.../files/NoteSaver.kt`: the embedded preview of
   `src/core/control/jobs/SaveJob.cpp`.
 - `core/model/src/commonMain/.../NewNote.kt` (`forPdf`, `notesForPdf`, `exportName`): notes

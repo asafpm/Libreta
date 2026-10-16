@@ -212,7 +212,25 @@ as vectors (`PdfExportDeviceTest`: the 104-page note in 13 s). `scripts/pdf-expo
 finds the exports within 0.5% of Xournal++'s, with the same page sizes and the PDF's
 text kept. LaTeX formulas are exported as images.
 
-### Phase 9 — Nextcloud / WebDAV sync
+### Phase 9 — Extras
+Text tool, image insert, rulers/straight lines, dark mode page inversion,
+tablet/split-screen polish. (Swapped with sync, which was Phase 9; the shape
+recognizer, LaTeX and audio moved to Phase 11.)
+
+Done: a text tool (Sans, Serif or Mono, bold, italic, size, colour): a tap on text edits it,
+elsewhere starts new text as Xournal++ places it; typing happens in an EditText over the page
+(the soft keyboard, or handwriting with the stylus), each edit one undoable change, text left
+empty deleted. Pictures go in from the photo picker, the camera, or dropped from another app:
+upright, at most 4 MP, one pixel a point but no larger than what is in view, selected. The pen
+and highlighter draw Xournal++'s shapes (line, rectangle, ellipse, arrow, double arrow,
+coordinate system) with its snapping to 15° and the 5 mm grid, and a keyboard's Shift, Ctrl and
+Alt; holding the pen still straightens a stroke (`ShapesDeviceTest`: frames p95 10.3 ms). The
+app follows the system's dark theme (or Settings), and pages are then shown recoloured with
+Xournal++'s recolouring, paper #303446 and ink #C6D0F5. Xournal++'s keyboard shortcuts work, and
+Android lists them; the hovering stylus shows the pen, highlighter or text cursor; a mouse wheel
+scrolls and zooms. `testdata/libreta-extras.xopp` renders the same in Xournal++.
+
+### Phase 10 — Nextcloud / WebDAV sync
 New KMP module `:core:sync` using Ktor client (shared with future iOS).
 - WebDAV ops: PROPFIND (list + ETags), GET, PUT with If-Match, MKCOL, MOVE
 - Nextcloud Login Flow v2 for app passwords; plain WebDAV URL + credentials
@@ -228,16 +246,15 @@ New KMP module `:core:sync` using Ktor client (shared with future iOS).
 ✅ Integration tests against a Nextcloud Docker container
 (nextcloud:latest) covering upload, download, offline edit, and conflict.
 
-### Phase 10 — Extras (prioritize later)
-Text tool, image insert, shape recognizer (in core:geometry), rulers/straight
-lines, LaTeX via bundled renderer, audio recording linked to strokes,
-dark mode page inversion, tablet/split-screen polish.
+### Phase 11 — More extras (prioritize later)
+Shape recognizer (in core:geometry), LaTeX via bundled renderer, audio
+recording linked to strokes.
 
-### Phase 11 — iOS (future, requires a Mac)
+### Phase 12 — iOS (future, requires a Mac)
 Add iosArm64 + iosSimulatorArm64 targets to core modules and export them as
 an XCFramework. Build a native iOS app: SwiftUI shell, Metal or Core Graphics
 canvas, Apple Pencil input via UITouch coalesced/predicted touches, PDFKit
-for PDF rendering/export, UIDocument for files. Repeat Phases 2–8 for the
+for PDF rendering/export, UIDocument for files. Repeat Phases 2–9 for the
 iOS platform layer only; shared logic is reused as-is.
 Note: because the project is GPL and contains Xournal++-derived code, App
 Store distribution is likely unavailable (its terms are widely considered
