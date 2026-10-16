@@ -111,6 +111,11 @@ Xournal++ live in `testdata/xournalpp/`.
 - `android/app/src/main/.../library/PdfNotes.kt`, `OpenedPdfs.kt`: opening a PDF's note, of
   `src/core/control/Control.cpp`, and carrying the PDF as an attachment, of
   `src/core/control/xojfile/SaveHandler.cpp`.
+- `android/app/src/main/.../library/LibraryFiles.kt`: the files that go with a note when it is
+  renamed, moved or deleted: its attached files (`<note>.<name>`) of
+  `src/core/control/xojfile/SaveHandler.cpp`, the PDF it is named after of
+  `src/core/control/Control.cpp`, and its link to that PDF as
+  `src/core/control/xojfile/LoadHandler.cpp` follows it.
 - `android/render/src/main/.../PdfExport.kt`, `PdfMerge.kt`: PDF export of
   `src/core/pdf/base/XojCairoPdfExport.cpp`.
 - `core/geometry/src/commonMain/.../Selection.kt`: what a rectangle or lasso selects of
