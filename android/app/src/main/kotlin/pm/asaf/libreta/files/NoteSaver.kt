@@ -10,6 +10,7 @@ import android.graphics.Canvas
 import android.util.Log
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
+import okio.buffer
 import pm.asaf.libreta.core.format.XoppContainer
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.store.DocumentStore
@@ -35,6 +36,8 @@ class NoteFile(
     val container: XoppContainer,
     /** Its version when read or last saved. */
     @Volatile var version: FileVersion?,
+    /** A hash (SHA-256) of its content when read or last saved; null if unknown. */
+    @Volatile var contentHash: ByteString? = null,
 ) {
     /** Whether the file as it was has been backed up, once per session. */
     @Volatile var backedUp: Boolean = false
@@ -97,9 +100,10 @@ class NoteSaver(
             val bytes = NoteEncoder.encode(document.copy(creator = NewNoteCreator.creator(context), preview = preview))
             if (!file.backedUp) backUp(file)
             val result =
-                when (val written = store.write(file.id, bytes, expected = file.version)) {
+                when (val written = writeOver(file, bytes)) {
                     is WriteResult.Written -> {
                         file.version = written.version
+                        file.contentHash = bytes.sha256()
                         SaveResult.Saved
                     }
 
@@ -109,6 +113,7 @@ class NoteSaver(
                         file.id = copy.id
                         file.name = copy.name
                         file.version = (store.entry(copy.id) as? StoreEntry.File)?.version
+                        file.contentHash = bytes.sha256()
                         SaveResult.SavedAsCopy(copy.name)
                     }
                 }
@@ -118,6 +123,22 @@ class NoteSaver(
             Log.w(TAG, "Cannot save ${file.name}", e)
             SaveResult.Failed(e)
         }
+
+    /**
+     * Writes [bytes] over [file] unless someone else changed it since it was read or saved. A
+     * new version alone is not a change: sync apps (e.g. Nextcloud's) report new times and
+     * versions for the same content after uploading it, so the content is compared too.
+     */
+    private fun writeOver(
+        file: NoteFile,
+        bytes: ByteString,
+    ): WriteResult {
+        val written = store.write(file.id, bytes, expected = file.version)
+        val known = file.contentHash
+        if (written !is WriteResult.Conflict || known == null) return written
+        val current = store.read(file.id).buffer().use { it.readByteString() }
+        return if (current.sha256() == known) store.write(file.id, bytes, expected = written.current) else written
+    }
 
     /** Copies [file] as it is to the backups. Saving goes on without a copy if that fails. */
     private fun backUp(file: NoteFile) {

@@ -147,6 +147,24 @@ class NoteSaverTest {
     }
 
     @Test
+    fun aSyncAppTouchingTheFileIsNoConflict() {
+        // Like Nextcloud's app: after uploading, it reports the server's time for the same content.
+        val note = open("note-taking.xopp", "Lecture.xopp")
+        val file = File(directory, "Lecture.xopp")
+        file.setLastModified(file.lastModified() + 60_000)
+        note.write()
+        assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
+        repeat(3) { round ->
+            file.setLastModified(file.lastModified() + 60_000)
+            val element = stroke.copy(width = 1.0 + round)
+            note.write(element)
+            assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
+            assertEquals(element, lastElement("Lecture.xopp"))
+        }
+        assertEquals(listOf("Lecture.xopp"), directory.list()?.toList())
+    }
+
+    @Test
     fun aFileChangedElsewhereIsNotOverwritten() {
         val note = open("note-taking.xopp", "Lecture.xopp")
         note.write()

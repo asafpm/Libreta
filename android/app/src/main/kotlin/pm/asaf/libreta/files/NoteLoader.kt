@@ -5,6 +5,7 @@ package pm.asaf.libreta.files
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import okio.buffer
 import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.R
 import pm.asaf.libreta.android.render.RenderCaches
@@ -32,10 +33,11 @@ object NoteLoader {
         try {
             // Before reading: a change after this is someone else's.
             val version = (store.entry(id) as? StoreEntry.File)?.version
-            val read = store.read(id).use { XoppReader.read(it) }
+            val bytes = store.read(id).buffer().use { it.readByteString() }
+            val read = XoppReader.read(bytes)
             val files = DocumentFiles.open(context, store, read, location)
             NoteState.Loaded(
-                file = NoteFile(id, name, location, read.container, version),
+                file = NoteFile(id, name, location, read.container, version, bytes.sha256()),
                 session = NoteSession(read.document),
                 caches = RenderCaches.forDevice(context),
                 files = files,
