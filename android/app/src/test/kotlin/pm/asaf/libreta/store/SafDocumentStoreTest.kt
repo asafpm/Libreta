@@ -17,6 +17,7 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import pm.asaf.libreta.core.store.StoreEntry
 import pm.asaf.libreta.core.store.StoreException
+import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.core.store.WriteResult
 import pm.asaf.libreta.library.FakeDocumentsProvider
 import java.io.File
@@ -87,6 +88,62 @@ class SafDocumentStoreTest {
         assertTrue(
             store.pathTo(FakeDocumentsProvider.folderId("A/B"), FakeDocumentsProvider.fileId("A/x.xopp")) == null,
         )
+    }
+
+    @Test
+    fun renamesFilesAndFolders() {
+        File(directory, "Courses").mkdirs()
+        File(directory, "Courses/a.xopp").writeText("hello")
+        val folder = store.rename(FakeDocumentsProvider.folderId("Courses"), "Classes")
+        assertEquals("Classes", assertIs<StoreEntry.Folder>(folder).name)
+        assertEquals(listOf("a.xopp"), store.list(folder.id).map { it.name })
+        val file = store.rename(store.list(folder.id).single().id, "b.xopp")
+        assertEquals("b.xopp", file.name)
+        assertEquals("hello", store.read(file.id).buffer().use { it.readUtf8() })
+        assertEquals(listOf("b.xopp"), File(directory, "Classes").list()?.toList())
+        // A taken name isn't changed: it fails.
+        File(directory, "Classes/c.xopp").writeText("")
+        assertFailsWith<StoreException> { store.rename(file.id, "c.xopp") }
+        assertEquals("hello", File(directory, "Classes/b.xopp").readText())
+    }
+
+    @Test
+    fun movesWithinTheProvider() {
+        File(directory, "A/B").mkdirs()
+        File(directory, "a.xopp").writeText("hello")
+        File(directory, "A/B/c.xopp").writeText("")
+        val root = FakeDocumentsProvider.folderId()
+        val file = store.move(FakeDocumentsProvider.fileId("a.xopp"), root, FakeDocumentsProvider.folderId("A"))
+        assertEquals("hello", file?.let { store.read(it.id).buffer().use { source -> source.readUtf8() } })
+        assertTrue(File(directory, "A/a.xopp").isFile)
+        // A folder, with what's in it.
+        val folder = store.move(FakeDocumentsProvider.folderId("A/B"), FakeDocumentsProvider.folderId("A"), root)
+        assertEquals(listOf("c.xopp"), folder?.let { store.list(it.id).map { entry -> entry.name } })
+        assertEquals(listOf("a.xopp"), File(directory, "A").list()?.toList())
+    }
+
+    @Test
+    fun cannotMoveToAnotherProvider() {
+        File(directory, "a.xopp").writeText("hello")
+        val elsewhere = StoreId("content://pm.asaf.libreta.other/tree/root/document/root")
+        assertNull(store.move(FakeDocumentsProvider.fileId("a.xopp"), FakeDocumentsProvider.folderId(), elsewhere))
+        assertTrue(File(directory, "a.xopp").isFile)
+    }
+
+    @Test
+    fun aMoveOntoATakenNameIsNotDone() {
+        File(directory, "A").mkdirs()
+        File(directory, "a.xopp").writeText("mine")
+        File(directory, "A/a.xopp").writeText("theirs")
+        val moved =
+            store.move(
+                FakeDocumentsProvider.fileId("a.xopp"),
+                FakeDocumentsProvider.folderId(),
+                FakeDocumentsProvider.folderId("A"),
+            )
+        assertNull(moved)
+        assertEquals("mine", File(directory, "a.xopp").readText())
+        assertEquals("theirs", File(directory, "A/a.xopp").readText())
     }
 
     @Test

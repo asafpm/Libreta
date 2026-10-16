@@ -60,9 +60,7 @@ abstract class DirectoryDocumentsProvider : DocumentsProvider() {
         displayName: String,
     ): String {
         val parent = fileOf(parentDocumentId)
-        if (displayName.contains('/') || displayName == "." || displayName == "..") {
-            throw FileNotFoundException(displayName)
-        }
+        checkName(displayName)
         // Like the system provider: "name (1).ext" when the name is taken.
         val base = displayName.substringBeforeLast('.')
         val extension = displayName.substringAfterLast('.', "").let { if (it.isEmpty()) "" else ".$it" }
@@ -76,6 +74,30 @@ abstract class DirectoryDocumentsProvider : DocumentsProvider() {
 
     override fun deleteDocument(documentId: String) {
         fileOf(documentId).deleteRecursively()
+    }
+
+    // Like the system provider: a taken name fails.
+    override fun renameDocument(
+        documentId: String,
+        displayName: String,
+    ): String {
+        checkName(displayName)
+        val file = fileOf(documentId)
+        return movedTo(file, File(file.parentFile, displayName), "${documentId.substringBeforeLast('/')}/$displayName")
+    }
+
+    override fun moveDocument(
+        sourceDocumentId: String,
+        sourceParentDocumentId: String,
+        targetParentDocumentId: String,
+    ): String {
+        val file = fileOf(sourceDocumentId)
+        if (file.parentFile != fileOf(sourceParentDocumentId)) throw FileNotFoundException(sourceDocumentId)
+        val target = fileOf(targetParentDocumentId)
+        if (!target.isDirectory || target.path.startsWith(file.path + File.separator) || target == file) {
+            throw FileNotFoundException(targetParentDocumentId)
+        }
+        return movedTo(file, File(target, file.name), "$targetParentDocumentId/${file.name}")
     }
 
     override fun findDocumentPath(
@@ -112,8 +134,23 @@ abstract class DirectoryDocumentsProvider : DocumentsProvider() {
             .add(Document.COLUMN_SIZE, file.length())
             .add(
                 Document.COLUMN_FLAGS,
-                Document.FLAG_DIR_SUPPORTS_CREATE or Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_DELETE,
+                Document.FLAG_DIR_SUPPORTS_CREATE or Document.FLAG_SUPPORTS_WRITE or Document.FLAG_SUPPORTS_DELETE or
+                    Document.FLAG_SUPPORTS_RENAME or Document.FLAG_SUPPORTS_MOVE,
             )
+    }
+
+    /** Moves [file] to [to] (not over anything), which is the document [id]. */
+    private fun movedTo(
+        file: File,
+        to: File,
+        id: String,
+    ): String {
+        if (!file.exists() || to.exists() || !file.renameTo(to)) throw FileNotFoundException(to.name)
+        return id
+    }
+
+    private fun checkName(name: String) {
+        if (name.isEmpty() || name.contains('/') || name in setOf(".", "..")) throw FileNotFoundException(name)
     }
 
     private fun fileOf(documentId: String): File {

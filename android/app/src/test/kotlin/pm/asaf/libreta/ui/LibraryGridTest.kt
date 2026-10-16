@@ -65,6 +65,17 @@ class LibraryGridTest {
 
         override fun delete(file: StoreId) = throw StoreException("not here")
 
+        override fun rename(
+            id: StoreId,
+            name: String,
+        ) = throw StoreException("not here")
+
+        override fun move(
+            id: StoreId,
+            from: StoreId,
+            to: StoreId,
+        ) = throw StoreException("not here")
+
         override fun pathTo(
             root: StoreId,
             file: StoreId,

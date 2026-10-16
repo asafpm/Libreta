@@ -102,8 +102,28 @@ interface DocumentStore {
         name: String,
     ): StoreEntry.Folder
 
+    /** Deletes [file], or a folder with everything in it. */
     @Throws(StoreException::class)
     fun delete(file: StoreId)
+
+    /** Renames [id] (a file or folder) to [name]; fails if the name is taken. Returns it as it is now. */
+    @Throws(StoreException::class)
+    fun rename(
+        id: StoreId,
+        name: String,
+    ): StoreEntry
+
+    /**
+     * Moves [id] (a file or folder) from the folder [from] into [to], keeping its name, and
+     * returns it as it is there; or null if the store can't move it so (e.g. between
+     * different providers), leaving it where it was: then it has to be copied.
+     */
+    @Throws(StoreException::class)
+    fun move(
+        id: StoreId,
+        from: StoreId,
+        to: StoreId,
+    ): StoreEntry?
 
     /**
      * The folders from [root] down to the one holding [file], if [file] is below [root];

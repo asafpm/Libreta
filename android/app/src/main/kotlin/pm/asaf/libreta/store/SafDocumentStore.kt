@@ -100,6 +100,32 @@ class SafDocumentStore(
         guard("delete") { DocumentsContract.deleteDocument(resolver, file.uri) }
     }
 
+    override fun rename(
+        id: StoreId,
+        name: String,
+    ): StoreEntry =
+        guard("rename") {
+            // The same document when the provider keeps its id.
+            val renamed = StoreId((DocumentsContract.renameDocument(resolver, id.uri, name) ?: id.uri).toString())
+            entry(renamed) ?: throw StoreException("Cannot find $name after renaming it")
+        }
+
+    override fun move(
+        id: StoreId,
+        from: StoreId,
+        to: StoreId,
+    ): StoreEntry? =
+        id
+            .takeIf { it.uri.authority == to.uri.authority }
+            // Providers that can't (no FLAG_SUPPORTS_MOVE, other trees, a taken name) fail in their own ways.
+            ?.let { runCatching { DocumentsContract.moveDocument(resolver, it.uri, from.uri, to.uri) }.getOrNull() }
+            ?.let { moved ->
+                // The provider names it in the tree it came from; it is in the target's now.
+                val inTarget =
+                    DocumentsContract.buildDocumentUriUsingTree(treeOf(to.uri), DocumentsContract.getDocumentId(moved))
+                entry(StoreId(inTarget.toString()))
+            }
+
     override fun pathTo(
         root: StoreId,
         file: StoreId,
@@ -147,6 +173,11 @@ class SafDocumentStore(
             throw StoreException("Not allowed to $what: ${e.message}", e)
         } catch (e: IllegalArgumentException) {
             throw StoreException("Cannot $what: ${e.message}", e)
+        } catch (e: IllegalStateException) {
+            // Providers' FileNotFoundExceptions, through ContentResolver.call
+            throw StoreException("Cannot $what: ${e.message}", e)
+        } catch (e: UnsupportedOperationException) {
+            throw StoreException("Cannot $what here", e)
         }
 
     companion object {
