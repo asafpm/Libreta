@@ -28,6 +28,8 @@ import java.io.IOException
 /** Putting pictures into the note: picked, taken with the camera (null if there is none), or dropped. */
 class ImageActions(
     val insert: () -> Unit,
+    /** A picture from elsewhere (e.g. the clipboard), centred in view. */
+    val insertFrom: (Uri) -> Unit,
     val takePhoto: (() -> Unit)?,
     /** A picture dropped on the view, at a view point. */
     val drop: (uri: Uri, viewX: Float, viewY: Float) -> Unit,
@@ -58,6 +60,7 @@ fun rememberImageActions(
     val hasCamera = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
     return ImageActions(
         insert = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+        insertFrom = { insert(it, null) },
         takePhoto =
             if (hasCamera) {
                 { camera.launch(FileProvider.getUriForFile(context, "${context.packageName}.exports", photo)) }

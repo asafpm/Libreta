@@ -3,8 +3,13 @@
 package pm.asaf.libreta.ui
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.net.Uri
 import android.provider.MediaStore
 import android.view.InputDevice
 import android.view.KeyEvent
@@ -448,7 +453,7 @@ class NoteScreenTest {
         val selected = view.selection.elements
         assertTrue(selected.isNotEmpty())
         compose.onNodeWithText("Copy").performClick()
-        assertTrue(model.clipboard.hasElements.value)
+        assertTrue(model.clipboard.canPaste.value)
         compose.onNodeWithText("Delete").performClick()
         assertEquals(all - selected.size, layerSize())
         // Pasted back, centred in view, on top: selected.
@@ -493,6 +498,27 @@ class NoteScreenTest {
             picker.action in
                 setOf(MediaStore.ACTION_PICK_IMAGES, Intent.ACTION_OPEN_DOCUMENT, Intent.ACTION_GET_CONTENT),
         )
+    }
+
+    @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun picturesCopiedInOtherAppsPaste() {
+        val model = openLecture()
+        val png = temporary.newFile("copied.png")
+        png.outputStream().use {
+            Bitmap
+                .createBitmap(80, 60, Bitmap.Config.ARGB_8888)
+                .apply {
+                    eraseColor(android.graphics.Color.BLUE)
+                }.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
+        val clip = ClipData(ClipDescription("Picture", arrayOf("image/png")), ClipData.Item(Uri.fromFile(png)))
+        compose.runOnIdle { application.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip) }
+        compose.onNodeWithContentDescription("Paste").performClick()
+        eventually { model.elements().any { it is Element.Image } }
+        val image = model.elements().filterIsInstance<Element.Image>().single()
+        assertEquals(80.0, image.bounds.right - image.bounds.left, 0.01)
+        assertEquals(Tool.SELECT, model.tools.tools.value.tool)
     }
 
     private val shortcuts = KeyShortcuts()

@@ -3,6 +3,7 @@
 package pm.asaf.libreta.ui
 
 import android.graphics.RectF
+import android.net.Uri
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -97,14 +98,19 @@ internal fun rememberPaste(
     clipboard: NoteClipboard?,
     tools: ToolControls,
     page: () -> Int,
+    insertImage: (Uri) -> Unit,
     view: () -> DocumentView?,
 ): (() -> Unit)? {
-    val canPaste = clipboard?.hasElements?.collectAsState()?.value == true
+    val canPaste = clipboard?.canPaste?.collectAsState()?.value == true
     if (!canPaste) return null
     return {
-        clipboard?.paste()?.let { elements ->
+        val elements = clipboard?.paste()
+        if (elements != null) {
             tools.onTool(Tool.SELECT)
             view()?.selection?.paste(page(), elements)
+        } else {
+            // A picture copied in another app.
+            clipboard?.image()?.let(insertImage)
         }
     }
 }

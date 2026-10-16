@@ -92,9 +92,9 @@ fun NoteScreen(
     val currentTemplate by rememberUpdatedState(template)
     val commands = loaded?.let { remember(it.session) { NoteCommands(it.session, { view }, { currentTemplate }) } }
     val panels = remember { NotePanels() }
-    val paste = rememberPaste(clipboard, tools, { panels.current }) { view }
-    val export = rememberExportActions(exports, loaded, name) { view }
     val images = rememberImageActions({ view }, { panels.current }) { tools.onTool(Tool.SELECT) }
+    val paste = rememberPaste(clipboard, tools, { panels.current }, images.insertFrom) { view }
+    val export = rememberExportActions(exports, loaded, name) { view }
     ExportProgress(exports)
     val more = TopBarActions(paste, export, images)
     if (loaded != null && commands != null) {
