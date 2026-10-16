@@ -21,17 +21,22 @@ sealed interface LibraryEntry {
     /** Milliseconds since the epoch, or 0 if unknown. */
     val modified: Long
 
+    /** The document it is in its store. */
+    val storeId: StoreId
+
     data class Folder(
         val folder: FolderRef,
         override val modified: Long,
         val parent: FolderRef,
     ) : LibraryEntry {
         override val name: String get() = folder.name
+        override val storeId: StoreId get() = folder.id
     }
 
     /** A file shown with a preview of its first page. */
     sealed interface File : LibraryEntry {
         val id: StoreId
+        override val storeId: StoreId get() = id
         val version: FileVersion
         val parent: FolderRef
         override val modified: Long get() = version.modified
@@ -77,7 +82,8 @@ object FolderListing {
         order: SortOrder = SortOrder.MODIFIED,
     ): List<LibraryEntry> {
         val entries =
-            store.list(folder.id).filterNot { it.name.startsWith(".") }.mapNotNull { entry ->
+            // Some providers list a document twice (e.g. Nextcloud's while uploading it).
+            store.list(folder.id).filterNot { it.name.startsWith(".") }.distinctBy { it.id }.mapNotNull { entry ->
                 when (entry) {
                     is StoreEntry.Folder -> {
                         LibraryEntry.Folder(FolderRef(entry.id, entry.name), entry.modified, folder)

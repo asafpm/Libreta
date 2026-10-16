@@ -155,7 +155,8 @@ fun LazyGridScope.folderItems(
                     "empty:$key",
                 ) { Text(stringResource(R.string.empty_folder), style = MaterialTheme.typography.bodyMedium) }
             }
-            items(state.entries, key = { "$key/${it.name}" }) { entry ->
+            // By document: names can repeat (e.g. Nextcloud lists a file twice while uploading it).
+            items(state.entries, key = { "$key/${it.storeId.value}" }) { entry ->
                 when (entry) {
                     is LibraryEntry.Folder -> FolderCard(entry) { actions.openFolder(entry) }
                     is LibraryEntry.Document -> DocumentCard(entry, previews, actions) { actions.openDocument(entry) }
