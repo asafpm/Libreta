@@ -28,6 +28,7 @@ import pm.asaf.libreta.files.DocumentLocation
 import pm.asaf.libreta.store.OpenedPdfsProvider
 import pm.asaf.libreta.store.SafDocumentStore
 import java.io.File
+import kotlin.test.assertFailsWith
 
 @RunWith(AndroidJUnit4::class)
 class OpenedPdfsTest {
@@ -108,12 +109,13 @@ class OpenedPdfsTest {
         File(outside, "Courses").mkdirs()
         File(outside, "Courses/paper.xopp").writeText("taken")
         val courses = FolderRef(FakeDocumentsProvider.folderId("Courses"), "Courses")
+        // Not over another note, nor renamed apart from its PDF.
+        assertFailsWith<LibraryFiles.Refused> { opened.move(notes().single(), courses) }
+        assertEquals(setOf("paper.xopp", "paper.xopp.bg.pdf"), inside.list()?.toSet())
+        File(outside, "Courses/paper.xopp").delete()
         val moved = opened.move(notes().single(), courses)
-        assertEquals("paper (1).xopp", moved.name)
-        assertEquals(
-            setOf("paper.xopp", "paper (1).xopp", "paper (1).xopp.bg.pdf"),
-            File(outside, "Courses").list()?.toSet(),
-        )
+        assertEquals("paper.xopp", moved.name)
+        assertEquals(setOf("paper.xopp", "paper.xopp.bg.pdf"), File(outside, "Courses").list()?.toSet())
         assertEquals(emptyList<String>(), inside.list()?.toList())
         // Its PDF found there.
         val read = store.read(moved.id).buffer().use { XoppReader.read(it) }

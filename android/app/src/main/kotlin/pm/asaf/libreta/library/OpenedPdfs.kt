@@ -49,28 +49,18 @@ class OpenedPdfs(
     }
 
     /**
-     * Moves [note] and its PDF to [target] (a library folder), where a taken name is changed.
-     * Returns the note there.
+     * Moves [note] and its PDF to [target] (a library folder); a name taken there is refused
+     * ([LibraryFiles.Refused]). Returns the note there.
      */
     @Throws(IOException::class)
     fun move(
         note: LibraryEntry.Document,
         target: FolderRef,
-    ): StoreEntry.File {
-        val sidecar = store.list(folder.id).firstOrNull { it.name == sidecarOf(note.name) }
-        val pdf = sidecar?.let { entry -> store.read(entry.id).buffer().use { it.readByteString() } }
-        val bytes = store.read(note.id).buffer().use { it.readByteString() }
-        val moved = written(target, note.name, bytes, pdf)
-        delete(note)
-        return moved
-    }
+    ): StoreEntry = LibraryFiles(store).move(note, target)
 
     /** Deletes [note] and its PDF. */
     @Throws(IOException::class)
-    fun delete(note: LibraryEntry.Document) {
-        store.list(folder.id).firstOrNull { it.name == sidecarOf(note.name) }?.let { store.delete(it.id) }
-        store.delete(note.id)
-    }
+    fun delete(note: LibraryEntry.Document) = LibraryFiles(store).delete(note, alsoPdf = true)
 
     /** Writes a note [named] (or as the store renames it) in [into], with its PDF if there is one. */
     private fun written(

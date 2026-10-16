@@ -24,10 +24,13 @@ sealed interface LibraryEntry {
     /** The document it is in its store. */
     val storeId: StoreId
 
+    /** The folder it is in. */
+    val parent: FolderRef
+
     data class Folder(
         val folder: FolderRef,
         override val modified: Long,
-        val parent: FolderRef,
+        override val parent: FolderRef,
     ) : LibraryEntry {
         override val name: String get() = folder.name
         override val storeId: StoreId get() = folder.id
@@ -38,7 +41,6 @@ sealed interface LibraryEntry {
         val id: StoreId
         override val storeId: StoreId get() = id
         val version: FileVersion
-        val parent: FolderRef
         override val modified: Long get() = version.modified
     }
 
@@ -69,6 +71,18 @@ object FolderListing {
     fun isPdfName(name: String): Boolean = name.endsWith(PDF, ignoreCase = true)
 
     private const val PDF = ".pdf"
+
+    /** Whether [pdf] is the PDF the note [note] is named after, by Xournal++'s names for a PDF's note. */
+    fun annotates(
+        note: String,
+        pdf: String,
+    ): Boolean = isPdfName(pdf) && note in NewNote.notesForPdf(pdf)
+
+    /** Whether [name] is a file Xournal++ attached to the note [note] (`note.xopp.bg.pdf`). */
+    fun isAttachedTo(
+        name: String,
+        note: String,
+    ): Boolean = name.startsWith("$note.")
 
     /**
      * The subfolders (by name) and then the documents and PDFs (by [order]; newest first for
@@ -106,8 +120,7 @@ object FolderListing {
                     }
                 }
             }
-        val names = entries.map { it.name }.toSet()
-        val notes = entries.filterIsInstance<LibraryEntry.Document>().map { it.name + "." }
+        val notes = entries.filterIsInstance<LibraryEntry.Document>().map { it.name }
         val folders =
             entries.filterIsInstance<LibraryEntry.Folder>().sortedWith(
                 compareBy(
@@ -119,7 +132,7 @@ object FolderListing {
         val documents =
             entries.filterIsInstance<LibraryEntry.File>().filterNot { entry ->
                 entry is LibraryEntry.Pdf &&
-                    (NewNote.notesForPdf(entry.name).any { it in names } || notes.any { entry.name.startsWith(it) })
+                    notes.any { annotates(it, entry.name) || isAttachedTo(entry.name, it) }
             }
         val sorted =
             when (order) {
