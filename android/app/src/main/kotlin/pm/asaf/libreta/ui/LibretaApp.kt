@@ -18,6 +18,7 @@ import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.ToolSettings
 import pm.asaf.libreta.files.DocumentLocation
+import pm.asaf.libreta.library.EntryRequest
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.ToolPreferences
@@ -28,6 +29,7 @@ fun LibretaApp(model: AppViewModel) {
     val screens by model.screens.collectAsStateWithLifecycle()
     val newNote by model.newNotes.request.collectAsStateWithLifecycle()
     val newFolder by model.newFolders.request.collectAsStateWithLifecycle()
+    val entryRequest by model.entries.request.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model.library::addRoot)
@@ -49,6 +51,26 @@ fun LibretaApp(model: AppViewModel) {
         NewNoteDialog(request, onCreate = model.newNotes::create, onDismiss = model.newNotes::cancel)
     }
     if (newFolder != null) NewFolderDialog(onCreate = model.newFolders::create, onDismiss = model.newFolders::cancel)
+    entryRequest?.let { EntryDialogs(model, it) }
+}
+
+/** Renaming, moving or deleting what [request] is about. */
+@Composable
+private fun EntryDialogs(
+    model: AppViewModel,
+    request: EntryRequest,
+) {
+    val roots by model.library.roots.collectAsStateWithLifecycle()
+    val folders by model.library.folders.collectAsStateWithLifecycle()
+    val entries = model.entries
+    EntryDialog(
+        request,
+        roots.filterIsInstance<LibraryRoot.Local>(),
+        folders,
+        model.library.opened,
+        model.library::refresh,
+        EntryDialogActions(entries::renameTo, entries::moveTo, entries::confirmDelete, entries::cancel),
+    )
 }
 
 @Composable
@@ -77,6 +99,7 @@ private fun libraryActions(
         model.open(Screen.Note(entry.id, entry.name, DocumentLocation(folders, entry.name)))
     },
     openPdf = { entry -> model.pdfs.open(entry, parent?.path ?: listOf(entry.parent)) },
+    manage = model.entries.let { ManageActions(it::rename, it::move, it::delete, it::drop) },
 )
 
 @Composable
@@ -95,10 +118,7 @@ private fun Home(
         onNewNote = { folder -> model.newNotes.start(listOf(folder)) },
         onAddFolder = addFolder,
         onSettings = { model.open(Screen.Settings) },
-        opened =
-            model.library.opened?.let { folder ->
-                OpenedNotes(folder, model.library::refresh, model.pdfs::move, model.pdfs::delete)
-            },
+        opened = model.library.opened,
     )
 }
 

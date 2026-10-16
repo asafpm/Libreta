@@ -1,0 +1,151 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+package pm.asaf.libreta.library
+
+import android.content.Context
+import android.util.Log
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import pm.asaf.libreta.R
+import pm.asaf.libreta.core.store.DocumentStore
+
+/** A dialog about a library entry. */
+sealed interface EntryRequest {
+    val entry: LibraryEntry
+
+    data class Rename(
+        override val entry: LibraryEntry,
+    ) : EntryRequest
+
+    data class Move(
+        override val entry: LibraryEntry,
+    ) : EntryRequest
+
+    /** Deleting [entry]; [pdf] names the PDF that may go with it (a choice). */
+    data class Delete(
+        override val entry: LibraryEntry,
+        val pdf: String?,
+    ) : EntryRequest
+}
+
+/**
+ * Renaming, moving and deleting library entries ([LibraryFiles]): the dialog for one
+ * ([request]), then the change, on [io]. The folders changed are listed again in [library];
+ * [onMessage] gets what to tell.
+ */
+class LibraryFlow(
+    private val context: Context,
+    store: DocumentStore,
+    private val library: Library,
+    private val scope: CoroutineScope,
+    private val io: CoroutineDispatcher,
+    private val onMessage: (String) -> Unit,
+) {
+    private val files = LibraryFiles(store)
+    private val state = MutableStateFlow<EntryRequest?>(null)
+
+    /** The dialog shown, if any. */
+    val request: StateFlow<EntryRequest?> = state.asStateFlow()
+
+    fun rename(entry: LibraryEntry) {
+        state.value = EntryRequest.Rename(entry)
+    }
+
+    fun move(entry: LibraryEntry) {
+        state.value = EntryRequest.Move(entry)
+    }
+
+    /** Asks about deleting [entry], once the PDF that may go with it is known. */
+    fun delete(entry: LibraryEntry) {
+        scope.launch {
+            val pdf =
+                (entry as? LibraryEntry.Document)?.let { note ->
+                    withContext(io) { runCatching { files.pdfOf(note) }.getOrNull() }
+                }
+            state.value = EntryRequest.Delete(entry, pdf?.name)
+        }
+    }
+
+    fun cancel() {
+        state.value = null
+    }
+
+    /** Renames the entry asked about to [stem] (its name without extensions). */
+    fun renameTo(stem: String) {
+        val entry = (state.value as? EntryRequest.Rename)?.entry ?: return
+        state.value = null
+        run(entry, R.string.error_rename, listOf(entry.parent)) { files.rename(entry, stem.trim()) }
+    }
+
+    /** Moves the entry asked about into [target]. */
+    fun moveTo(target: FolderRef) {
+        val entry = (state.value as? EntryRequest.Move)?.entry ?: return
+        state.value = null
+        drop(entry, target)
+    }
+
+    /** Moves [entry] into [target], as dropped there. */
+    fun drop(
+        entry: LibraryEntry,
+        target: FolderRef,
+    ) {
+        if (target.id == entry.parent.id) return
+        run(
+            entry,
+            R.string.error_move,
+            listOf(entry.parent, target),
+            context.getString(R.string.moved_to, target.name),
+        ) {
+            files.move(entry, target)
+        }
+    }
+
+    /** Deletes the entry asked about, and the PDF that goes with it if [alsoPdf]. */
+    fun confirmDelete(alsoPdf: Boolean) {
+        val entry = (state.value as? EntryRequest.Delete)?.entry ?: return
+        state.value = null
+        run(entry, R.string.error_delete, listOf(entry.parent)) { files.delete(entry, alsoPdf) }
+    }
+
+    /** Does [change] to [entry] on [io], then lists [changed] again and says [done] or what failed ([failed]). */
+    private fun run(
+        entry: LibraryEntry,
+        failed: Int,
+        changed: List<FolderRef>,
+        done: String? = null,
+        change: () -> Unit,
+    ) {
+        scope.launch {
+            withContext(io) { runCatching(change) }
+                .onSuccess { done?.let(onMessage) }
+                .onFailure { e ->
+                    Log.w(TAG, "Cannot change ${entry.name}", e)
+                    onMessage(message(e, entry, failed))
+                }
+            changed.forEach(library::refresh)
+        }
+    }
+
+    private fun message(
+        e: Throwable,
+        entry: LibraryEntry,
+        failed: Int,
+    ): String =
+        when ((e as? LibraryFiles.Refused)?.problem) {
+            LibraryFiles.Problem.NAME_TAKEN -> context.getString(R.string.error_name_taken, e.message(entry))
+            LibraryFiles.Problem.INTO_ITSELF -> context.getString(R.string.error_into_itself, entry.name)
+            LibraryFiles.Problem.BAD_NAME -> context.getString(R.string.error_bad_name, e.message(entry))
+            null -> context.getString(failed, entry.name)
+        }
+
+    private companion object {
+        const val TAG = "LibraryFlow"
+
+        fun Throwable.message(entry: LibraryEntry) = (this as? LibraryFiles.Refused)?.name ?: entry.name
+    }
+}

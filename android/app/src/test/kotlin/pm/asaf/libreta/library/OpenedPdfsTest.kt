@@ -110,10 +110,10 @@ class OpenedPdfsTest {
         File(outside, "Courses/paper.xopp").writeText("taken")
         val courses = FolderRef(FakeDocumentsProvider.folderId("Courses"), "Courses")
         // Not over another note, nor renamed apart from its PDF.
-        assertFailsWith<LibraryFiles.Refused> { opened.move(notes().single(), courses) }
+        assertFailsWith<LibraryFiles.Refused> { LibraryFiles(store).move(notes().single(), courses) }
         assertEquals(setOf("paper.xopp", "paper.xopp.bg.pdf"), inside.list()?.toSet())
         File(outside, "Courses/paper.xopp").delete()
-        val moved = opened.move(notes().single(), courses)
+        val moved = LibraryFiles(store).move(notes().single(), courses)
         assertEquals("paper.xopp", moved.name)
         assertEquals(setOf("paper.xopp", "paper.xopp.bg.pdf"), File(outside, "Courses").list()?.toSet())
         assertEquals(emptyList<String>(), inside.list()?.toList())
@@ -127,7 +127,7 @@ class OpenedPdfsTest {
     @Test
     fun deletingRemovesTheNoteAndItsPdf() {
         open("paper.pdf")
-        opened.delete(notes().single())
+        LibraryFiles(store).delete(notes().single(), alsoPdf = true)
         assertEquals(emptyList<String>(), inside.list()?.toList())
         assertFalse(store.list(opened.folder.id).any { it is StoreEntry.File })
     }

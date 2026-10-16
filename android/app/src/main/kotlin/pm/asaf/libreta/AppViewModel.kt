@@ -40,6 +40,7 @@ import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.files.SaveResult
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
+import pm.asaf.libreta.library.LibraryFlow
 import pm.asaf.libreta.library.NewFolderFlow
 import pm.asaf.libreta.library.NewNoteCreator
 import pm.asaf.libreta.library.NewNoteFlow
@@ -171,6 +172,10 @@ class AppViewModel
                 onOpen = { showNote(it) },
                 onMessage = { errorState.value = it },
             )
+
+        /** Renaming, moving and deleting folders and notes. */
+        val entries =
+            LibraryFlow(application, store, library, viewModelScope, io, onMessage = { errorState.value = it })
 
         /** Exporting the open note as a PDF. */
         val exports = PdfExportFlow(application, viewModelScope, io, onMessage = { errorState.value = it })

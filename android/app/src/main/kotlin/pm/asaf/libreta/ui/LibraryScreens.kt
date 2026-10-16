@@ -62,12 +62,10 @@ fun HomeScreen(
     onNewNote: (FolderRef) -> Unit,
     onAddFolder: () -> Unit,
     onSettings: () -> Unit,
-    opened: OpenedNotes? = null,
+    opened: FolderRef? = null,
 ) {
-    var moving by remember { mutableStateOf<LibraryEntry.Document?>(null) }
-    var deleting by remember { mutableStateOf<LibraryEntry.Document?>(null) }
     val locals = roots.filterIsInstance<LibraryRoot.Local>()
-    val openedState = opened?.let { folders[it.folder] }
+    val openedState = opened?.let { folders[it] }
     val anyOpened = (openedState as? FolderState.Loaded)?.entries?.isNotEmpty() == true
     Scaffold(
         topBar = {
@@ -89,51 +87,11 @@ fun HomeScreen(
                     folderItems(root.id, folders[root.folder], previews, actions)
                 }
                 if (opened != null && anyOpened) {
-                    sectionTitle("opened", opened.folder.name)
-                    val movable = actions.copy(move = { moving = it }, delete = { deleting = it })
-                    folderItems("opened", openedState, previews, movable)
+                    sectionTitle("opened", opened.name)
+                    folderItems("opened", openedState, previews, actions)
                 }
             }
         }
-    }
-    if (opened !=
-        null
-    ) {
-        OpenedNoteDialogs(opened, locals, folders, moving, deleting, { moving = null }) { deleting = null }
-    }
-}
-
-/** Choosing where to move a note, and confirming one is deleted. */
-@Suppress("LongParameterList") // the notes, where they can go, and the dialogs' state
-@Composable
-private fun OpenedNoteDialogs(
-    opened: OpenedNotes,
-    roots: List<LibraryRoot.Local>,
-    folders: Map<FolderRef, FolderState>,
-    moving: LibraryEntry.Document?,
-    deleting: LibraryEntry.Document?,
-    onMoved: () -> Unit,
-    onDeleted: () -> Unit,
-) {
-    moving?.let { note ->
-        MoveToFolderDialog(note, roots, folders, opened.list, { target ->
-            onMoved()
-            opened.move(note, target)
-        }, onMoved)
-    }
-    deleting?.let { note ->
-        AlertDialog(
-            onDismissRequest = onDeleted,
-            title = { Text(stringResource(R.string.delete_opened_title, note.name)) },
-            text = { Text(stringResource(R.string.delete_opened_text)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleted()
-                    opened.delete(note)
-                }) { Text(stringResource(R.string.delete)) }
-            },
-            dismissButton = { TextButton(onClick = onDeleted) { Text(stringResource(R.string.cancel)) } },
-        )
     }
 }
 

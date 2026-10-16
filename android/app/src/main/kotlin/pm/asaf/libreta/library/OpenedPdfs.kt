@@ -48,20 +48,6 @@ class OpenedPdfs(
         return written(folder, base.ifBlank { "PDF" } + NewNote.EXTENSION, XoppWriter.toByteString(note), bytes)
     }
 
-    /**
-     * Moves [note] and its PDF to [target] (a library folder); a name taken there is refused
-     * ([LibraryFiles.Refused]). Returns the note there.
-     */
-    @Throws(IOException::class)
-    fun move(
-        note: LibraryEntry.Document,
-        target: FolderRef,
-    ): StoreEntry = LibraryFiles(store).move(note, target)
-
-    /** Deletes [note] and its PDF. */
-    @Throws(IOException::class)
-    fun delete(note: LibraryEntry.Document) = LibraryFiles(store).delete(note, alsoPdf = true)
-
     /** Writes a note [named] (or as the store renames it) in [into], with its PDF if there is one. */
     private fun written(
         into: FolderRef,

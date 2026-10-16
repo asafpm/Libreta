@@ -23,24 +23,24 @@ class LibraryActions(
     val openDocument: (LibraryEntry.Document) -> Unit,
     /** Opens a PDF's note, made the first time. */
     val openPdf: (LibraryEntry.Pdf) -> Unit,
-    /** Moves a note elsewhere; null where notes don't move (a card menu offers it otherwise). */
-    val move: ((LibraryEntry.Document) -> Unit)? = null,
-    /** Deletes a note; null where notes aren't deleted from the library. */
-    val delete: ((LibraryEntry.Document) -> Unit)? = null,
-) {
-    fun copy(
-        move: ((LibraryEntry.Document) -> Unit)?,
-        delete: ((LibraryEntry.Document) -> Unit)?,
-    ) = LibraryActions(openFolder, openDocument, openPdf, move, delete)
-}
+    /** Renaming, moving and deleting; null where entries can't be changed (no card menus). */
+    val manage: ManageActions? = null,
+)
 
-/** What can be done with the notes of PDFs opened from other apps, kept in [folder]. */
-class OpenedNotes(
-    val folder: FolderRef,
-    /** Lists a library folder, for choosing where to move a note. */
-    val list: (FolderRef) -> Unit,
-    val move: (LibraryEntry.Document, FolderRef) -> Unit,
-    val delete: (LibraryEntry.Document) -> Unit,
+/** Asking to rename, move or delete an entry, and moving one dropped on a folder. */
+class ManageActions(
+    val rename: (LibraryEntry) -> Unit,
+    val move: (LibraryEntry) -> Unit,
+    val delete: (LibraryEntry) -> Unit,
+    val drop: (LibraryEntry, FolderRef) -> Unit,
+)
+
+/** What the dialogs about an entry do once answered. */
+class EntryDialogActions(
+    val rename: (stem: String) -> Unit,
+    val move: (FolderRef) -> Unit,
+    val delete: (alsoPdf: Boolean) -> Unit,
+    val dismiss: () -> Unit,
 )
 
 /** Things [SettingsScreen] can change. */

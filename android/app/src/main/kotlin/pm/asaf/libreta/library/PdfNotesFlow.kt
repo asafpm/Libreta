@@ -59,33 +59,6 @@ class PdfNotesFlow(
         name: String,
     ): Boolean = FolderListing.isPdfName(name) || context.contentResolver.getType(Uri.parse(id.value)) == PDF_TYPE
 
-    /** Moves [note], kept in the app, with its PDF to the library folder [target]. */
-    fun move(
-        note: LibraryEntry.Document,
-        target: FolderRef,
-    ) {
-        scope.launch {
-            withContext(io) { runCatching { opened.move(note, target) } }
-                .onSuccess { onMessage(context.getString(R.string.moved_to, target.name)) }
-                .onFailure { e ->
-                    Log.w(TAG, "Cannot move ${note.name}", e)
-                    onMessage(context.getString(R.string.error_move_note, note.name))
-                }
-            library.refresh(opened.folder)
-            library.refresh(target)
-        }
-    }
-
-    /** Deletes [note], kept in the app, and its PDF. */
-    fun delete(note: LibraryEntry.Document) {
-        scope.launch {
-            withContext(
-                io,
-            ) { runCatching { opened.delete(note) } }.onFailure { Log.w(TAG, "Cannot delete ${note.name}", it) }
-            library.refresh(opened.folder)
-        }
-    }
-
     private fun noteNextTo(
         pdf: LibraryEntry.Pdf,
         path: List<FolderRef>,

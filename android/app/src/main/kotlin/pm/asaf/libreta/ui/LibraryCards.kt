@@ -60,13 +60,15 @@ import pm.asaf.libreta.library.FolderState
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.PreviewCache
 
+/** A folder, with a menu if [actions] has one. */
 @Composable
 internal fun FolderCard(
     entry: LibraryEntry.Folder,
+    actions: LibraryActions,
     onClick: () -> Unit,
 ) {
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 16.dp)) {
             Icon(FolderIcon, contentDescription = stringResource(R.string.folder), modifier = Modifier.size(32.dp))
             Spacer(Modifier.width(12.dp))
             Text(
@@ -74,7 +76,9 @@ internal fun FolderCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).padding(vertical = 16.dp),
             )
+            actions.manage?.let { CardMenu(entry, it, Modifier) } ?: Spacer(Modifier.width(16.dp))
         }
     }
 }
@@ -99,8 +103,8 @@ internal fun DocumentCard(
                         .padding(12.dp),
             ) {
                 PreviewImage(entry, previews)
-                if (entry is LibraryEntry.Pdf) PdfLabel(Modifier.align(Alignment.TopEnd))
-                if (entry is LibraryEntry.Document) CardMenu(entry, actions, Modifier.align(Alignment.TopEnd))
+                if (entry is LibraryEntry.Pdf) PdfLabel(Modifier.align(Alignment.TopStart))
+                actions.manage?.let { CardMenu(entry, it, Modifier.align(Alignment.TopEnd)) }
             }
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
@@ -128,37 +132,31 @@ internal fun DocumentCard(
     }
 }
 
-/** Moving and deleting [entry], when [actions] does them. */
+/** Renaming, moving and deleting [entry]. */
 @Composable
 private fun CardMenu(
-    entry: LibraryEntry.Document,
-    actions: LibraryActions,
+    entry: LibraryEntry,
+    actions: ManageActions,
     modifier: Modifier,
 ) {
-    val move = actions.move
-    val delete = actions.delete
-    if (move == null && delete == null) return
     var open by remember { mutableStateOf(false) }
     Box(modifier) {
         IconButton(onClick = { open = true }) {
             Icon(Icons.Filled.MoreVert, stringResource(R.string.more_actions_for, entry.name))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            move?.let {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.move_to_folder)) },
-                    onClick = {
-                        open = false
-                        it(entry)
-                    },
+            val items =
+                listOf(
+                    R.string.rename to actions.rename,
+                    R.string.move_to_folder to actions.move,
+                    R.string.delete to actions.delete,
                 )
-            }
-            delete?.let {
+            for ((label, action) in items) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.delete)) },
+                    text = { Text(stringResource(label)) },
                     onClick = {
                         open = false
-                        it(entry)
+                        action(entry)
                     },
                 )
             }

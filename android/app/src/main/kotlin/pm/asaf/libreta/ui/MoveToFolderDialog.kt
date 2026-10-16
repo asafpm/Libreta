@@ -40,12 +40,12 @@ import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 
 /**
- * Chooses a library folder to move [note] to: the roots, then their subfolders (listed with
- * [onList] into [folders]). [onMove] gets the folder chosen.
+ * Chooses a library folder to move [entry] to: the roots, then their subfolders (listed with
+ * [onList] into [folders]); not into itself, nor where it is. [onMove] gets the folder chosen.
  */
 @Composable
 fun MoveToFolderDialog(
-    note: LibraryEntry.Document,
+    entry: LibraryEntry,
     roots: List<LibraryRoot.Local>,
     folders: Map<FolderRef, FolderState>,
     onList: (FolderRef) -> Unit,
@@ -62,7 +62,7 @@ fun MoveToFolderDialog(
         text = {
             Column {
                 Text(
-                    note.name,
+                    entry.name,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -86,12 +86,14 @@ fun MoveToFolderDialog(
                             ?.entries
                             ?.filterIsInstance<LibraryEntry.Folder>()
                             ?.map { it.folder }
+                            ?.filter { it.id != entry.storeId }
                     }
                 FolderChoices(choices) { path = path + it }
             }
         },
         confirmButton = {
-            TextButton(onClick = { current?.let(onMove) }, enabled = current != null) {
+            val here = current != null && current.id != entry.parent.id
+            TextButton(onClick = { current?.let(onMove) }, enabled = here) {
                 Text(stringResource(R.string.move_here))
             }
         },
