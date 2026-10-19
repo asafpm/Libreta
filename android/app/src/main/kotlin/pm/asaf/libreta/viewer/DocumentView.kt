@@ -449,6 +449,8 @@ class DocumentView
         // Touch
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
+            // Not hovering any more.
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) inking.hover(event)
             inking.record(event)
             val wasActive = inking.input.isActive
             if (!inking.input.onTouchEvent(event)) {

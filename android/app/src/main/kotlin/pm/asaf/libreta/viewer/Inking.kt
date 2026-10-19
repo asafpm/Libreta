@@ -259,11 +259,16 @@ internal class Inking(
         predictor?.record(event)
     }
 
-    /** The stylus hovers: shows where the eraser would erase, or where the pen would write. */
+    /**
+     * The stylus hovers: shows where the eraser would erase, or where the pen would write. Any
+     * other [event] (a touch starting) hides them: some devices (the Tab S9) send no hover exit
+     * before the stylus writes.
+     */
     fun hover(event: MotionEvent) {
         val eraser = tools.eraser
         val chosen = tools.toolFor(event, 0)
-        val leaving = event.actionMasked == MotionEvent.ACTION_HOVER_EXIT
+        val leaving =
+            event.actionMasked != MotionEvent.ACTION_HOVER_MOVE && event.actionMasked != MotionEvent.ACTION_HOVER_ENTER
         val halfSize =
             when {
                 chosen != Tool.ERASER || leaving -> null

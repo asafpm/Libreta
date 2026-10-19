@@ -119,6 +119,20 @@ class TabletInputTest {
     }
 
     @Test
+    fun thePensDotGoesAsSoonAsThePenWrites() {
+        view.dispatchGenericMotionEvent(motion(MotionEvent.ACTION_HOVER_MOVE, 500f, 600f))
+        val page = drawn().getPixel(700, 900)
+        assertNotEquals(page, drawn().getPixel(500, 600))
+        // Writing, with no hover exit first (as on the Tab S9): the dot isn't left where it was.
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_DOWN, 200f, 1000f))
+        assertEquals(page, drawn().getPixel(500, 600))
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_MOVE, 200f, 1200f))
+        assertEquals(page, drawn().getPixel(500, 600))
+        view.dispatchTouchEvent(motion(MotionEvent.ACTION_UP, 200f, 1200f))
+        assertEquals(page, drawn().getPixel(500, 600))
+    }
+
+    @Test
     fun theTextToolShowsATextCursor() {
         view.tools = view.tools.copy(tool = Tool.TEXT)
         view.dispatchGenericMotionEvent(motion(MotionEvent.ACTION_HOVER_MOVE, 500f, 600f))
