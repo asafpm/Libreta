@@ -30,9 +30,14 @@ class NoteClipboard(
     /** Whether the clipboard holds elements or a picture to paste. */
     val canPaste: StateFlow<Boolean> = pastable.asStateFlow()
 
+    private val listener = ClipboardManager.OnPrimaryClipChangedListener { pastable.value = holdsSomething() }
+
     init {
-        clipboard.addPrimaryClipChangedListener { pastable.value = holdsSomething() }
+        clipboard.addPrimaryClipChangedListener(listener)
     }
+
+    /** Stops following the system's clipboard (its listener would keep this alive). */
+    fun close() = clipboard.removePrimaryClipChangedListener(listener)
 
     /**
      * Looks at the clipboard again. Android lets an app read it only while the app has focus, so

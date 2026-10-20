@@ -108,6 +108,22 @@ class LibraryTest {
         }
 
     @Test
+    fun previewsInMemoryAreLetGoWhenMemoryIsShort() =
+        runTest {
+            BlankPdfPages.install()
+            copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+            val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
+            val previews =
+                PreviewCache(context, store, temporary.newFolder("previews"), StandardTestDispatcher(testScheduler))
+            previews.previews(pdf).toList()
+            assertTrue(previews.cached(pdf) != null)
+            previews.trimMemory()
+            assertEquals(null, previews.cached(pdf))
+            // Still on disk: shown again without rendering.
+            assertEquals(1, previews.previews(pdf).toList().size)
+        }
+
+    @Test
     fun aNoteWhosePreviewFailsHasNone() =
         runTest {
             // Its PDF can't be drawn, in a way nobody expected.

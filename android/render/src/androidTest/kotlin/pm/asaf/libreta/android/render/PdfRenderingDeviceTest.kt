@@ -203,7 +203,9 @@ class PdfRenderingDeviceTest {
                 .flatMap { it.elements }
                 .filterIsInstance<Element.TexImage>()
                 .single()
-        val rasterizer = AndroidPdfRasterizer(context.cacheDir)
+        // A folder of its own, as the app gives it, made when it is first needed.
+        val folder = File(context.cacheDir, "pdf-images-test").apply { deleteRecursively() }
+        val rasterizer = AndroidPdfRasterizer(folder)
         assertNotNull(rasterizer.render(tex.data, 0, 200, 50))
         val bitmap = PageRenderer(context, pdfRasterizer = rasterizer).renderToBitmap(page, ZOOM)
         save(bitmap, "note_taking_p1.png")

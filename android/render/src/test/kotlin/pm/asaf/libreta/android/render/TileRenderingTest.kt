@@ -171,6 +171,25 @@ class TileRenderingTest {
         }
 
     @Test
+    fun tilesAreLetGoWhenMemoryIsShort() =
+        runTest {
+            val page = TestDocuments.load("physics.xopp").pages[0]
+            val caches = caches()
+            val renderer = newTileRenderer(listOf(page), caches)
+            renderer.request(page.allTiles(1f).map { RenderJob.TileJob(0, 1f, it) })
+            testScheduler.advanceUntilIdle()
+            assertTrue(caches.tiles.size > 0)
+            caches.tiles.clear()
+            assertEquals(0, caches.tiles.size)
+            assertEquals(0, caches.tiles.pooled)
+            // Asked for again, drawn again.
+            renderer.request(page.allTiles(1f).map { RenderJob.TileJob(0, 1f, it) })
+            testScheduler.advanceUntilIdle()
+            assertTrue(caches.tiles.size > 0)
+            renderer.close()
+        }
+
+    @Test
     fun aRenderThatFailsLeavesTheOthers() =
         runTest {
             // A PDF closed while it is drawn (the note was closed): it throws.

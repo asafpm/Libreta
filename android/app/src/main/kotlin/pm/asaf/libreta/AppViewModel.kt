@@ -425,6 +425,7 @@ class AppViewModel
 
         // Saved when the app stopped (MainActivity.onStop); the scope is gone now.
         override fun onCleared() {
+            clipboard.close()
             (noteState.value as? NoteState.Loaded)?.files?.close()
         }
 

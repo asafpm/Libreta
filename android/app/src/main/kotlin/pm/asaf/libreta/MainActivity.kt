@@ -3,6 +3,7 @@
 package pm.asaf.libreta
 
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks2
 import android.content.Intent
 import android.os.Bundle
 import android.view.KeyEvent
@@ -63,6 +64,18 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onProvideKeyboardShortcuts(data, menu, deviceId)
         data.addAll(shortcutGroups(this))
+    }
+
+    /**
+     * Memory is short while the app is in the background: the open note's tiles and the library's
+     * previews are let go (drawn again when needed; thumbnails stay, to show meanwhile).
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+            (model.note.value as? NoteState.Loaded)?.caches?.tiles?.clear()
+            model.previews.trimMemory()
+        }
     }
 
     /** Back in front: the clipboard can be read again (see [NoteClipboard.refresh]). */

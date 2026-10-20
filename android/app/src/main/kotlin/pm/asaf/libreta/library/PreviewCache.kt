@@ -54,8 +54,11 @@ class PreviewCache(
     // Rendering is serial, to bound memory; documents are still read in parallel.
     private val rendering = Mutex()
 
+    /** Lets go of the previews in memory (they stay on disk), as memory is short. */
+    fun trimMemory() = memory.clear()
+
     /** The finished preview, if it is in memory. */
-    fun cached(document: LibraryEntry.File): Bitmap? = memory[keyOf(document)]
+    fun cached(document: LibraryEntry.File): Bitmap? = memory[document.previewKey()]
 
     /**
      * Previews of [document], better ones later: the finished preview if cached, otherwise
@@ -63,7 +66,7 @@ class PreviewCache(
      */
     fun previews(document: LibraryEntry.File): Flow<Bitmap> =
         flow {
-            val key = keyOf(document)
+            val key = document.previewKey()
             val file = File(directory, key.encodeUtf8().sha256().hex() + ".jpg")
             val finished = memory[key] ?: decode(file)?.also { memory.put(key, it) }
             if (finished != null) {
@@ -85,8 +88,6 @@ class PreviewCache(
             // Whatever a note holds, the library must not crash over its preview.
             .catch { e -> Log.w(TAG, "No preview for ${document.name}", e) }
             .flowOn(io)
-
-    private fun keyOf(document: LibraryEntry.File) = "${document.id.value}|${document.version}"
 
     private fun decode(file: File): Bitmap? = if (file.isFile) BitmapFactory.decodeFile(file.path) else null
 
@@ -178,3 +179,6 @@ class PreviewCache(
         const val QUALITY = 85
     }
 }
+
+/** What a preview of this file is cached under: a new version is a new preview. */
+private fun LibraryEntry.File.previewKey() = "${id.value}|$version"

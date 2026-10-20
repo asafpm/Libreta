@@ -35,6 +35,18 @@ class NoteClipboardTest {
     }
 
     @Test
+    fun aClosedClipboardNoLongerFollowsTheSystemOne() {
+        system.setPrimaryClip(android.content.ClipData.newPlainText("text", "hello"))
+        val clipboard = NoteClipboard(context)
+        clipboard.close()
+        // A picture copied in another app: no longer heard of.
+        val description = android.content.ClipDescription("picture", arrayOf("image/png"))
+        val item = android.content.ClipData.Item(android.net.Uri.parse("content://elsewhere/picture.png"))
+        system.setPrimaryClip(android.content.ClipData(description, item))
+        assertEquals(false, clipboard.canPaste.value)
+    }
+
+    @Test
     fun aBigCopyStaysInTheApp() {
         // A photo: megabytes as text, more than Android's clipboard takes (about 1 MB).
         val photo = Element.Image(Bounds(0.0, 0.0, 400.0, 300.0), Random(1).nextBytes(3_000_000).toByteString())

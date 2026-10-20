@@ -121,7 +121,14 @@ class TileCache(
         }
     }
 
-    fun clear() = tiles.clear()
+    /** Lets go of every tile, and of the bitmaps kept for reuse (e.g. as memory is short). */
+    fun clear() {
+        tiles.clear()
+        synchronized(pool) { pool.clear() }
+    }
+
+    /** The bitmaps kept for reuse. */
+    val pooled: Int get() = synchronized(pool) { pool.size }
 
     /** A cleared tile bitmap, reused if possible. */
     fun obtain(): Bitmap =
