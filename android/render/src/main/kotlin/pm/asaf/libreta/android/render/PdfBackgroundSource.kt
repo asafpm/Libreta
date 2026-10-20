@@ -34,6 +34,9 @@ class PdfBackgroundSource(
     )
 
     private val cache = LruCache<Pair<Int, Float>, Rendered>(CACHE_SIZE)
+
+    /** Closed (its note was closed): renders still running draw nothing. */
+    private var closed = false
     private val paint = Paint().apply { isFilterBitmap = true }
 
     val pageCount: Int = renderer.pageCount
@@ -46,11 +49,11 @@ class PdfBackgroundSource(
         zoom: Float,
     ): Boolean {
         val index = (pageNumber - 1).toInt()
-        if (pageNumber < 1 || index >= pageCount) return false
         // Rendered pages are drawn without waiting for a render on another thread.
-        val rendered = cache.get(index to zoom) ?: renderPage(index, zoom)
-        canvas.drawBitmap(rendered.bitmap, null, RectF(0f, 0f, rendered.width, rendered.height), paint)
-        return true
+        val rendered =
+            if (pageNumber < 1 || index >= pageCount) null else cache.get(index to zoom) ?: renderPage(index, zoom)
+        rendered?.let { canvas.drawBitmap(it.bitmap, null, RectF(0f, 0f, it.width, it.height), paint) }
+        return rendered != null
     }
 
     /** The size of PDF page [pageNumber] (from 1) in points, or null if there is no such page. */
@@ -65,8 +68,18 @@ class PdfBackgroundSource(
     private fun renderPage(
         index: Int,
         zoom: Float,
+    ): Rendered? =
+        if (closed) {
+            null
+        } else {
+            cache.get(index to zoom) ?: render(index, zoom)
+        }
+
+    private fun render(
+        index: Int,
+        zoom: Float,
     ): Rendered =
-        cache.get(index to zoom) ?: run {
+        run {
             val (width, height) = renderer.pageSize(index)
             // Like Xournal++, never below one pixel per point.
             val scale = maxOf(zoom, 1f)
@@ -81,7 +94,11 @@ class PdfBackgroundSource(
         }
 
     @Synchronized
-    override fun close() = renderer.close()
+    override fun close() {
+        closed = true
+        cache.evictAll()
+        renderer.close()
+    }
 
     private companion object {
         const val CACHE_SIZE = 8

@@ -75,6 +75,34 @@ class PdfRenderingDeviceTest {
     }
 
     @Test
+    fun closingWhileDrawingIsSafe() {
+        val pdf =
+            File(context.cacheDir, "closing.pdf").apply { writeBytes(asset("pdf_annotation.xopp.bg.pdf")) }
+        val source = PdfBackgroundSource(pdf)
+        val canvas = android.graphics.Canvas(Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888))
+        var failure: Throwable? = null
+        // A render worker drawing at changing zooms, as tiles do, while the note closes.
+        val worker =
+            Thread {
+                try {
+                    var zoom = 0.2f
+                    repeat(DRAWS) {
+                        source.drawPdfPage(canvas, 1, zoom)
+                        zoom += 0.05f
+                    }
+                } catch (e: Throwable) {
+                    failure = e
+                }
+            }
+        worker.start()
+        Thread.sleep(CLOSE_AFTER_MS)
+        source.close()
+        worker.join()
+        pdf.delete()
+        assertTrue(failure == null, "drawing failed: $failure")
+    }
+
+    @Test
     fun latexFormulaStoredAsPdf() {
         val page = document("note-taking.xopp").pages[0]
         val tex =
@@ -90,6 +118,8 @@ class PdfRenderingDeviceTest {
     }
 
     private companion object {
+        const val DRAWS = 40
+        const val CLOSE_AFTER_MS = 50L
         const val ZOOM = 1.5f
         const val MID_GREY = 3 * 128
         const val MIN_PDF_PIXELS = 1000

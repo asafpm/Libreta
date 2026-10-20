@@ -4,6 +4,7 @@ package pm.asaf.libreta.android.render
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -139,7 +140,12 @@ class TileRenderer(
             if (work == null) {
                 wakeups.receive()
             } else {
-                val bitmap = render(renderer, work)
+                val bitmap = renderOrNull(renderer, work)
+                if (bitmap == null) {
+                    // Not rendered: asked for again when it is still wanted.
+                    synchronized(this) { inFlight.remove(work.job) }
+                    continue
+                }
                 withContext(threads.results) {
                     store(work, bitmap)
                     synchronized(this@TileRenderer) {
@@ -169,6 +175,25 @@ class TileRenderer(
         when (job) {
             is RenderJob.TileJob -> job.key(versions[job.page]) in caches.tiles
             is RenderJob.ThumbnailJob -> ThumbnailKey(job.page, versions[job.page]) in caches.thumbnails
+        }
+
+    /**
+     * [work] rendered, or null if rendering failed: a page that can't be drawn (e.g. its PDF
+     * closed with its note, or too big a bitmap) must not stop the worker, nor crash the app.
+     */
+    @Suppress("TooGenericExceptionCaught") // whatever drawing a page throws
+    private fun renderOrNull(
+        renderer: PageRenderer,
+        work: Work,
+    ): Bitmap? =
+        try {
+            render(renderer, work)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "Cannot render ${work.job}", e)
+            null
+        } catch (e: OutOfMemoryError) {
+            Log.w(TAG, "Out of memory rendering ${work.job}", e)
+            null
         }
 
     private fun render(
@@ -204,6 +229,8 @@ class TileRenderer(
     }
 
     companion object {
+        private const val TAG = "TileRenderer"
+
         /** [page] at [Thumbnails.WIDTH] pixels wide. */
         fun renderThumbnail(
             renderer: PageRenderer,

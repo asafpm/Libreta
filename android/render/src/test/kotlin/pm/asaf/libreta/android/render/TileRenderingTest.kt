@@ -17,9 +17,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.GraphicsMode
 import pm.asaf.libreta.core.geometry.TileGrid
+import pm.asaf.libreta.core.model.Background
 import pm.asaf.libreta.core.model.Bounds
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Element
+import pm.asaf.libreta.core.model.FileDomain
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.PointList
 import pm.asaf.libreta.core.model.StrokeTool
@@ -132,13 +134,14 @@ class TileRenderingTest {
     private fun TestScope.newTileRenderer(
         pages: List<Page>,
         caches: RenderCaches,
+        renderer: () -> PageRenderer = ::newRenderer,
         onRendered: () -> Unit = {},
     ): TileRenderer {
         val dispatcher = StandardTestDispatcher(testScheduler)
         return TileRenderer(
             pages,
             caches,
-            ::newRenderer,
+            renderer,
             onRendered,
             RenderThreads(workers = 2, dispatcher, dispatcher),
         )
@@ -164,6 +167,34 @@ class TileRenderingTest {
             renderer.request(tiles)
             testScheduler.advanceUntilIdle()
             assertEquals(tiles.size + 1, notified)
+            renderer.close()
+        }
+
+    @Test
+    fun aRenderThatFailsLeavesTheOthers() =
+        runTest {
+            // A PDF closed while it is drawn (the note was closed): it throws.
+            val closed =
+                object : BackgroundSource {
+                    override fun image(background: Background.Pixmap): Bitmap? = null
+
+                    override fun drawPdfPage(
+                        canvas: Canvas,
+                        pageNumber: Long,
+                        zoom: Float,
+                    ): Boolean = throw IllegalStateException("Already closed")
+                }
+            val plain = TestDocuments.load("physics.xopp").pages[0]
+            val pdf = plain.copy(background = Background.Pdf(1, FileDomain.ABSOLUTE, "paper.pdf"))
+            val caches = caches()
+            val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+            val renderer = newTileRenderer(listOf(pdf, plain), caches, renderer = { PageRenderer(context, closed) })
+            val tiles = plain.allTiles(1f)
+            renderer.request(tiles.map { RenderJob.TileJob(0, 1f, it) } + tiles.map { RenderJob.TileJob(1, 1f, it) })
+            testScheduler.advanceUntilIdle()
+            // Page 2 is drawn; page 1 isn't, and is tried again when asked for.
+            assertTrue(tiles.all { RenderJob.TileJob(1, 1f, it).key(0) in caches.tiles })
+            assertTrue(tiles.none { RenderJob.TileJob(0, 1f, it).key(0) in caches.tiles })
             renderer.close()
         }
 
