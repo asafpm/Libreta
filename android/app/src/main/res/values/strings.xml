@@ -37,6 +37,7 @@
     <string name="export_pdf">Export PDF…</string>
     <string name="insert_image">Insert image</string>
     <string name="take_photo">Take photo</string>
+    <string name="error_add_folder">Couldn\'t add the folder: Android didn\'t let Libreta keep access to it</string>
     <string name="error_insert_image">Couldn\'t insert the picture</string>
     <string name="share_pdf">Share as PDF</string>
     <string name="exporting_pdf">Exporting PDF…</string>

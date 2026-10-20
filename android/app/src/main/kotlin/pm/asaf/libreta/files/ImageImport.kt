@@ -39,8 +39,12 @@ object ImageImport {
         uri: Uri,
     ): ImportedImage {
         val bytes =
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: throw FileNotFoundException(uri.toString())
+            try {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            } catch (e: SecurityException) {
+                // A pasted or dropped picture whose permission lapsed.
+                throw IOException("Not allowed to read $uri", e)
+            } ?: throw FileNotFoundException(uri.toString())
         return imported(bytes)
     }
 

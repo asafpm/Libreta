@@ -122,7 +122,15 @@ class AppViewModel
                 FolderRef(OpenedPdfsProvider.folder(application), application.getString(R.string.opened_pdfs)),
             )
         val library =
-            Library(store, application.contentResolver, preferences, viewModelScope, io, openedPdfs.folder)
+            Library(
+                store,
+                application.contentResolver,
+                preferences,
+                viewModelScope,
+                io,
+                openedPdfs.folder,
+                onAddFailed = { errorState.value = application.getString(R.string.error_add_folder) },
+            )
         val previews =
             PreviewCache(application, store, locate = { NoteLoader.locate(store, library.roots.value, it.id, it.name) })
         val tools = ToolPreferences(preferences)

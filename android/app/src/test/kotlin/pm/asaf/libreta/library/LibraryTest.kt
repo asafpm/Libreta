@@ -108,6 +108,44 @@ class LibraryTest {
         }
 
     @Test
+    fun aNoteWhosePreviewFailsHasNone() =
+        runTest {
+            // Its PDF can't be drawn, in a way nobody expected.
+            pm.asaf.libreta.android.render.PdfPageRenderer.open = { throw IllegalStateException("broken") }
+            try {
+                copy("pdf_annotation.xopp.bg.pdf", "pdf_annotation.xopp.bg.pdf", 3_000_000)
+                copy("pdf_annotation.xopp", "pdf_annotation.xopp", 3_000_000)
+                val note = FolderListing.list(store, root).single() as LibraryEntry.Document
+                val io = StandardTestDispatcher(testScheduler)
+                val previews = PreviewCache(context, store, temporary.newFolder("previews"), io).previews(note)
+                // No crash, just the preview the note carries (or none).
+                assertTrue(previews.toList().size <= 1)
+            } finally {
+                BlankPdfPages.install()
+            }
+        }
+
+    @Test
+    fun aFolderWhoseAccessCanNotBeKeptIsNotAdded() =
+        runTest {
+            val messages = mutableListOf<String>()
+            val library =
+                Library(
+                    store,
+                    context.contentResolver,
+                    context.getSharedPreferences("add-test", Context.MODE_PRIVATE),
+                    this,
+                    StandardTestDispatcher(testScheduler),
+                    onAddFailed = { messages += it.toString() },
+                    keepAccess = { throw SecurityException("No persistable permission grants found") },
+                )
+            library.addRoot(FakeDocumentsProvider.treeUri())
+            testScheduler.advanceUntilIdle()
+            assertEquals(emptyList<LibraryRoot>(), library.roots.value)
+            assertEquals(1, messages.size)
+        }
+
+    @Test
     fun rootsKeepTheirOrder() {
         val preferences = context.getSharedPreferences("roots-test", Context.MODE_PRIVATE)
         val roots = LibraryRoots(preferences)

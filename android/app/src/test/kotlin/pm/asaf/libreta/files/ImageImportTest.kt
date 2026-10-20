@@ -42,6 +42,58 @@ class ImageImportTest {
 
     private fun isPng(bytes: ByteArray) = bytes[0] == 0x89.toByte() && bytes[1] == 'P'.code.toByte()
 
+    /** A provider that no longer lets the app read (e.g. a grant that lapsed). */
+    class DenyingProvider : android.content.ContentProvider() {
+        override fun onCreate() = true
+
+        override fun openFile(
+            uri: android.net.Uri,
+            mode: String,
+        ): android.os.ParcelFileDescriptor = throw SecurityException("Permission denial")
+
+        override fun query(
+            uri: android.net.Uri,
+            projection: Array<out String>?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+            sortOrder: String?,
+        ) = null
+
+        override fun getType(uri: android.net.Uri) = "image/png"
+
+        override fun insert(
+            uri: android.net.Uri,
+            values: android.content.ContentValues?,
+        ) = null
+
+        override fun delete(
+            uri: android.net.Uri,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ) = 0
+
+        override fun update(
+            uri: android.net.Uri,
+            values: android.content.ContentValues?,
+            selection: String?,
+            selectionArgs: Array<out String>?,
+        ) = 0
+    }
+
+    @Test
+    fun aPictureNoLongerReadableFailsAsAnIOException() {
+        org.robolectric.Robolectric
+            .buildContentProvider(DenyingProvider::class.java)
+            .create(DENIED)
+        val context =
+            androidx.test.core.app.ApplicationProvider
+                .getApplicationContext<android.content.Context>()
+        // Pasted or dropped pictures can lose their permission; that is a picture that can't be read.
+        kotlin.test.assertFailsWith<java.io.IOException> {
+            ImageImport.read(context, android.net.Uri.parse("content://$DENIED/picture.png"))
+        }
+    }
+
     @Test
     fun smallJpegsAndPngsAreKeptAsTheyAre() {
         val png = picture(300, 200, Bitmap.CompressFormat.PNG)
@@ -95,5 +147,6 @@ class ImageImportTest {
 
     private companion object {
         const val MARK = 10
+        const val DENIED = "pm.asaf.libreta.test.denied"
     }
 }

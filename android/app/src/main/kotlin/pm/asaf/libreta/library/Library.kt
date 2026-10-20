@@ -5,6 +5,7 @@ package pm.asaf.libreta.library
 import android.content.ContentResolver
 import android.content.SharedPreferences
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +44,10 @@ class Library(
     private val io: CoroutineDispatcher,
     /** Where notes of PDFs opened from other apps are kept (shown when there are any). */
     val opened: FolderRef? = null,
+    /** Called with a folder that couldn't be added (Android didn't let the app keep access). */
+    private val onAddFailed: (Uri) -> Unit = {},
+    /** Keeps access to a picked folder ([LibraryRoots.keepAccess]). */
+    private val keepAccess: (Uri) -> Unit = { LibraryRoots.keepAccess(resolver, it) },
 ) {
     private val configured = LibraryRoots(preferences)
     val roots: StateFlow<List<LibraryRoot>> = configured.roots
@@ -90,13 +95,21 @@ class Library(
         scope.launch {
             val root =
                 withContext(io) {
-                    LibraryRoots.keepAccess(resolver, treeUri)
-                    val name = store.entry(SafDocumentStore.rootOf(treeUri))?.name
-                    LibraryRoot.Local(treeUri, name ?: treeUri.lastPathSegment.orEmpty())
+                    runCatching { keepAccess(treeUri) }
+                        .map {
+                            val name = store.entry(SafDocumentStore.rootOf(treeUri))?.name
+                            LibraryRoot.Local(treeUri, name ?: treeUri.lastPathSegment.orEmpty())
+                        }
                 }
-            configured.add(root)
-            refresh(root.folder)
-            then()
+            root
+                .onSuccess {
+                    configured.add(it)
+                    refresh(it.folder)
+                    then()
+                }.onFailure {
+                    Log.w(TAG, "Cannot add $treeUri", it)
+                    onAddFailed(treeUri)
+                }
         }
     }
 
@@ -111,6 +124,7 @@ class Library(
     ) = configured.move(root, by)
 
     private companion object {
+        const val TAG = "Library"
         const val SORT_KEY = "sort"
     }
 }

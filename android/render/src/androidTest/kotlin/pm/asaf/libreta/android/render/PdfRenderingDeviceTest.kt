@@ -16,6 +16,7 @@ import pm.asaf.libreta.core.model.Bounds
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.Element
 import java.io.File
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -71,6 +72,18 @@ class PdfRenderingDeviceTest {
             val withoutPdf = PageRenderer(context).renderToBitmap(page, ZOOM)
             val whole = Bounds(0.0, 0.0, page.width, page.height)
             assertTrue(darkPixels(bitmap, whole, ZOOM) > darkPixels(withoutPdf, whole, ZOOM) + MIN_PDF_PIXELS)
+        }
+    }
+
+    @Test
+    fun aPdfWithAPasswordFailsToOpenAsAnIOException() {
+        // testdata/password.pdf: pdf_annotation.xopp.bg.pdf locked with qpdf (user password "secret").
+        val pdf = File(context.cacheDir, "password.pdf").apply { writeBytes(asset("password.pdf")) }
+        try {
+            // PdfRenderer throws a SecurityException; callers handle files they can't read as IOExceptions.
+            assertFailsWith<java.io.IOException> { PdfBackgroundSource(pdf) }
+        } finally {
+            pdf.delete()
         }
     }
 

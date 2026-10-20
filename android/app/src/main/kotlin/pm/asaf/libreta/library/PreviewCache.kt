@@ -9,6 +9,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
@@ -80,7 +81,10 @@ class PreviewCache(
                     emit(rendered)
                 }
             }
-        }.flowOn(io)
+        }
+            // Whatever a note holds, the library must not crash over its preview.
+            .catch { e -> Log.w(TAG, "No preview for ${document.name}", e) }
+            .flowOn(io)
 
     private fun keyOf(document: LibraryEntry.File) = "${document.id.value}|${document.version}"
 
