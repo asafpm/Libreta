@@ -331,8 +331,8 @@ class AppViewModel
             viewModelScope.launch {
                 saving?.join()
                 val state = withContext(io) { NoteLoader.load(context, store, screen.id, screen.name, screen.location) }
-                // Still the same note?
-                if (stack.value.lastOrNull() == screen) {
+                // Still shown, as this opening of it? (The same note opened again is loaded again.)
+                if (stack.value.lastOrNull() === screen) {
                     noteState.value = state
                     if (state is NoteState.Loaded) startAutosave(state)
                 } else {
