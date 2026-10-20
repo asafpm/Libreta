@@ -492,6 +492,34 @@ class NoteScreenTest {
         )
     }
 
+    private fun editText(view: View): android.widget.EditText? =
+        view as? android.widget.EditText
+            ?: (view as? ViewGroup)?.let { group ->
+                (0 until group.childCount).firstNotNullOfOrNull { editText(group.getChildAt(it)) }
+            }
+
+    @Test
+    fun textBeingTypedIsKeptWhenTheAppGoesToTheBackground() {
+        val model = openLecture()
+        compose.onNodeWithContentDescription("Text").performClick()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        compose.runOnIdle {
+            // On the page, in the middle of the view.
+            val (x, y) = view.width / 2f to view.height / 2f
+            stylus(view, MotionEvent.ACTION_DOWN, 1000, 1000, x, y)
+            stylus(view, MotionEvent.ACTION_UP, 1000, 1010, x, y)
+        }
+        compose.waitForIdle()
+        compose.runOnIdle { checkNotNull(editText(compose.activity.window.decorView)).setText("Typed") }
+        // The app leaves the screen (and may be killed in the background): the text is in the note to save.
+        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
+        eventually {
+            (model.note.value as NoteState.Loaded).document.pages.any { page ->
+                page.layers.any { layer -> layer.elements.any { it is Element.Text && it.text == "Typed" } }
+            }
+        }
+    }
+
     @Test
     fun penPressureCanBeTurnedOff() {
         val model = openLecture()

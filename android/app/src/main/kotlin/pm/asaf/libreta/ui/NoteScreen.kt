@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -50,6 +51,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.graphics.lowlatency.LowLatencyCanvasView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.R
@@ -383,6 +387,25 @@ private fun UndoButtons(
     TooltipIconButton(RedoIcon, stringResource(R.string.redo), view != null && history.canRedo) { redo(session, view) }
 }
 
+/**
+ * Finishes the text being typed in [view] when the app leaves the screen: it is then in the
+ * note, saved as the app stops (before it, as lifecycle observers hear of it first), and not
+ * lost if the app is killed in the background.
+ */
+@Composable
+private fun FinishTextOnStop(view: () -> DocumentView?) {
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val current by rememberUpdatedState(view)
+    DisposableEffect(lifecycle) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) current()?.text?.finish()
+            }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+}
+
 /** The pages, with wet ink in a front buffer above them; [onView] gets the view (null when gone). */
 @Composable
 private fun NoteCanvas(
@@ -397,6 +420,7 @@ private fun NoteCanvas(
     var document by remember { mutableStateOf<DocumentView?>(null) }
     val darkPages = LocalDarkPages.current
     val layers by state.session.layers.collectAsState()
+    FinishTextOnStop { document }
     AndroidView(
         factory = { context ->
             val view =
