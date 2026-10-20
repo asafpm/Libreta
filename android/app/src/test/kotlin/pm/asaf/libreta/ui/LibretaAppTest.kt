@@ -240,6 +240,29 @@ class LibretaAppTest {
         compose.onNode(hasText("New folder") or hasContentDescription("New folder")).performClick()
 
     @Test
+    fun changesNotSavedWhenTheAppStoppedAreOfferedBack() {
+        File(testData, "note-taking.xopp").copyTo(File(directory, "Lecture.xopp"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        // The app was killed while saving: what it was saving is kept.
+        val changed = File(testData, "physics.xopp").readBytes()
+        pm.asaf.libreta.files
+            .Recovery(File(application.filesDir, "recovery"))
+            .keep(FakeDocumentsProvider.fileId("Lecture.xopp"), "Lecture.xopp", okio.ByteString.of(*changed))
+        show()
+        waitForText("Lecture.xopp wasn't saved")
+        compose.onNodeWithText("Put them back in the note").performClick()
+        waitForGone("Lecture.xopp wasn't saved")
+        assertTrue(changed.contentEquals(File(directory, "Lecture.xopp").readBytes()))
+        assertEquals(
+            emptyList<Any>(),
+            pm.asaf.libreta.files
+                .Recovery(File(application.filesDir, "recovery"))
+                .copies(),
+        )
+    }
+
+    @Test
     fun helpStartsWithTheLibrary() {
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))

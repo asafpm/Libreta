@@ -75,6 +75,8 @@ class NoteSaver(
     private val context: Context,
     private val store: DocumentStore,
     private val backups: Backups,
+    /** What is being saved, until its file has it. */
+    private val recovery: Recovery,
 ) {
     fun save(
         file: NoteFile,
@@ -97,6 +99,8 @@ class NoteSaver(
     ): SaveResult =
         try {
             val bytes = encoded(document, files)
+            val id = file.id
+            keep(file, bytes)
             if (!file.backedUp) backUp(file)
             val result =
                 when (val written = writeOver(file, bytes)) {
@@ -117,6 +121,7 @@ class NoteSaver(
                     }
                 }
             session.saved(document)
+            recovery.forget(id)
             result
         } catch (e: IOException) {
             Log.w(TAG, "Cannot save ${file.name}", e)
@@ -139,6 +144,21 @@ class NoteSaver(
             Log.w(TAG, "Cannot save a copy", e)
             SaveResult.Failed(e)
         }
+
+    /** Forgets what was kept of [file] to recover: its changes were saved elsewhere, or discarded. */
+    fun forget(file: NoteFile) = recovery.forget(file.id)
+
+    /** Keeps [bytes] in the app until [file] has them; saving goes on if that fails. */
+    private fun keep(
+        file: NoteFile,
+        bytes: ByteString,
+    ) {
+        try {
+            recovery.keep(file.id, file.name, bytes)
+        } catch (e: IOException) {
+            Log.w(TAG, "Cannot keep ${file.name} to recover", e)
+        }
+    }
 
     /** [document] as a .xopp file, with a fresh preview. */
     private fun encoded(

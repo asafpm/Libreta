@@ -52,3 +52,38 @@ fun UnsavedNoteDialog(
         },
     )
 }
+
+/**
+ * The last changes of the note [name] weren't saved when the app last stopped, and were kept:
+ * they can be put back in the note ([onPutBack]), saved as a copy ([onSaveCopy]) or discarded.
+ */
+@Composable
+fun RecoveredNoteDialog(
+    name: String,
+    onPutBack: () -> Unit,
+    onSaveCopy: () -> Unit,
+    onDiscard: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(stringResource(R.string.recovered_title, name)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(stringResource(R.string.recovered_text), style = MaterialTheme.typography.bodyMedium)
+                Button(
+                    onClick = onPutBack,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.put_back)) }
+                OutlinedButton(onClick = onSaveCopy, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.save_copy))
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDiscard) {
+                Text(stringResource(R.string.discard_changes), color = MaterialTheme.colorScheme.error)
+            }
+        },
+    )
+}

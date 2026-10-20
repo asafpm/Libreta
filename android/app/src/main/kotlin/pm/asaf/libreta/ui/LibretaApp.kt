@@ -57,6 +57,7 @@ fun LibretaApp(model: AppViewModel) {
     }
     if (newFolder != null) NewFolderDialog(onCreate = model.newFolders::create, onDismiss = model.newFolders::cancel)
     entryRequest?.let { EntryDialogs(model, it) }
+    RecoveredNotes(model)
     unsaved?.let { note ->
         val name = note.note.file.name
         UnsavedNoteDialog(
@@ -69,6 +70,25 @@ fun LibretaApp(model: AppViewModel) {
                     it::discard,
                 )
             },
+        )
+    }
+}
+
+/** The first note whose last changes weren't saved when the app last stopped, if any. */
+@Composable
+private fun RecoveredNotes(model: AppViewModel) {
+    val copies by model.recovered.copies.collectAsStateWithLifecycle()
+    val copy = copies.firstOrNull()
+    val saveCopy =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(NOTE_TYPE)) { uri: Uri? ->
+            if (uri != null && copy != null) model.recovered.saveCopy(copy, uri)
+        }
+    copy?.let {
+        RecoveredNoteDialog(
+            it.name,
+            onPutBack = { model.recovered.putBack(it) },
+            onSaveCopy = { saveCopy.launch(it.name) },
+            onDiscard = { model.recovered.discard(it) },
         )
     }
 }

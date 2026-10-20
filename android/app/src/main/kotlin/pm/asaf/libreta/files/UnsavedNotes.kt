@@ -65,6 +65,7 @@ class UnsavedNotes(
                 onMessage(context.getString(R.string.error_save_copy))
             } else {
                 onMessage(context.getString(R.string.saved_copy))
+                saver.forget(note.file)
                 done(unsaved)
             }
         }
@@ -79,7 +80,10 @@ class UnsavedNotes(
 
     /** Lets it go, with the changes that couldn't be saved. */
     fun discard() {
-        state.value?.let(::done)
+        state.value?.let { unsaved ->
+            done(unsaved)
+            scope.launch { withContext(io) { saver.forget(unsaved.note.file) } }
+        }
     }
 
     private fun done(unsaved: UnsavedNote) {

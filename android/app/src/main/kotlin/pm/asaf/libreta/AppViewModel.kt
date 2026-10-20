@@ -38,6 +38,8 @@ import pm.asaf.libreta.files.NoteLoader
 import pm.asaf.libreta.files.NoteSaver
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.files.PdfExportFlow
+import pm.asaf.libreta.files.RecoveredNotes
+import pm.asaf.libreta.files.Recovery
 import pm.asaf.libreta.files.SaveResult
 import pm.asaf.libreta.files.UnsavedNotes
 import pm.asaf.libreta.library.FolderRef
@@ -203,7 +205,11 @@ class AppViewModel
         /** Where the open note was last shown, restored after rotation. */
         var noteAnchor: ViewportAnchor? = null
 
-        private val saver = NoteSaver(application, store, Backups(File(application.filesDir, "backups")))
+        private val recovery = Recovery(File(application.filesDir, "recovery"))
+        private val saver = NoteSaver(application, store, Backups(File(application.filesDir, "backups")), recovery)
+
+        /** Notes whose last changes weren't saved when the app last stopped. */
+        val recovered = RecoveredNotes(application, store, recovery, viewModelScope, io) { errorState.value = it }
 
         /** The save in progress: a note is read only after it, in case it is the same file. */
         private var saving: Job? = null

@@ -49,6 +49,7 @@ class NoteSaverTest {
     private val testData = File(checkNotNull(System.getProperty("libreta.testdata")))
     private val store = SafDocumentStore(context.contentResolver)
     private lateinit var backups: Backups
+    private lateinit var recovery: Recovery
     private lateinit var saver: NoteSaver
     private lateinit var directory: File
     private lateinit var root: FolderRef
@@ -65,7 +66,8 @@ class NoteSaverTest {
     fun setUp() {
         directory = temporary.newFolder("Notes")
         backups = Backups(temporary.newFolder("backups"))
-        saver = NoteSaver(context, store, backups)
+        recovery = Recovery(temporary.newFolder("recovery"))
+        saver = NoteSaver(context, store, backups, recovery)
         FakeDocumentsProvider.install(directory)
         root = FolderRef(FakeDocumentsProvider.folderId(), "Notes")
     }
@@ -221,13 +223,36 @@ class NoteSaverTest {
     @Test
     fun aConflictCopyThatCanNotBeWrittenIsNotLeftBehind() {
         val note = open("note-taking.xopp", "Lecture.xopp")
-        val saver = NoteSaver(context, OnlyWritingTo(store) { note.file.id }, backups)
+        val saver = NoteSaver(context, OnlyWritingTo(store) { note.file.id }, backups, recovery)
         note.write()
         File(testData, "physics.xopp").copyTo(File(directory, "Lecture.xopp"), overwrite = true)
         assertIs<SaveResult.Failed>(saver.save(note.file, note.session, note.files))
         // No empty copy, and the changes are still to be saved.
         assertEquals(listOf("Lecture.xopp"), directory.list()?.toList())
         assertTrue(note.session.dirty)
+    }
+
+    @Test
+    fun whatCouldNotBeSavedIsKeptInTheAppUntilItIs() {
+        val note = open("note-taking.xopp", "Lecture.xopp")
+        note.write()
+        val offline = NoteSaver(context, OnlyWritingTo(store) { StoreId("nowhere") }, backups, recovery)
+        assertIs<SaveResult.Failed>(offline.save(note.file, note.session, note.files))
+        val kept = recovery.copies().single()
+        assertEquals(note.file.id, kept.id)
+        assertEquals("Lecture.xopp", kept.name)
+        val document = XoppReader.read(kept.bytes()).document
+        assertEquals(
+            stroke,
+            document.pages[0]
+                .layers
+                .last()
+                .elements
+                .last(),
+        )
+        // Saved after all: nothing to recover.
+        assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
+        assertEquals(emptyList<Recovery.Copy>(), recovery.copies())
     }
 
     @Test

@@ -265,6 +265,11 @@
     <string name="keep_editing">Keep editing</string>
     <string name="discard_changes">Discard changes</string>
     <string name="saved_copy">Saved a copy</string>
+    <string name="recovered_title">%1$s wasn\'t saved</string>
+    <string name="recovered_text">Libreta stopped before its last changes were saved, and kept them. Put them back in the note, save them as a copy somewhere else, or discard them.</string>
+    <string name="put_back">Put them back in the note</string>
+    <string name="recovered">%1$s has its changes back</string>
+    <string name="error_recover">Couldn\'t put the changes back in %1$s</string>
     <string name="error_save_copy">Couldn\'t save the copy</string>
     <string name="error_save_note">Couldn\'t save %1$s</string>
     <string name="saved_as_copy">The note changed elsewhere while open, so your changes were saved as %1$s</string>
