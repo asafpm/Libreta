@@ -64,6 +64,33 @@ class ClipboardDeviceTest {
         }
     }
 
+    @Test
+    fun aBigCopyPastesBack() {
+        // A photo in a selection: megabytes as text, more than Android's clipboard takes.
+        val photo =
+            pm.asaf.libreta.core.model.Element.Image(
+                pm.asaf.libreta.core.model
+                    .Bounds(0.0, 0.0, 400.0, 300.0),
+                okio.ByteString.of(*kotlin.random.Random(1).nextBytes(3_000_000)),
+            )
+        val system = context.getSystemService(ClipboardManager::class.java)
+        // In front: Android lets only the app in focus read the clipboard.
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            waitFor { scenario.state == Lifecycle.State.RESUMED }
+            try {
+                var pasted: List<pm.asaf.libreta.core.model.Element>? = null
+                scenario.onActivity {
+                    val clipboard = NoteClipboard(it)
+                    clipboard.copy(listOf(photo))
+                    pasted = clipboard.paste()
+                }
+                assertTrue(pasted == listOf(photo))
+            } finally {
+                instrumentation.runOnMainSync { system.clearPrimaryClip() }
+            }
+        }
+    }
+
     private fun waitFor(condition: () -> Boolean) {
         val end = SystemClock.uptimeMillis() + TIMEOUT
         while (!condition()) {
