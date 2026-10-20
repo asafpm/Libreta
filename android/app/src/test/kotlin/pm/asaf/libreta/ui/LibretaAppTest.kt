@@ -23,7 +23,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -68,9 +67,6 @@ class LibretaAppTest {
             .clear()
             .commit()
     }
-
-    @After
-    fun tearDown() = BlankPdfPages.uninstall()
 
     private fun show(): AppViewModel {
         // Note pages are not rendered: that is tested elsewhere, and slow here.

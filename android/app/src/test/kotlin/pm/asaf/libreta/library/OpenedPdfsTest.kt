@@ -7,7 +7,6 @@ import android.provider.DocumentsContract
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import okio.buffer
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -50,9 +49,6 @@ class OpenedPdfsTest {
         FakeDocumentsProvider.install(outside)
         BlankPdfPages.install()
     }
-
-    @After
-    fun tearDown() = BlankPdfPages.uninstall()
 
     /** A PDF another app shares, named [name]; [sample] gives its bytes. */
     private fun shared(

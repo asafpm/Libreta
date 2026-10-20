@@ -98,17 +98,13 @@ class LibraryTest {
     fun pdfsHavePreviews() =
         runTest {
             BlankPdfPages.install()
-            try {
-                copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
-                val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
-                val io = StandardTestDispatcher(testScheduler)
-                val preview =
-                    PreviewCache(context, store, temporary.newFolder("previews"), io).previews(pdf).toList().single()
-                // Its first page, landscape like the PDF.
-                assertTrue("${preview.width} x ${preview.height}", preview.width > preview.height)
-            } finally {
-                BlankPdfPages.uninstall()
-            }
+            copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+            val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
+            val io = StandardTestDispatcher(testScheduler)
+            val preview =
+                PreviewCache(context, store, temporary.newFolder("previews"), io).previews(pdf).toList().single()
+            // Its first page, landscape like the PDF.
+            assertTrue("${preview.width} x ${preview.height}", preview.width > preview.height)
         }
 
     @Test

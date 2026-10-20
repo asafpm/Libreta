@@ -21,7 +21,6 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.StandardTestDispatcher
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
@@ -66,9 +65,6 @@ class LibraryManageTest {
         preferences.edit().clear().commit()
         LibraryRoots(preferences).add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
     }
-
-    @After
-    fun tearDown() = BlankPdfPages.uninstall()
 
     private fun show() {
         val paused = StandardTestDispatcher()

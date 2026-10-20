@@ -13,7 +13,8 @@ import java.io.File
 
 /**
  * PDFs drawn as blank pages of their real sizes (read with PdfBox): Robolectric can't run
- * Android's PdfRenderer. [install] before a test, [uninstall] after.
+ * Android's PdfRenderer. [install] before a test. It stays: previews a test started may still
+ * be drawn after it ends, and the PdfRenderer would fail them.
  */
 class BlankPdfPages(
     file: File,
@@ -39,14 +40,8 @@ class BlankPdfPages(
     override fun close() = Unit
 
     companion object {
-        private val android = PdfPageRenderer.open
-
         fun install() {
             PdfPageRenderer.open = ::BlankPdfPages
-        }
-
-        fun uninstall() {
-            PdfPageRenderer.open = android
         }
     }
 }
