@@ -120,6 +120,7 @@ class ToolPreferences(
                 tools.pen.color.rgba
                     .toLong(),
             ).putString(Keys.PEN_SIZE, tools.pen.size.name)
+            .putBoolean(Keys.PEN_PRESSURE, tools.pen.pressure)
             .putLong(
                 Keys.HIGHLIGHTER_COLOR,
                 tools.highlighter.color.rgba
@@ -144,7 +145,12 @@ private fun SharedPreferences.readTools(): ToolSettings {
     val defaults = ToolSettings()
     return ToolSettings(
         tool = enumOf(Keys.TOOL, defaults.tool),
-        pen = PenSettings(color(Keys.PEN_COLOR) ?: defaults.pen.color, enumOf(Keys.PEN_SIZE, defaults.pen.size)),
+        pen =
+            PenSettings(
+                color(Keys.PEN_COLOR) ?: defaults.pen.color,
+                enumOf(Keys.PEN_SIZE, defaults.pen.size),
+                getBoolean(Keys.PEN_PRESSURE, defaults.pen.pressure),
+            ),
         highlighter =
             HighlighterSettings(
                 color(Keys.HIGHLIGHTER_COLOR) ?: defaults.highlighter.color,
@@ -194,6 +200,7 @@ private object Keys {
     // Kept from the pen-only toolbar.
     const val PEN_COLOR = "pen.color"
     const val PEN_SIZE = "pen.size"
+    const val PEN_PRESSURE = "pen.pressure"
     const val HIGHLIGHTER_COLOR = "highlighter.color"
     const val HIGHLIGHTER_SIZE = "highlighter.size"
     const val ERASER_TYPE = "eraser.type"

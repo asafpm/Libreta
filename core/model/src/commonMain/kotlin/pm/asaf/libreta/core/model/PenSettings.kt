@@ -21,6 +21,8 @@ enum class PenSize(
 data class PenSettings(
     val color: Color = Palette.DEFAULT_PEN,
     val size: PenSize = PenSize.MEDIUM,
+    /** Whether the stylus's pressure varies the width (Xournal++'s pressure sensitivity, on by default). */
+    val pressure: Boolean = true,
 )
 
 /** What the eraser does (Xournal++'s eraser types). */

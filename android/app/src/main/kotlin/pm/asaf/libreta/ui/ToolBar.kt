@@ -49,8 +49,8 @@ import pm.asaf.libreta.core.model.Color as InkColor
 
 /**
  * The tools: pen, highlighter and eraser, then the chosen tool's colour (the fixed colours
- * from Settings, recent custom colours, and a picker) and width, or the eraser's type and size; and finger
- * drawing.
+ * from Settings, recent custom colours, and a picker) and width (and the pen's pressure), or the
+ * eraser's type and size; and finger drawing.
  */
 @Composable
 fun ToolBar(
@@ -76,6 +76,10 @@ fun ToolBar(
             when (tools.tool) {
                 Tool.PEN -> {
                     InkOptions(tools.pen.color, tools.pen.size, controls) { picking = true }
+                    Separator()
+                    Toggle(PressureIcon, R.string.pen_pressure, tools.pen.pressure) { pressure ->
+                        controls.onChange { it.copy(pen = it.pen.copy(pressure = pressure)) }
+                    }
                 }
 
                 Tool.HIGHLIGHTER -> {
@@ -96,11 +100,7 @@ fun ToolBar(
             }
             if (controls.fingerButton) {
                 Separator()
-                FilterChip(
-                    selected = controls.fingerDraws,
-                    onClick = { controls.onFingerDraws(!controls.fingerDraws) },
-                    label = { Text(stringResource(R.string.draw_with_finger)) },
-                )
+                Toggle(FingerIcon, R.string.draw_with_finger, controls.fingerDraws, controls.onFingerDraws)
             }
             Spacer(Modifier.width(6.dp))
         }
@@ -117,6 +117,17 @@ fun ToolBar(
             onDismiss = { picking = false },
         )
     }
+}
+
+/** A setting turned on and off, shown by its [icon]: filled while on. */
+@Composable
+private fun Toggle(
+    icon: ImageVector,
+    label: Int,
+    on: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    FilledIconToggleButton(checked = on, onCheckedChange = onChange) { Icon(icon, stringResource(label)) }
 }
 
 @Composable

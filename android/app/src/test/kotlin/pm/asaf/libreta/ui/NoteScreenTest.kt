@@ -24,6 +24,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
@@ -405,11 +407,29 @@ class NoteScreenTest {
     @Test
     fun theFingerButtonCanBeLeftOut() {
         val model = openLecture()
-        compose.onNodeWithText("Draw with finger").performScrollTo().performClick()
+        // A hand with its finger out.
+        compose.onNodeWithContentDescription("Draw with finger").performScrollTo().performClick()
         assertEquals(true, model.tools.fingerDraws.value)
         compose.runOnIdle { model.tools.setFingerButton(false) }
-        compose.onNodeWithText("Draw with finger").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Draw with finger").assertDoesNotExist()
         assertEquals(false, model.tools.fingerDraws.value)
+    }
+
+    @Test
+    fun penPressureCanBeTurnedOff() {
+        val model = openLecture()
+        compose.onNodeWithContentDescription("Pen").performClick()
+        compose
+            .onNodeWithContentDescription("Pen pressure")
+            .performScrollTo()
+            .assertIsOn()
+            .performClick()
+        assertEquals(false, model.tools.tools.value.pen.pressure)
+        compose.onNodeWithContentDescription("Pen pressure").assertIsOff()
+        // A pen setting: not offered for the other tools.
+        compose.onNodeWithContentDescription("Highlighter").performScrollTo().performClick()
+        assertEquals(Tool.HIGHLIGHTER, model.tools.tools.value.tool)
+        compose.onNodeWithContentDescription("Pen pressure").assertDoesNotExist()
     }
 
     @Test

@@ -226,6 +226,21 @@ class InkingTest {
     }
 
     @Test
+    fun withoutPressureThePenWritesAtItsWidth() {
+        view.pen = PenSettings(Color.of(255, 0, 0), PenSize.THICK, pressure = false)
+        write(300f, 400f)
+        val stroke =
+            edits
+                .single()
+                .second.layers
+                .single()
+                .elements
+                .single() as Element.Stroke
+        assertEquals(PenSize.THICK.width, stroke.width, 0.0)
+        assertEquals(null, stroke.segmentWidths)
+    }
+
+    @Test
     fun strokesGoOnTheTopLayer() {
         // Scroll page 2 into view with a finger, then write 50 pt below its top.
         send(MotionEvent.ACTION_DOWN, finger(500f, 1300f))

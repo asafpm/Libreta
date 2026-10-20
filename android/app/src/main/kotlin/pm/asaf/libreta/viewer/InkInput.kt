@@ -263,7 +263,8 @@ internal class InkInput(
             return
         }
         val tools = host.tools
-        // Like Xournal++: whiteout is a white eraser stroke, and only the pen uses pressure.
+        // Like Xournal++: whiteout is a white eraser stroke, and only the pen uses pressure, unless
+        // it is turned off (src/core/gui/inputdevices/AbstractInputHandler.cpp).
         val strokeInk =
             when (ink) {
                 Ink.PEN -> StrokeInk(StrokeTool.PEN, tools.pen.color, tools.pen.size.width)
@@ -283,7 +284,7 @@ internal class InkInput(
                         .argb(color.alpha, color.red, color.green, color.blue)
                         .let { if (host.darkPages) PageRecolor.map(it) else it },
                 byFinger = byFinger,
-                pressure = ink == Ink.PEN && !byFinger,
+                pressure = ink == Ink.PEN && !byFinger && tools.pen.pressure,
                 // Highlighters blend with the page: drawn in it, as they will look.
                 inView = ink == Ink.HIGHLIGHTER,
             )

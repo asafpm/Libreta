@@ -44,6 +44,18 @@ class ToolPreferencesTest {
     }
 
     @Test
+    fun penPressureIsOnUntilTurnedOff() {
+        val tools = ToolPreferences(preferences)
+        assertEquals(true, tools.tools.value.pen.pressure)
+        tools.change { it.copy(pen = it.pen.copy(pressure = false)) }
+        assertEquals(
+            false,
+            ToolPreferences(preferences)
+                .tools.value.pen.pressure,
+        )
+    }
+
+    @Test
     fun choosesTheWidthsShown() {
         val tools = ToolPreferences(preferences)
         assertEquals(PenSize.entries.toSet(), tools.visibleSizes.value)

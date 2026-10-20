@@ -51,6 +51,50 @@ val PenIcon: ImageVector =
         lineTo(18f, 10f)
     }
 
+/** Drawing with a finger: a hand pointing up with its index finger. */
+@Suppress("MagicNumber") // path coordinates
+val FingerIcon: ImageVector =
+    lineIcon("Finger") {
+        // The index finger, then the knuckles of the curled ones, the palm and the thumb.
+        moveTo(9f, 13.5f)
+        lineTo(9f, 4.5f)
+        arcTo(1.5f, 1.5f, 0f, isMoreThanHalf = false, isPositiveArc = true, 12f, 4.5f)
+        lineTo(12f, 11f)
+        arcTo(1.5f, 1.5f, 0f, isMoreThanHalf = false, isPositiveArc = true, 15f, 11f)
+        lineTo(15f, 11.5f)
+        arcTo(1.25f, 1.25f, 0f, isMoreThanHalf = false, isPositiveArc = true, 17.5f, 11.5f)
+        lineTo(17.5f, 12.5f)
+        arcTo(1.25f, 1.25f, 0f, isMoreThanHalf = false, isPositiveArc = true, 20f, 12.5f)
+        lineTo(20f, 16f)
+        quadTo(20f, 21f, 15.5f, 21f)
+        lineTo(12.5f, 21f)
+        quadTo(10.5f, 21f, 9f, 19.5f)
+        lineTo(5.5f, 16f)
+        arcTo(1.4f, 1.4f, 0f, isMoreThanHalf = false, isPositiveArc = true, 7.5f, 14f)
+        lineTo(9f, 15.5f)
+    }
+
+/** Pen pressure: a stroke swelling and thinning as a pen pressed harder and softer draws it. */
+@Suppress("MagicNumber") // path coordinates
+val PressureIcon: ImageVector =
+    ImageVector
+        .Builder(
+            name = "Pressure",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+        ).path(fill = SolidColor(Color.Black)) {
+            moveTo(2.5f, 17.5f)
+            curveTo(6f, 17.5f, 7f, 5.5f, 11f, 5.5f)
+            curveTo(15f, 5.5f, 14.5f, 16f, 17.5f, 16f)
+            curveTo(19f, 16f, 20.3f, 14f, 21.5f, 11f)
+            curveTo(21.2f, 15f, 19.8f, 19f, 17.5f, 19f)
+            curveTo(12.8f, 19f, 13.5f, 9f, 11f, 9f)
+            curveTo(8.5f, 9f, 7.5f, 17.5f, 2.5f, 17.5f)
+            close()
+        }.build()
+
 /** Highlighter: a chisel-tipped marker over a highlighted line. */
 @Suppress("MagicNumber") // path coordinates
 val HighlighterIcon: ImageVector =
