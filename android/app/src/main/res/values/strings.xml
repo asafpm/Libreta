@@ -257,6 +257,15 @@
     <string name="missing_files">Not found: %1$s</string>
 
     <!-- Errors -->
+    <string name="not_saved">Not saved: saving failed. The changes are kept here and saving is tried again.</string>
+    <string name="retry">Retry</string>
+    <string name="unsaved_title">%1$s couldn\'t be saved</string>
+    <string name="unsaved_text">Its changes are still here. Try saving again, save a copy somewhere else, or go back to it.</string>
+    <string name="save_copy">Save a copy…</string>
+    <string name="keep_editing">Keep editing</string>
+    <string name="discard_changes">Discard changes</string>
+    <string name="saved_copy">Saved a copy</string>
+    <string name="error_save_copy">Couldn\'t save the copy</string>
     <string name="error_save_note">Couldn\'t save %1$s</string>
     <string name="saved_as_copy">The note changed elsewhere while open, so your changes were saved as %1$s</string>
     <string name="read_only_package">Older Xournal++ file (zip package): changes can\'t be saved yet</string>

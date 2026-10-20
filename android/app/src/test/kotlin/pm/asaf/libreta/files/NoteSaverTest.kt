@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import okio.ByteString
 import okio.buffer
 import okio.source
 import org.junit.Assert.assertEquals
@@ -25,6 +26,11 @@ import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.PageChange
 import pm.asaf.libreta.core.model.PointList
 import pm.asaf.libreta.core.model.StrokeTool
+import pm.asaf.libreta.core.store.DocumentStore
+import pm.asaf.libreta.core.store.FileVersion
+import pm.asaf.libreta.core.store.StoreException
+import pm.asaf.libreta.core.store.StoreId
+import pm.asaf.libreta.core.store.WriteResult
 import pm.asaf.libreta.library.FakeDocumentsProvider
 import pm.asaf.libreta.library.FolderListing
 import pm.asaf.libreta.library.FolderRef
@@ -191,6 +197,50 @@ class NoteSaverTest {
         note.write(another)
         assertEquals(SaveResult.Saved, saver.save(note.file, note.session, note.files))
         assertEquals(another, lastElement(result.name))
+    }
+
+    /** [store], but writing only to [writable]. */
+    private class OnlyWritingTo(
+        private val store: DocumentStore,
+        private val writable: () -> StoreId,
+    ) : DocumentStore by store {
+        override fun write(
+            file: StoreId,
+            bytes: ByteString,
+            expected: FileVersion?,
+        ): WriteResult =
+            if (file ==
+                writable()
+            ) {
+                store.write(file, bytes, expected)
+            } else {
+                throw StoreException("Disk full")
+            }
+    }
+
+    @Test
+    fun aConflictCopyThatCanNotBeWrittenIsNotLeftBehind() {
+        val note = open("note-taking.xopp", "Lecture.xopp")
+        val saver = NoteSaver(context, OnlyWritingTo(store) { note.file.id }, backups)
+        note.write()
+        File(testData, "physics.xopp").copyTo(File(directory, "Lecture.xopp"), overwrite = true)
+        assertIs<SaveResult.Failed>(saver.save(note.file, note.session, note.files))
+        // No empty copy, and the changes are still to be saved.
+        assertEquals(listOf("Lecture.xopp"), directory.list()?.toList())
+        assertTrue(note.session.dirty)
+    }
+
+    @Test
+    fun aCopyCanBeSavedElsewhere() {
+        val note = open("note-taking.xopp", "Lecture.xopp")
+        note.write()
+        val target = store.create(root.id, "Rescued.xopp")
+        assertEquals(SaveResult.Saved, saver.saveCopy(note.session, note.files, target.id))
+        assertEquals(stroke, lastElement("Rescued.xopp"))
+        // The note's own file is as it was.
+        assertTrue(
+            File(testData, "note-taking.xopp").readBytes().contentEquals(File(directory, "Lecture.xopp").readBytes()),
+        )
     }
 
     @Test

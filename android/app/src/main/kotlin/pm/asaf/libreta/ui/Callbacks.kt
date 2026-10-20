@@ -46,6 +46,14 @@ class EntryDialogActions(
 /** Where help was asked for: its part comes first. */
 enum class HelpTopic { NOTE, LIBRARY }
 
+/** What can be done with a note closed while it couldn't be saved. */
+class UnsavedNoteActions(
+    val retry: () -> Unit,
+    val saveCopy: () -> Unit,
+    val keepEditing: () -> Unit,
+    val discard: () -> Unit,
+)
+
 /** Things [SettingsScreen] can change. */
 class SettingsActions(
     val addFolder: () -> Unit,

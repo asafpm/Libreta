@@ -30,6 +30,11 @@ fun LibretaApp(model: AppViewModel) {
     val newNote by model.newNotes.request.collectAsStateWithLifecycle()
     val newFolder by model.newFolders.request.collectAsStateWithLifecycle()
     val entryRequest by model.entries.request.collectAsStateWithLifecycle()
+    val unsaved by model.unsaved.note.collectAsStateWithLifecycle()
+    val saveCopy =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(NOTE_TYPE)) { uri: Uri? ->
+            uri?.let(model.unsaved::saveCopy)
+        }
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model.library::addRoot)
@@ -52,7 +57,24 @@ fun LibretaApp(model: AppViewModel) {
     }
     if (newFolder != null) NewFolderDialog(onCreate = model.newFolders::create, onDismiss = model.newFolders::cancel)
     entryRequest?.let { EntryDialogs(model, it) }
+    unsaved?.let { note ->
+        val name = note.note.file.name
+        UnsavedNoteDialog(
+            name,
+            model.unsaved.let {
+                UnsavedNoteActions(
+                    it::retry,
+                    { saveCopy.launch(name) },
+                    it::keepEditing,
+                    it::discard,
+                )
+            },
+        )
+    }
 }
+
+/** What a saved copy of a note is offered as: Android has no type for .xopp. */
+private const val NOTE_TYPE = "application/octet-stream"
 
 /** Renaming, moving or deleting what [request] is about. */
 @Composable
@@ -155,6 +177,7 @@ private fun Settings(
     val theme by model.appearance.theme.collectAsStateWithLifecycle()
     val darkPages by model.appearance.darkPages.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
+    val saveFailed by model.saveFailed.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
@@ -195,6 +218,7 @@ private fun Note(
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val fingerButton by model.tools.fingerButton.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
+    val saveFailed by model.saveFailed.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model::addFolderForNote)
@@ -219,6 +243,7 @@ private fun Note(
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
         template = newPages,
+        onRetrySave = if (saveFailed) ({ model.saveNote() }) else null,
         clipboard = model.clipboard,
         exports = model.exports,
     )

@@ -96,8 +96,7 @@ class NoteSaver(
         files: DocumentFiles,
     ): SaveResult =
         try {
-            val preview = document.pages.firstOrNull()?.let { preview(it, files) }
-            val bytes = NoteEncoder.encode(document.copy(creator = NewNoteCreator.creator(context), preview = preview))
+            val bytes = encoded(document, files)
             if (!file.backedUp) backUp(file)
             val result =
                 when (val written = writeOver(file, bytes)) {
@@ -123,6 +122,32 @@ class NoteSaver(
             Log.w(TAG, "Cannot save ${file.name}", e)
             SaveResult.Failed(e)
         }
+
+    /**
+     * Writes the note of [session] to [target] (e.g. a file the user picked when saving failed),
+     * leaving the note's own file as it is.
+     */
+    fun saveCopy(
+        session: NoteSession,
+        files: DocumentFiles,
+        target: StoreId,
+    ): SaveResult =
+        try {
+            store.write(target, encoded(session.document, files), expected = null)
+            SaveResult.Saved
+        } catch (e: IOException) {
+            Log.w(TAG, "Cannot save a copy", e)
+            SaveResult.Failed(e)
+        }
+
+    /** [document] as a .xopp file, with a fresh preview. */
+    private fun encoded(
+        document: Note,
+        files: DocumentFiles,
+    ): ByteString {
+        val preview = document.pages.firstOrNull()?.let { preview(it, files) }
+        return NoteEncoder.encode(document.copy(creator = NewNoteCreator.creator(context), preview = preview))
+    }
 
     /**
      * Writes [bytes] over [file] unless someone else changed it since it was read or saved. A
@@ -162,7 +187,13 @@ class NoteSaver(
                 ?: throw StoreException("${file.name} changed elsewhere, and its folder is unknown")
         val base = file.name.substringBeforeLast('.')
         val copy = store.create(folder.id, "$base (conflict ${LocalDateTime.now().format(STAMP)}).xopp")
-        store.write(copy.id, bytes, expected = null)
+        try {
+            store.write(copy.id, bytes, expected = null)
+        } catch (e: IOException) {
+            // Not an empty copy left behind (and another one with each autosave).
+            runCatching { store.delete(copy.id) }
+            throw e
+        }
         return copy
     }
 

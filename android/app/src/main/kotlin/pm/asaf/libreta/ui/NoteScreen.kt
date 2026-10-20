@@ -86,6 +86,8 @@ fun NoteScreen(
     template: NewPageTemplate = NewPageTemplate(),
     clipboard: NoteClipboard? = null,
     exports: PdfExportFlow? = null,
+    /** Saves again; given while saving fails, to say so until it works. */
+    onRetrySave: (() -> Unit)? = null,
 ) {
     var view by remember { mutableStateOf<DocumentView?>(null) }
     val loaded = state as? NoteState.Loaded
@@ -129,7 +131,7 @@ fun NoteScreen(
                                 tools,
                                 Modifier.fillMaxWidth(),
                             ) { color, size -> view?.selection?.restyle(color, size) }
-                            FilesNotice(state, onAddFolder)
+                            Notices(state, onAddFolder, onRetrySave)
                             Box(Modifier.weight(1f).fillMaxWidth()) {
                                 val canvas = Modifier.fillMaxSize()
                                 NoteCanvas(state, threads, position, tools, panels, { shown ->
@@ -379,33 +381,6 @@ private fun UndoButtons(
     val history by session.undoState.collectAsState()
     TooltipIconButton(UndoIcon, stringResource(R.string.undo), view != null && history.canUndo) { undo(session, view) }
     TooltipIconButton(RedoIcon, stringResource(R.string.redo), view != null && history.canRedo) { redo(session, view) }
-}
-
-/** Why backgrounds are missing, if they are. */
-@Composable
-private fun FilesNotice(
-    state: NoteState.Loaded,
-    onAddFolder: () -> Unit,
-) {
-    val missing = state.files.missing
-    if (!state.folderNeeded && missing.isEmpty() && state.file.writable) return
-    Surface(color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        ) {
-            val message =
-                when {
-                    !state.file.writable -> stringResource(R.string.read_only_package)
-                    state.folderNeeded -> stringResource(R.string.folder_needed)
-                    else -> stringResource(R.string.missing_files, missing.joinToString())
-                }
-            Text(message, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-            if (state.folderNeeded) {
-                TextButton(onClick = onAddFolder) { Text(stringResource(R.string.add_this_folder)) }
-            }
-        }
-    }
 }
 
 /** The pages, with wet ink in a front buffer above them; [onView] gets the view (null when gone). */

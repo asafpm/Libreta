@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +39,7 @@ import pm.asaf.libreta.files.NoteSaver
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.files.SaveResult
+import pm.asaf.libreta.files.UnsavedNotes
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
 import pm.asaf.libreta.library.LibraryFlow
@@ -55,6 +57,7 @@ import pm.asaf.libreta.store.OpenedPdfsProvider
 import pm.asaf.libreta.store.SafDocumentStore
 import java.io.File
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 /** A screen of the app; the back stack is a list of these. */
 sealed interface Screen {
@@ -98,6 +101,12 @@ sealed interface NoteState {
         val message: String,
     ) : NoteState
 }
+
+/** A note ([screen]) closed while it couldn't be saved: [note] is still open, with its changes. */
+class UnsavedNote(
+    val screen: Screen.Note,
+    val note: NoteState.Loaded,
+)
 
 /** The app's state: navigation, the library and the open note. */
 class AppViewModel
@@ -205,6 +214,34 @@ class AppViewModel
         /** Whether the last save failed, not to say so again with each autosave. */
         private var lastSaveFailed = false
 
+        private val saveFailedState = MutableStateFlow(false)
+
+        /** Whether the open note's last save failed: its changes are not in its file yet. */
+        val saveFailed: StateFlow<Boolean> = saveFailedState.asStateFlow()
+
+        /** Saving again after a failure, until one works. */
+        private var retrying: Job? = null
+
+        /** A note left while it couldn't be saved: kept, with its changes, until saved, copied or discarded. */
+        val unsaved =
+            UnsavedNotes(
+                application,
+                saver,
+                viewModelScope,
+                io,
+                onMessage = { errorState.value = it },
+                onSaved = { note -> note.file.location?.let { library.refresh(it.folders.last()) } },
+                onReopen = { unsaved ->
+                    if (stack.value.last() is Screen.Note) back()
+                    stack.update { it + unsaved.screen }
+                    lastSaveFailed = false
+                    noteState.value = unsaved.note
+                    startAutosave(unsaved.note)
+                    // Still unsaved: the banner and retries go on.
+                    saveNote()
+                },
+            )
+
         private val errorState = MutableStateFlow<String?>(null)
 
         /** A message to show once, e.g. a failed file operation. */
@@ -280,6 +317,9 @@ class AppViewModel
         }
 
         private fun loadNote(screen: Screen.Note) {
+            // Each note's failures are its own.
+            lastSaveFailed = false
+            saveFailedState.value = false
             noteAnchor = null
             noteState.value = NoteState.Loading
             viewModelScope.launch {
@@ -305,15 +345,19 @@ class AppViewModel
                 }
         }
 
-        /** Saves the open note if it changed, then calls [then] on the main thread. Returns the save's job. */
-        fun saveNote(then: () -> Unit = {}): Job {
+        /**
+         * Saves the open note if it changed, then calls [then] on the main thread with what saving
+         * did (null without a note). Returns the save's job.
+         */
+        fun saveNote(then: (SaveResult?) -> Unit = {}): Job {
             val note = noteState.value as? NoteState.Loaded
             val previous = saving
             val job =
                 viewModelScope.launch {
                     previous?.join()
-                    if (note != null) report(note, withContext(io) { saver.save(note.file, note.session, note.files) })
-                    then()
+                    val result = note?.let { withContext(io) { saver.save(it.file, it.session, it.files) } }
+                    if (note != null && result != null) report(note, result)
+                    then(result)
                 }
             saving = job
             return job
@@ -334,21 +378,42 @@ class AppViewModel
                 }
             }
             lastSaveFailed = result is SaveResult.Failed
+            retrying?.cancel()
+            if (noteState.value === note) {
+                saveFailedState.value = result is SaveResult.Failed
+                // Autosave waits for the next change; the provider may be back before then.
+                if (result is SaveResult.Failed) {
+                    retrying =
+                        viewModelScope.launch {
+                            delay(RETRY_DELAY)
+                            saveNote()
+                        }
+                }
+            }
             if (result is SaveResult.Saved || result is SaveResult.SavedAsCopy) {
                 note.file.location?.let { library.refresh(it.folders.last()) }
             }
         }
 
-        /** Leaves the open note: it is saved, then its files are released. */
+        /**
+         * Leaves the open note: it is saved, then its files are released; or, if saving fails, it
+         * is kept with its changes ([unsaved]).
+         */
         private fun closeNote() {
             val note = noteState.value as? NoteState.Loaded
+            val screen = stack.value.lastOrNull() as? Screen.Note
             autosaving?.cancel()
             autosaving = null
-            saveNote {
-                note?.caches?.clear()
-                note?.files?.close()
+            retrying?.cancel()
+            saveNote { result ->
+                if (result is SaveResult.Failed && note != null && screen != null) {
+                    unsaved.keep(UnsavedNote(screen, note))
+                } else {
+                    note?.let(UnsavedNotes::release)
+                }
             }
             noteState.value = null
+            saveFailedState.value = false
             noteAnchor = null
         }
 
@@ -359,5 +424,8 @@ class AppViewModel
 
         private companion object {
             const val TAG = "Libreta"
+
+            /** How soon a failed save is tried again. */
+            val RETRY_DELAY = 30.seconds
         }
     }
