@@ -5,6 +5,7 @@ package pm.asaf.libreta.android.render
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.Matrix
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.services.storage.TestStorage
@@ -12,10 +13,16 @@ import okio.ByteString.Companion.toByteString
 import org.junit.Test
 import org.junit.runner.RunWith
 import pm.asaf.libreta.core.format.XoppReader
+import pm.asaf.libreta.core.geometry.TileGrid
+import pm.asaf.libreta.core.model.Background
 import pm.asaf.libreta.core.model.Bounds
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.Element
+import pm.asaf.libreta.core.model.FileDomain
+import pm.asaf.libreta.core.model.Layer
+import pm.asaf.libreta.core.model.Page
 import java.io.File
+import kotlin.math.abs
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -87,6 +94,79 @@ class PdfRenderingDeviceTest {
         }
     }
 
+    /** Dark pixels in the [size]-pixel square at ([left], [top]) of [bitmap], every other one. */
+    private fun dark(
+        bitmap: Bitmap,
+        left: Int,
+        top: Int,
+        size: Int,
+    ): Int =
+        (top until top + size step 2).sumOf { y ->
+            (left until left + size step 2).count { x ->
+                val pixel = bitmap.getPixel(x, y)
+                Color.red(pixel) + Color.green(pixel) + Color.blue(pixel) < MID_GREY
+            }
+        }
+
+    /** Pixels of the [size]-pixel square of [a] at ([left], [top]) that differ from [b]'s, every other one. */
+    private fun differing(
+        a: Bitmap,
+        left: Int,
+        top: Int,
+        b: Bitmap,
+        size: Int,
+    ): Int =
+        (0 until size step 2).sumOf { y ->
+            (0 until size step 2).count { x ->
+                val expected = a.getPixel(left + x, top + y)
+                val actual = b.getPixel(x, y)
+                listOf(Color::red, Color::green, Color::blue).any { abs(it(expected) - it(actual)) > TOLERANCE }
+            }
+        }
+
+    @Test
+    fun aTileAtHighZoomShowsThePdfAsTheWholePageDoes() {
+        val zoom = 6f
+        val size = TileGrid.SIZE
+        val pdf = File(context.cacheDir, "zoomed.pdf").apply { writeBytes(asset("pdf_annotation.xopp.bg.pdf")) }
+        try {
+            // What the PDF looks like at that zoom, rendered whole by PdfRenderer.
+            val whole =
+                PdfPageRenderer.open(pdf).use { pages ->
+                    val (width, height) = pages.pageSize(0)
+                    val bitmap =
+                        Bitmap.createBitmap(
+                            (width * zoom).toInt(),
+                            (height * zoom).toInt(),
+                            Bitmap.Config.ARGB_8888,
+                        )
+                    bitmap.eraseColor(Color.WHITE)
+                    pages.render(0, bitmap, Matrix().apply { setScale(zoom, zoom) })
+                    bitmap
+                }
+            PdfBackgroundSource(pdf).use { source ->
+                val (width, height) = checkNotNull(source.pageSize(1))
+                val page =
+                    Page(width, height, Background.Pdf(1, FileDomain.ABSOLUTE, "x.pdf"), listOf(Layer(emptyList())))
+                // The tile with the most of the PDF's content, rendered as the viewer does.
+                val tile =
+                    TileGrid
+                        .tilesCovering(width, height, zoom.toDouble(), Bounds(0.0, 0.0, width, height))
+                        .filter { (it.x + 1) * size <= whole.width && (it.y + 1) * size <= whole.height }
+                        .maxBy { dark(whole, it.x * size, it.y * size, size) }
+                val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                TileRenderer.renderTile(PageRenderer(context, source), page, zoom, tile, bitmap)
+                save(bitmap, "pdf_tile_zoomed.png")
+                // Some of the PDF, not a blank part of the page, and as the whole page shows it.
+                assertTrue(dark(bitmap, 0, 0, size) > size * size / 4 / 100, "a blank tile")
+                val off = differing(whole, tile.x * size, tile.y * size, bitmap, size)
+                assertTrue(off < size * size / 4 / 50, "$off pixels differ")
+            }
+        } finally {
+            pdf.delete()
+        }
+    }
+
     @Test
     fun closingWhileDrawingIsSafe() {
         val pdf =
@@ -132,6 +212,7 @@ class PdfRenderingDeviceTest {
 
     private companion object {
         const val DRAWS = 40
+        const val TOLERANCE = 48
         const val CLOSE_AFTER_MS = 50L
         const val ZOOM = 1.5f
         const val MID_GREY = 3 * 128

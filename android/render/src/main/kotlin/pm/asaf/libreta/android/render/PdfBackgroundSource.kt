@@ -16,8 +16,10 @@ import kotlin.math.ceil
 /**
  * A [BackgroundSource] for documents annotating the PDF [pdfFile]: each page is drawn at the
  * PDF page's own size from the origin, like Xournal++ (docs/rendering.md §2.3). Image
- * backgrounds come from [images]. Renders are serialised and cached per page and zoom; cached
- * ones are drawn without waiting.
+ * backgrounds come from [images]. Renders are serialised. A page that is small enough at a
+ * zoom is rendered whole and cached (up to [CACHE_BYTES]), and cached ones are drawn without
+ * waiting; at higher zooms only the part a canvas shows is rendered, so that memory stays
+ * bounded however far one zooms in.
  */
 class PdfBackgroundSource(
     pdfFile: File,
@@ -26,14 +28,17 @@ class PdfBackgroundSource(
     Closeable {
     private val renderer = PdfPageRenderer.open(pdfFile)
 
-    /** A PDF page rendered, and its size in points. */
-    private class Rendered(
-        val bitmap: Bitmap,
-        val width: Float,
-        val height: Float,
-    )
+    /** Whole pages by page and pixels a point. */
+    private val cache =
+        object : LruCache<Pair<Int, Float>, Bitmap>(CACHE_BYTES) {
+            override fun sizeOf(
+                key: Pair<Int, Float>,
+                value: Bitmap,
+            ) = value.allocationByteCount
+        }
 
-    private val cache = LruCache<Pair<Int, Float>, Rendered>(CACHE_SIZE)
+    /** Page sizes in points, as asked for. */
+    private val sizes = HashMap<Int, Pair<Float, Float>>()
 
     /** Closed (its note was closed): renders still running draw nothing. */
     private var closed = false
@@ -49,11 +54,8 @@ class PdfBackgroundSource(
         zoom: Float,
     ): Boolean {
         val index = (pageNumber - 1).toInt()
-        // Rendered pages are drawn without waiting for a render on another thread.
-        val rendered =
-            if (pageNumber < 1 || index >= pageCount) null else cache.get(index to zoom) ?: renderPage(index, zoom)
-        rendered?.let { canvas.drawBitmap(it.bitmap, null, RectF(0f, 0f, it.width, it.height), paint) }
-        return rendered != null
+        // Like Xournal++, never below one pixel per point.
+        return pageNumber >= 1 && index < pageCount && draw(canvas, index, maxOf(zoom, 1f))
     }
 
     /** The size of PDF page [pageNumber] (from 1) in points, or null if there is no such page. */
@@ -64,34 +66,104 @@ class PdfBackgroundSource(
         return renderer.pageSize(index)
     }
 
-    @Synchronized
-    private fun renderPage(
+    /** Draws page [index] at [scale] pixels a point: whole if that is small enough, else the part [canvas] shows. */
+    private fun draw(
+        canvas: Canvas,
         index: Int,
-        zoom: Float,
-    ): Rendered? =
+        scale: Float,
+    ): Boolean {
+        val (width, height) = size(index) ?: return false
+        val area = RectF(0f, 0f, width, height)
+        return if (width * scale * height * scale <= MAX_WHOLE_PIXELS) {
+            drawWhole(canvas, index, scale, area)
+        } else {
+            drawPart(canvas, index, scale, area)
+        }
+    }
+
+    @Synchronized
+    private fun size(index: Int): Pair<Float, Float>? =
         if (closed) {
             null
         } else {
-            cache.get(index to zoom) ?: render(index, zoom)
+            sizes.getOrPut(index) {
+                renderer.pageSize(index).let { (width, height) ->
+                    width.toFloat() to
+                        height.toFloat()
+                }
+            }
         }
 
-    private fun render(
+    private fun drawWhole(
+        canvas: Canvas,
         index: Int,
-        zoom: Float,
-    ): Rendered =
-        run {
-            val (width, height) = renderer.pageSize(index)
-            // Like Xournal++, never below one pixel per point.
-            val scale = maxOf(zoom, 1f)
-            val bitmap =
-                Bitmap.createBitmap(
-                    ceil(width * scale).toInt(),
-                    ceil(height * scale).toInt(),
-                    Bitmap.Config.ARGB_8888,
-                )
-            renderer.render(index, bitmap, Matrix().apply { setScale(scale, scale) })
-            Rendered(bitmap, width.toFloat(), height.toFloat()).also { cache.put(index to zoom, it) }
+        scale: Float,
+        area: RectF,
+    ): Boolean {
+        // Rendered pages are drawn without waiting for a render on another thread.
+        val bitmap = cache.get(index to scale) ?: renderWhole(index, scale, area)
+        bitmap?.let { canvas.drawBitmap(it, null, area, paint) }
+        return bitmap != null
+    }
+
+    @Synchronized
+    private fun renderWhole(
+        index: Int,
+        scale: Float,
+        area: RectF,
+    ): Bitmap? =
+        if (closed) {
+            null
+        } else {
+            cache.get(index to scale) ?: rendered(index, scale, area).also { cache.put(index to scale, it) }
         }
+
+    /** Draws the part of the page [canvas] shows (its clip, in page units). */
+    private fun drawPart(
+        canvas: Canvas,
+        index: Int,
+        scale: Float,
+        area: RectF,
+    ): Boolean {
+        val part = RectF(canvas.clipBounds).takeIf { it.intersect(area) }
+        val bitmap = part?.let { renderPart(index, scale, it) }
+        if (part != null && bitmap != null) {
+            // The bitmap's pixels, which round the part up.
+            val place = RectF(part.left, part.top, part.left + bitmap.width / scale, part.top + bitmap.height / scale)
+            canvas.drawBitmap(bitmap, null, place, paint)
+            bitmap.recycle()
+        }
+        // Nothing of the page shown is drawn too.
+        return part == null || bitmap != null
+    }
+
+    @Synchronized
+    private fun renderPart(
+        index: Int,
+        scale: Float,
+        part: RectF,
+    ): Bitmap? = if (closed) null else rendered(index, scale, part)
+
+    /** The [part] (points) of page [index] at [scale] pixels a point. */
+    private fun rendered(
+        index: Int,
+        scale: Float,
+        part: RectF,
+    ): Bitmap {
+        val bitmap =
+            Bitmap.createBitmap(
+                ceil(part.width() * scale).toInt().coerceAtLeast(1),
+                ceil(part.height() * scale).toInt().coerceAtLeast(1),
+                Bitmap.Config.ARGB_8888,
+            )
+        val transform =
+            Matrix().apply {
+                setScale(scale, scale)
+                postTranslate(-part.left * scale, -part.top * scale)
+            }
+        renderer.render(index, bitmap, transform)
+        return bitmap
+    }
 
     @Synchronized
     override fun close() {
@@ -101,6 +173,10 @@ class PdfBackgroundSource(
     }
 
     private companion object {
-        const val CACHE_SIZE = 8
+        /** Whole pages are rendered up to this many pixels (about a page at fit width on a tablet). */
+        const val MAX_WHOLE_PIXELS = 8_000_000f
+
+        /** Whole pages kept: a few at fit width, many as thumbnails. */
+        const val CACHE_BYTES = 64 * 1024 * 1024
     }
 }
