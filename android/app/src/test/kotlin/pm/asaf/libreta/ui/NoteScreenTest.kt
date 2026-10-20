@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
@@ -31,7 +32,9 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -413,6 +416,80 @@ class NoteScreenTest {
         compose.runOnIdle { model.tools.setFingerButton(false) }
         compose.onNodeWithContentDescription("Draw with finger").assertDoesNotExist()
         assertEquals(false, model.tools.fingerDraws.value)
+    }
+
+    @Test
+    fun holdingAButtonShowsItsName() {
+        val model = openLecture()
+        compose.onNodeWithContentDescription("Pen pressure").performScrollTo().performTouchInput { longClick() }
+        // The name, as text (the button's is a description).
+        compose.waitUntil(TIMEOUT) { compose.onAllNodesWithText("Pen pressure").fetchSemanticsNodes().isNotEmpty() }
+        // Not pressed.
+        assertEquals(true, model.tools.tools.value.pen.pressure)
+    }
+
+    @Test
+    fun theStylusHoveringOverAButtonShowsItsName() {
+        openLecture()
+        val bounds = compose.onNodeWithContentDescription("Undo").getBoundsInRoot()
+        val (x, y) =
+            with(compose.density) {
+                (bounds.left + bounds.right).toPx() / 2 to
+                    (bounds.top + bounds.bottom).toPx() / 2
+            }
+        val root = compose.activity.window.decorView
+        compose.runOnIdle {
+            for (action in listOf(MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE)) {
+                root.dispatchGenericMotionEvent(hover(action, x, y))
+            }
+        }
+        compose.mainClock.advanceTimeBy(1_000)
+        compose.waitUntil(TIMEOUT) { compose.onAllNodesWithText("Undo").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun theHelpButtonSaysWhatEachButtonDoes() {
+        openLecture()
+        compose.onNodeWithContentDescription("Help").performClick()
+        compose.onNodeWithText("Tools").assertIsDisplayed()
+        compose.onNodeWithText("Writes in the colour and width chosen.", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Tools").assertDoesNotExist()
+    }
+
+    /** A stylus hovering at a point of the window. */
+    private fun hover(
+        action: Int,
+        x: Float,
+        y: Float,
+    ): MotionEvent {
+        val properties =
+            MotionEvent.PointerProperties().apply {
+                id = 0
+                toolType = MotionEvent.TOOL_TYPE_STYLUS
+            }
+        val coordinates =
+            MotionEvent.PointerCoords().apply {
+                this.x = x
+                this.y = y
+            }
+        val time = android.os.SystemClock.uptimeMillis()
+        return MotionEvent.obtain(
+            time,
+            time,
+            action,
+            1,
+            arrayOf(properties),
+            arrayOf(coordinates),
+            0,
+            0,
+            1f,
+            1f,
+            0,
+            0,
+            android.view.InputDevice.SOURCE_STYLUS,
+            0,
+        )
     }
 
     @Test

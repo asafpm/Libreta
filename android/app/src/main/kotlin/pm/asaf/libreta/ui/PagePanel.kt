@@ -373,7 +373,7 @@ private fun Action(
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    IconButton(onClick = onClick, enabled = enabled) { Icon(icon, stringResource(label)) }
+    TooltipIconButton(icon, stringResource(label), enabled, onClick)
 }
 
 /** Wide enough for the commands in one row. */

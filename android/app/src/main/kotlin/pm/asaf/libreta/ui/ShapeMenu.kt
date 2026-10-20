@@ -25,9 +25,7 @@ fun ShapeMenu(controls: ToolControls) {
     var open by remember { mutableStateOf(false) }
     Box {
         val (icon, label) = SHAPES.getValue(current)
-        IconButton(onClick = { open = true }) {
-            Icon(icon, stringResource(R.string.shape, stringResource(label)))
-        }
+        TooltipIconButton(icon, stringResource(R.string.shape, stringResource(label))) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for ((type, look) in SHAPES) {
                 DropdownMenuItem(

@@ -127,7 +127,8 @@ private fun Toggle(
     on: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
-    FilledIconToggleButton(checked = on, onCheckedChange = onChange) { Icon(icon, stringResource(label)) }
+    val name = stringResource(label)
+    WithTooltip(name) { FilledIconToggleButton(checked = on, onCheckedChange = onChange) { Icon(icon, name) } }
 }
 
 @Composable
@@ -137,8 +138,11 @@ private fun ToolButton(
     label: Int,
     controls: ToolControls,
 ) {
-    FilledIconToggleButton(checked = controls.tools.tool == tool, onCheckedChange = { controls.onTool(tool) }) {
-        Icon(icon, stringResource(label))
+    val name = stringResource(label)
+    WithTooltip(name) {
+        FilledIconToggleButton(checked = controls.tools.tool == tool, onCheckedChange = { controls.onTool(tool) }) {
+            Icon(icon, name)
+        }
     }
 }
 
@@ -159,7 +163,7 @@ private fun RowScope.InkOptions(
     for (swatch in swatches) {
         Swatch(swatch, colorName(swatch), selected = swatch == color) { controls.onColor(swatch) }
     }
-    IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
+    AddColorButton(onAddColor)
     Separator()
     for (option in PenSize.entries.filter { it in controls.visibleSizes || it == size }) {
         WidthOption(option, color.toCompose(), CircleShape, selected = option == size) { controls.onSize(option) }
@@ -185,7 +189,7 @@ private fun RowScope.SelectOptions(
     for (swatch in (controls.fixedColors + controls.recentColors).distinct()) {
         Swatch(swatch, colorName(swatch), selected = false) { onRestyle(swatch, null) }
     }
-    IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
+    AddColorButton(onAddColor)
     Separator()
     for (option in PenSize.entries.filter { it in controls.visibleSizes }) {
         WidthOption(option, MaterialTheme.colorScheme.onSurfaceVariant, CircleShape, selected = false) {
@@ -214,6 +218,12 @@ private fun RowScope.EraserOptions(controls: ToolControls) {
     }
 }
 
+/** Picks a colour to add. */
+@Composable
+internal fun AddColorButton(onClick: () -> Unit) {
+    TooltipIconButton(AddIcon, stringResource(R.string.add_color), onClick = onClick)
+}
+
 @Composable
 internal fun Separator() = VerticalDivider(Modifier.padding(horizontal = 6.dp).size(width = 1.dp, height = 28.dp))
 
@@ -226,16 +236,18 @@ internal fun Swatch(
 ) {
     val description = stringResource(R.string.tool_color, name)
     val ring = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
-    Box(
-        modifier =
-            Modifier
-                .size(32.dp)
-                .border(if (selected) 3.dp else 1.dp, ring, CircleShape)
-                .padding(4.dp)
-                .background(color.toCompose(), CircleShape)
-                .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
-                .semantics { contentDescription = description },
-    )
+    WithTooltip(description) {
+        Box(
+            modifier =
+                Modifier
+                    .size(32.dp)
+                    .border(if (selected) 3.dp else 1.dp, ring, CircleShape)
+                    .padding(4.dp)
+                    .background(color.toCompose(), CircleShape)
+                    .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+                    .semantics { contentDescription = description },
+        )
+    }
 }
 
 /** A width, shown as a dot (or square) growing with the size. */
@@ -249,16 +261,18 @@ private fun WidthOption(
 ) {
     val description = stringResource(R.string.tool_width, stringResource(size.label))
     val ring = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-            Modifier
-                .size(32.dp)
-                .border(2.dp, ring, CircleShape)
-                .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
-                .semantics { contentDescription = description },
-    ) {
-        WidthDot(size, color, shape)
+    WithTooltip(description) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .size(32.dp)
+                    .border(2.dp, ring, CircleShape)
+                    .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+                    .semantics { contentDescription = description },
+        ) {
+            WidthDot(size, color, shape)
+        }
     }
 }
 

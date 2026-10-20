@@ -61,7 +61,7 @@ fun RowScope.TextOptions(
     for (swatch in swatches) {
         Swatch(swatch, colorName(swatch), selected = swatch == text.color) { controls.onColor(swatch) }
     }
-    IconButton(onClick = onAddColor) { Icon(AddIcon, stringResource(R.string.add_color)) }
+    AddColorButton(onAddColor)
 }
 
 /** The text size, as a button opening the sizes offered. */

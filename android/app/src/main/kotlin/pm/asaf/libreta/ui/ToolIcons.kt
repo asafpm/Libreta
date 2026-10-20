@@ -95,6 +95,20 @@ val PressureIcon: ImageVector =
             close()
         }.build()
 
+/** Help: a question mark in a circle. */
+@Suppress("MagicNumber") // path coordinates
+val HelpIcon: ImageVector =
+    lineIcon("Help") {
+        moveTo(3f, 12f)
+        arcTo(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 21f, 12f)
+        arcTo(9f, 9f, 0f, isMoreThanHalf = false, isPositiveArc = true, 3f, 12f)
+        moveTo(9.5f, 9.5f)
+        arcTo(2.6f, 2.6f, 0f, isMoreThanHalf = true, isPositiveArc = true, 13.4f, 11.7f)
+        quadTo(12f, 12.5f, 12f, 14f)
+        moveTo(12f, 17.2f)
+        lineTo(12f, 17.25f)
+    }
+
 /** Highlighter: a chisel-tipped marker over a highlighted line. */
 @Suppress("MagicNumber") // path coordinates
 val HighlighterIcon: ImageVector =

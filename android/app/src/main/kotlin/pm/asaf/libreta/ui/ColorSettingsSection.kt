@@ -93,12 +93,12 @@ private fun Stepper(
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        IconButton(onClick = { onChange(value - 1) }, enabled = value > range.first) {
-            Icon(RemoveIcon, stringResource(R.string.fewer, label))
-        }
+        TooltipIconButton(
+            RemoveIcon,
+            stringResource(R.string.fewer, label),
+            value > range.first,
+        ) { onChange(value - 1) }
         Text(value.toString(), textAlign = TextAlign.Center, modifier = Modifier.widthIn(min = 32.dp))
-        IconButton(onClick = { onChange(value + 1) }, enabled = value < range.last) {
-            Icon(AddIcon, stringResource(R.string.more, label))
-        }
+        TooltipIconButton(AddIcon, stringResource(R.string.more, label), value < range.last) { onChange(value + 1) }
     }
 }

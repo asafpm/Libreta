@@ -240,6 +240,16 @@ class LibretaAppTest {
         compose.onNode(hasText("New folder") or hasContentDescription("New folder")).performClick()
 
     @Test
+    fun helpStartsWithTheLibrary() {
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        show()
+        compose.onNodeWithContentDescription("Help").performClick()
+        compose.onNodeWithText("Library").assertIsDisplayed()
+        compose.onNodeWithText("Makes a folder in this one.").assertIsDisplayed()
+    }
+
+    @Test
     fun createsFolders() {
         File(directory, "Courses").mkdirs()
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))

@@ -69,9 +69,7 @@ fun MoveToFolderDialog(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
                     if (current != null) {
-                        IconButton(onClick = { path = path.dropLast(1) }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
-                        }
+                        BackButton { path = path.dropLast(1) }
                     }
                     Text(
                         current?.name ?: stringResource(R.string.library_folders),

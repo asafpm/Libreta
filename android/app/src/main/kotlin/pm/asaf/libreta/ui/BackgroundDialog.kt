@@ -167,7 +167,7 @@ internal fun PaperChoices(
                         .semantics { contentDescription = description },
             ) {}
         }
-        IconButton(onClick = onPick) { Icon(AddIcon, stringResource(R.string.add_color)) }
+        AddColorButton(onPick)
     }
 }
 

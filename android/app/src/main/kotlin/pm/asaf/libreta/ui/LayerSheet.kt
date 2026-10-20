@@ -82,9 +82,7 @@ fun LayerSheet(
                                 .padding(vertical = 12.dp),
                     )
                     val toggle = stringResource(if (hidden) R.string.show_layer else R.string.hide_layer, name)
-                    IconButton(onClick = { actions.setHidden(layer, !hidden) }) {
-                        Icon(if (hidden) EyeOffIcon else EyeIcon, toggle)
-                    }
+                    TooltipIconButton(if (hidden) EyeOffIcon else EyeIcon, toggle) { actions.setHidden(layer, !hidden) }
                 }
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp))

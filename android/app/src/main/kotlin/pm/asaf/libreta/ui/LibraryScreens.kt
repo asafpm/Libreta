@@ -73,7 +73,8 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.app_name)) },
                 actions = {
-                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, stringResource(R.string.settings)) }
+                    HelpButton(HelpTopic.LIBRARY)
+                    TooltipIconButton(Icons.Filled.Settings, stringResource(R.string.settings), onClick = onSettings)
                 },
             )
         },
@@ -139,14 +140,13 @@ fun FolderScreen(
             TopAppBar(
                 title = { Breadcrumbs(path, actions.manage?.drop, onBreadcrumb) },
                 navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                    BackButton(onBack)
                 },
                 actions = {
                     NewFolderButton(onNewFolder)
                     Spacer(Modifier.width(8.dp))
                     NewNoteButton(onNewNote)
+                    HelpButton(HelpTopic.LIBRARY)
                 },
             )
         },

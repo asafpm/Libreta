@@ -71,9 +71,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.settings)) },
                 navigationIcon = {
-                    IconButton(
-                        onClick = onBack,
-                    ) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+                    BackButton(onBack)
                 },
             )
         },
@@ -206,15 +204,17 @@ private fun RootItem(
         supportingContent = { Text(location) },
         trailingContent = {
             Row {
-                IconButton(onClick = { actions.move(root, -1) }, enabled = index > 0) {
-                    Icon(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up))
+                TooltipIconButton(Icons.Filled.KeyboardArrowUp, stringResource(R.string.move_up), index > 0) {
+                    actions.move(root, -1)
                 }
-                IconButton(onClick = { actions.move(root, 1) }, enabled = index < count - 1) {
-                    Icon(Icons.Filled.KeyboardArrowDown, stringResource(R.string.move_down))
+                TooltipIconButton(
+                    Icons.Filled.KeyboardArrowDown,
+                    stringResource(R.string.move_down),
+                    index < count - 1,
+                ) {
+                    actions.move(root, 1)
                 }
-                IconButton(
-                    onClick = { actions.remove(root) },
-                ) { Icon(Icons.Filled.Delete, stringResource(R.string.remove)) }
+                TooltipIconButton(Icons.Filled.Delete, stringResource(R.string.remove)) { actions.remove(root) }
             }
         },
     )

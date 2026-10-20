@@ -43,6 +43,9 @@ class EntryDialogActions(
     val dismiss: () -> Unit,
 )
 
+/** Where help was asked for: its part comes first. */
+enum class HelpTopic { NOTE, LIBRARY }
+
 /** Things [SettingsScreen] can change. */
 class SettingsActions(
     val addFolder: () -> Unit,

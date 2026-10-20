@@ -142,7 +142,7 @@ fun NewFolderButton(onClick: () -> Unit) {
             Text(label)
         }
     } else {
-        OutlinedIconButton(onClick = onClick) { Icon(NewFolderIcon, contentDescription = label) }
+        WithTooltip(label) { OutlinedIconButton(onClick = onClick) { Icon(NewFolderIcon, contentDescription = label) } }
     }
 }
 

@@ -105,6 +105,7 @@ fun NoteScreen(
             NoteTopBar(name, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
                 NoteActions(panels, commands, view, more)
+                HelpButton(HelpTopic.NOTE)
             }
         },
     ) { padding ->
@@ -158,7 +159,7 @@ private fun NoteTopBar(
     TopAppBar(
         title = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         navigationIcon = {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) }
+            BackButton(onBack)
         },
         actions = actions,
     )
@@ -253,14 +254,12 @@ private fun NoteActions(
         }
     if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
         for (action in actions) {
-            IconButton(onClick = action.run, enabled = enabled && action.enabled) {
-                Icon(action.icon, stringResource(action.label))
-            }
+            TooltipIconButton(action.icon, stringResource(action.label), enabled && action.enabled, action.run)
         }
         TextButton(onClick = { view?.fitWidth() }, enabled = enabled) { Text(stringResource(R.string.fit_width)) }
     } else {
         var open by remember { mutableStateOf(false) }
-        IconButton(onClick = { open = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) }
+        TooltipIconButton(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for (action in actions) {
                 DropdownMenuItem(
@@ -378,12 +377,8 @@ private fun UndoButtons(
     view: DocumentView?,
 ) {
     val history by session.undoState.collectAsState()
-    IconButton(onClick = { undo(session, view) }, enabled = view != null && history.canUndo) {
-        Icon(UndoIcon, stringResource(R.string.undo))
-    }
-    IconButton(onClick = { redo(session, view) }, enabled = view != null && history.canRedo) {
-        Icon(RedoIcon, stringResource(R.string.redo))
-    }
+    TooltipIconButton(UndoIcon, stringResource(R.string.undo), view != null && history.canUndo) { undo(session, view) }
+    TooltipIconButton(RedoIcon, stringResource(R.string.redo), view != null && history.canRedo) { redo(session, view) }
 }
 
 /** Why backgrounds are missing, if they are. */
