@@ -11,6 +11,7 @@ import pm.asaf.libreta.R
 import pm.asaf.libreta.android.render.RenderCaches
 import pm.asaf.libreta.core.format.XoppFormatException
 import pm.asaf.libreta.core.format.XoppReader
+import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.store.DocumentStore
 import pm.asaf.libreta.core.store.StoreEntry
 import pm.asaf.libreta.core.store.StoreId
@@ -35,6 +36,10 @@ object NoteLoader {
             val version = (store.entry(id) as? StoreEntry.File)?.version
             val bytes = store.read(id).buffer().use { it.readByteString() }
             val read = XoppReader.read(bytes)
+            // A page no size can be drawn (or saved) at: a damaged note, left as it is.
+            read.document.pages.firstOrNull { !it.canBeDrawn() }?.let {
+                throw XoppFormatException("A page of $name is ${it.width} × ${it.height}")
+            }
             val files = DocumentFiles.open(context, store, read, location)
             NoteState.Loaded(
                 file = NoteFile(id, name, location, read.container, version, bytes.sha256()),
@@ -78,3 +83,6 @@ object NoteLoader {
             }
         }
 }
+
+/** Whether the page has a size it can be drawn at: positive and finite. */
+private fun Page.canBeDrawn(): Boolean = listOf(width, height).all { it > 0 && it.isFinite() }
