@@ -30,6 +30,14 @@ class NoteClipboard(
         clipboard.addPrimaryClipChangedListener { pastable.value = holdsSomething() }
     }
 
+    /**
+     * Looks at the clipboard again. Android lets an app read it only while the app has focus, so
+     * what other apps copy while it is in the background shows only once it is back.
+     */
+    fun refresh() {
+        pastable.value = holdsSomething()
+    }
+
     fun copy(elements: List<Element>) {
         if (elements.isEmpty()) return
         val description = ClipDescription(LABEL, arrayOf(MIME_TYPE))

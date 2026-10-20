@@ -17,6 +17,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.libreta.core.store.StoreId
+import pm.asaf.libreta.files.NoteClipboard
 import pm.asaf.libreta.ui.KeyShortcuts
 import pm.asaf.libreta.ui.LibretaApp
 import pm.asaf.libreta.ui.LibretaTheme
@@ -62,6 +63,12 @@ class MainActivity : ComponentActivity() {
     ) {
         super.onProvideKeyboardShortcuts(data, menu, deviceId)
         data.addAll(shortcutGroups(this))
+    }
+
+    /** Back in front: the clipboard can be read again (see [NoteClipboard.refresh]). */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) model.clipboard.refresh()
     }
 
     /** Leaving the app (or turning the screen off) saves the open note. */
