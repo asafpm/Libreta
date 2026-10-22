@@ -6,6 +6,7 @@ import android.content.Context
 import android.graphics.RectF
 import android.widget.EditText
 import android.widget.FrameLayout
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -61,14 +62,17 @@ import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.R
 import pm.asaf.libreta.SaveStatus
 import pm.asaf.libreta.android.render.RenderThreads
+import pm.asaf.libreta.core.geometry.ViewportAnchor
 import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.Tool
+import pm.asaf.libreta.core.store.FileVersion
 import pm.asaf.libreta.files.NoteClipboard
 import pm.asaf.libreta.files.NoteCommands
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.files.PageThumbnails
 import pm.asaf.libreta.files.PdfExportFlow
+import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
 import pm.asaf.libreta.viewer.LowLatencyWetInk
@@ -96,6 +100,8 @@ fun NoteScreen(
     saveStatus: SaveStatus = SaveStatus.SAVED,
     /** Saves again; given while saving fails, to say so until it works. */
     onRetrySave: (() -> Unit)? = null,
+    /** Renames the note (to a name without extensions), shown again where it is ([ViewportAnchor]). */
+    onRename: ((String, ViewportAnchor?) -> Unit)? = null,
 ) {
     var view by remember { mutableStateOf<DocumentView?>(null) }
     val loaded = state as? NoteState.Loaded
@@ -110,9 +116,10 @@ fun NoteScreen(
     if (loaded != null && commands != null) {
         NoteShortcuts(loaded, commands, panels, tools, more, selectionActions({ view }, clipboard, paste)) { view }
     }
+    val rename = onRename?.let { renameOf(loaded, it) { view } }
     Scaffold(
         topBar = {
-            NoteTopBar(name, saveStatus.takeIf { loaded != null }, onBack) {
+            NoteTopBar(name, saveStatus.takeIf { loaded != null }, rename, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
                 NoteActions(panels, commands, view, more)
                 HelpButton(HelpTopic.NOTE)
@@ -141,11 +148,10 @@ fun NoteScreen(
                             ) { color, size -> view?.selection?.restyle(color, size) }
                             Notices(state, onAddFolder, onRetrySave)
                             Box(Modifier.weight(1f).fillMaxWidth()) {
-                                val canvas = Modifier.fillMaxSize()
                                 NoteCanvas(state, threads, position, tools, panels, { shown ->
                                     view = shown
                                     shown?.onImageDropped = images.drop
-                                }, canvas)
+                                }, Modifier.fillMaxSize())
                                 panels.selection?.let { anchor ->
                                     SelectionBar(anchor, selectionActions({ view }, clipboard, paste))
                                 }
@@ -164,12 +170,15 @@ fun NoteScreen(
 private fun NoteTopBar(
     name: String,
     status: SaveStatus?,
+    rename: RenameNote?,
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit,
 ) {
+    var renaming by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
-            Column {
+            // Tapped, the name can be changed.
+            Column(if (rename == null) Modifier else Modifier.clickable { renaming = true }) {
                 Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 status?.let { SaveStatusLine(it) }
             }
@@ -179,6 +188,35 @@ private fun NoteTopBar(
         },
         actions = actions,
     )
+    if (renaming && rename != null) {
+        RenameDialog(rename.entry, { stem ->
+            renaming = false
+            rename.onRename(stem)
+        }) { renaming = false }
+    }
+}
+
+/** Renaming the open note, as [entry] (where it is in the library). */
+private class RenameNote(
+    val entry: LibraryEntry,
+    val onRename: (String) -> Unit,
+)
+
+/** Renaming [note], if it is in the library, with [onRename] given where the [view] shows it. */
+private fun renameOf(
+    note: NoteState.Loaded?,
+    onRename: (String, ViewportAnchor?) -> Unit,
+    view: () -> DocumentView?,
+): RenameNote? {
+    val folder =
+        note
+            ?.file
+            ?.location
+            ?.folders
+            ?.last() ?: return null
+    val file = note.file
+    val entry = LibraryEntry.Document(file.id, file.name, file.version ?: FileVersion(0, -1), folder)
+    return RenameNote(entry) { stem -> onRename(stem, view()?.anchor) }
 }
 
 /** Whether the note's changes are in its file: under its name. */

@@ -278,4 +278,25 @@ class NoteScreenExtrasTest : NoteScreenTesting() {
         compose.onNodeWithContentDescription("Width: Very thick").performClick()
         assertEquals(pm.asaf.libreta.core.model.PenSize.VERY_THICK, model.tools.tools.value.pen.size)
     }
+
+    @Test
+    fun theOpenNoteIsRenamedFromItsName() {
+        val model = openLecture()
+        compose.onNodeWithText("Lecture.xopp").performClick()
+        compose.onNodeWithText("Rename Lecture.xopp").assertIsDisplayed()
+        compose
+            .onNode(
+                androidx.compose.ui.test
+                    .hasSetTextAction(),
+            ).performTextReplacement("Week 1")
+        compose
+            .onNode(
+                hasText("Rename") and
+                    androidx.compose.ui.test
+                        .hasClickAction(),
+            ).performClick()
+        // Open again, under its new name.
+        eventually { (model.note.value as? NoteState.Loaded)?.file?.name == "Week 1.xopp" }
+        assertEquals(listOf("Week 1.xopp"), directory.list()?.filter { it.endsWith(".xopp") })
+    }
 }

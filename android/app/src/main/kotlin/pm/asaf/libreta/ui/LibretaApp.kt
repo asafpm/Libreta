@@ -166,7 +166,7 @@ private fun libraryActions(
         model.open(Screen.Note(entry.id, entry.name, DocumentLocation(folders, entry.name)))
     },
     openPdf = { entry -> model.pdfs.open(entry, parent?.path ?: listOf(entry.parent)) },
-    manage = model.entries.let { ManageActions(it::rename, it::move, it::delete, it::drop) },
+    manage = model.entries.let { ManageActions(it::rename, it::move, it::delete, it::drop, it::duplicate) },
 )
 
 @Composable
@@ -307,6 +307,7 @@ private fun Note(
         template = newPages,
         saveStatus = saveStatus,
         onRetrySave = if (saveStatus == SaveStatus.NOT_SAVED) ({ model.saveNote() }) else null,
+        onRename = model::renameNote,
         clipboard = model.clipboard,
         exports = model.exports,
     )

@@ -229,6 +229,34 @@ class LibraryFilesTest {
     }
 
     @Test
+    fun duplicatesANoteWithItsAttachedFilesButNotItsPdf() {
+        noteOn("lecture.xopp", "lecture.pdf")
+        File(directory, "lecture.xopp.bg.pdf").writeText("%PDF")
+        val copy = files.duplicate(document("lecture.xopp"))
+        assertEquals("lecture (copy).xopp", copy.name)
+        // The copy shows the same PDF, next to both.
+        assertTrue(
+            File(
+                directory,
+                "lecture.xopp",
+            ).readBytes().contentEquals(File(directory, "lecture (copy).xopp").readBytes()),
+        )
+        assertEquals("lecture (copy 2).xopp", files.duplicate(document("lecture.xopp")).name)
+        assertEquals(
+            setOf(
+                "lecture.pdf",
+                "lecture.xopp",
+                "lecture.xopp.bg.pdf",
+                "lecture (copy).xopp",
+                "lecture (copy).xopp.bg.pdf",
+                "lecture (copy 2).xopp",
+                "lecture (copy 2).xopp.bg.pdf",
+            ),
+            names(),
+        )
+    }
+
+    @Test
     fun deletesWithOrWithoutThePdf() {
         noteOn("lecture.xopp", "lecture.pdf")
         File(directory, "lecture.xopp.bg.pdf").writeText("%PDF")

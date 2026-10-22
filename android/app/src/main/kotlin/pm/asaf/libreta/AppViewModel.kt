@@ -27,6 +27,7 @@ import pm.asaf.libreta.core.format.XoppReader
 import pm.asaf.libreta.core.geometry.ViewportAnchor
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.PaperSize
+import pm.asaf.libreta.core.store.FileVersion
 import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.files.Autosave
 import pm.asaf.libreta.files.Backups
@@ -44,6 +45,8 @@ import pm.asaf.libreta.files.SaveResult
 import pm.asaf.libreta.files.UnsavedNotes
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
+import pm.asaf.libreta.library.LibraryEntry
+import pm.asaf.libreta.library.LibraryFiles
 import pm.asaf.libreta.library.LibraryFlow
 import pm.asaf.libreta.library.LibrarySearch
 import pm.asaf.libreta.library.NewFolderFlow
@@ -348,6 +351,38 @@ class AppViewModel
         private fun showNote(screen: Screen.Note) {
             if (stack.value.last() is Screen.Note) back()
             open(screen)
+        }
+
+        /**
+         * Renames the open note to [stem] (its name without extensions), with what goes with it:
+         * it is saved and closed, renamed, then opened again where it was shown ([anchor]). Not
+         * if it can't be saved (then the note left unsaved is offered).
+         */
+        fun renameNote(
+            stem: String,
+            anchor: ViewportAnchor?,
+        ) {
+            val screen = stack.value.last() as? Screen.Note
+            val note = noteState.value as? NoteState.Loaded
+            val location = screen?.location
+            if (screen == null || note == null || location == null) return
+            val entry =
+                LibraryEntry.Document(
+                    note.file.id,
+                    note.file.name,
+                    note.file.version ?: FileVersion(0, -1),
+                    location.folders.last(),
+                )
+            back()
+            viewModelScope.launch {
+                saving?.join()
+                if (unsaved.note.value?.note === note) return@launch
+                val renamed = withContext(io) { runCatching { LibraryFiles(store).rename(entry, stem.trim()) } }
+                renamed.exceptionOrNull()?.let { messages.say(entries.message(it, entry, R.string.error_rename)) }
+                val file = renamed.getOrNull()
+                open(file?.let { Screen.Note(it.id, it.name, location.copy(name = it.name)) } ?: screen)
+                noteAnchor = anchor
+            }
         }
 
         /** Adds the folder of the open note to the library, then opens the note again to find its files. */

@@ -59,7 +59,7 @@ fun EntryDialog(
 
 /** A new name for [entry]: its [LibraryFiles.stem], the extensions shown after it. */
 @Composable
-private fun RenameDialog(
+internal fun RenameDialog(
     entry: LibraryEntry,
     onRename: (stem: String) -> Unit,
     onDismiss: () -> Unit,

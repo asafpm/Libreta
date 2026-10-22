@@ -90,6 +90,26 @@ class LibraryFiles(
         return placed.first().entry
     }
 
+    /**
+     * Copies the note [entry] with its attached files next to it, as "name (copy)" (or
+     * "(copy 2)", …); the PDF it shows stays one, next to both. Returns the copy.
+     */
+    fun duplicate(entry: LibraryEntry.Document): StoreEntry {
+        val group = group(entry)
+        val old = stemOf(entry)
+        val files = listOf(group.main) + group.attached
+        val taken = (group.others + group.members).map { it.name.lowercase() }.toSet()
+        val stem =
+            generateSequence(1) { it + 1 }
+                .map { if (it == 1) "$old (copy)" else "$old (copy $it)" }
+                .first { stem -> files.none { (stem + it.name.drop(old.length)).lowercase() in taken } }
+        val copies = ArrayList<StoreEntry>()
+        undoing({ copies.forEach { runCatching { store.delete(it.id) } } }) {
+            for (file in files) copies += copy(file, entry.parent.id, stem + file.name.drop(old.length))
+        }
+        return copies.first()
+    }
+
     /** Deletes [entry] and what goes with it, but a note's PDF only if [alsoPdf]. */
     fun delete(
         entry: LibraryEntry,
@@ -142,7 +162,7 @@ class LibraryFiles(
     /** [entry] (first), what goes with it, and the rest of its folder. */
     private class Group(
         val main: StoreEntry,
-        attached: List<StoreEntry>,
+        val attached: List<StoreEntry>,
         val pdf: StoreEntry.File?,
         val others: List<StoreEntry>,
     ) {
@@ -170,20 +190,21 @@ class LibraryFiles(
         ancestor: StoreId,
     ): Boolean = folder == ancestor || store.pathTo(ancestor, folder) != null
 
-    /** A copy of [entry] in [into], under the same name. */
+    /** A copy of [entry] in [into], named [name] (its own by default). */
     private fun copy(
         entry: StoreEntry,
         into: StoreId,
+        name: String = entry.name,
     ): StoreEntry {
         val copy =
             when (entry) {
-                is StoreEntry.File -> store.create(into, entry.name)
-                is StoreEntry.Folder -> store.createFolder(into, entry.name)
+                is StoreEntry.File -> store.create(into, name)
+                is StoreEntry.Folder -> store.createFolder(into, name)
             }
         try {
-            if (copy.name != entry.name) throw Refused(Problem.NAME_TAKEN, entry.name)
+            if (copy.name != name) throw Refused(Problem.NAME_TAKEN, name)
             when (entry) {
-                is StoreEntry.File -> store.write(copy.id, bytes(entry.id), expected = null)
+                is StoreEntry.File -> store.write(copy.id, store.bytes(entry.id), expected = null)
                 is StoreEntry.Folder -> store.list(entry.id).forEach { copy(it, copy.id) }
             }
         } catch (e: IOException) {
@@ -201,7 +222,7 @@ class LibraryFiles(
     ) {
         val read =
             try {
-                XoppReader.read(bytes(note.id))
+                XoppReader.read(store.bytes(note.id))
             } catch (e: XoppFormatException) {
                 throw StoreException("Cannot read ${note.name}", e)
             }
@@ -220,8 +241,6 @@ class LibraryFiles(
             }
         if (changed) store.write(note.id, XoppWriter.toByteString(read.document.copy(pages = pages)), expected = null)
     }
-
-    private fun bytes(file: StoreId): ByteString = store.read(file).buffer().use { it.readByteString() }
 
     companion object {
         /** The part of [entry]'s name that a rename changes: see [stem]; all of a folder's. */
@@ -256,3 +275,6 @@ class LibraryFiles(
             }
     }
 }
+
+/** The contents of [file]. */
+private fun DocumentStore.bytes(file: StoreId): ByteString = read(file).buffer().use { it.readByteString() }

@@ -55,6 +55,7 @@
     <string name="rename">Rename</string>
     <string name="rename_title">Rename %1$s</string>
     <string name="error_rename">Couldn\'t rename %1$s</string>
+    <string name="error_duplicate">Couldn\'t duplicate %1$s</string>
     <string name="error_delete">Couldn\'t delete %1$s</string>
     <string name="error_name_taken">There is already a %1$s there</string>
     <string name="error_into_itself">%1$s can\'t go into itself</string>

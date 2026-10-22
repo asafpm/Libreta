@@ -232,9 +232,14 @@ private fun CardMenu(
             Icon(Icons.Filled.MoreVert, stringResource(R.string.more_actions_for, entry.name))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            val duplicate =
+                (entry as? LibraryEntry.Document)?.let { note ->
+                    { _: LibraryEntry -> actions.duplicate(note) }
+                }
             val items =
-                listOf(
+                listOfNotNull(
                     R.string.rename to actions.rename,
+                    duplicate?.let { R.string.duplicate to it },
                     R.string.move_to_folder to actions.move,
                     R.string.delete to actions.delete,
                 )

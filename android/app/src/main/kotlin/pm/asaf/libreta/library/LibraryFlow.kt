@@ -105,6 +105,10 @@ class LibraryFlow(
         }
     }
 
+    /** Copies the note [entry] (with its attached files) next to it. */
+    fun duplicate(entry: LibraryEntry.Document) =
+        run(entry, R.string.error_duplicate, listOf(entry.parent), { files.duplicate(entry) })
+
     /** Deletes the entry asked about, and the PDF that goes with it if [alsoPdf]. */
     fun confirmDelete(alsoPdf: Boolean) {
         val entry = (state.value as? EntryRequest.Delete)?.entry ?: return
@@ -136,7 +140,8 @@ class LibraryFlow(
         }
     }
 
-    private fun message(
+    /** What to tell about [e], which [entry]'s change failed with; [failed] says it in general. */
+    fun message(
         e: Throwable,
         entry: LibraryEntry,
         failed: Int,

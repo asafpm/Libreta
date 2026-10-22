@@ -33,6 +33,8 @@ class ManageActions(
     val move: (LibraryEntry) -> Unit,
     val delete: (LibraryEntry) -> Unit,
     val drop: (LibraryEntry, FolderRef) -> Unit,
+    /** Copies a note next to it. */
+    val duplicate: (LibraryEntry.Document) -> Unit = {},
 )
 
 /** What the dialogs about an entry do once answered. */

@@ -166,6 +166,15 @@ class LibraryManageTest {
     }
 
     @Test
+    fun duplicatesANote() {
+        noteOnPdf("lecture")
+        show()
+        menu("lecture.xopp", "Duplicate")
+        waitFor { names() == setOf("lecture.pdf", "lecture.xopp", "lecture (copy).xopp") }
+        waitForText("lecture (copy).xopp")
+    }
+
+    @Test
     fun deletesANoteAndChoosesAboutItsPdf() {
         noteOnPdf("lecture")
         noteOnPdf("seminar")
