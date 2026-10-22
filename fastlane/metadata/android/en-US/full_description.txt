@@ -1,0 +1,27 @@
+<p>Libreta is a notebook for writing by hand with a stylus on Android tablets. It reads and writes the file format of <a href="https://xournalpp.github.io/">Xournal++</a> (.xopp), so the same notes open on the computer with Xournal++ and on the tablet with Libreta.</p>
+
+<p><b>Writing</b></p>
+<ul>
+<li>Pen with pressure, highlighter, and an eraser that erases, paints white, or removes whole strokes</li>
+<li>Lines, rectangles, ellipses, arrows and coordinate systems</li>
+<li>Text in Sans, Serif and Monospace</li>
+<li>Select with a rectangle or a lasso, then move, resize, rotate, restyle, cut, copy and paste</li>
+<li>Pictures from the gallery, the camera or the clipboard</li>
+<li>Pages that are plain, ruled, lined, graph, dotted, isometric or staves, and layers</li>
+<li>The stylus's side button and eraser end, palm rejection, and keyboard shortcuts</li>
+</ul>
+
+<p><b>PDFs</b></p>
+<ul>
+<li>Write on PDFs: the notes are kept in a .xopp next to the PDF, as Xournal++ does</li>
+<li>Export a note as a PDF, or share it with another app</li>
+</ul>
+
+<p><b>Library</b></p>
+<ul>
+<li>Your notes stay in the folders you choose: on the device, or in any app that provides storage (such as Nextcloud)</li>
+<li>Search, sort, recent notes, and folders to create, rename, move and delete</li>
+<li>Notes save as you write, and a note changed elsewhere meanwhile is kept as a copy instead of being overwritten</li>
+</ul>
+
+<p>Libreta has no ads and no tracking, and doesn't use the internet. It is free software under the GNU GPL, version 2 or later.</p>
