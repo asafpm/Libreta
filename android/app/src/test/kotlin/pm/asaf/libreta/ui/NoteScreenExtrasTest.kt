@@ -240,4 +240,24 @@ class NoteScreenExtrasTest : NoteScreenTesting() {
         assertEquals(Tool.HIGHLIGHTER, model.tools.tools.value.tool)
         compose.onNodeWithContentDescription("Pen pressure").assertDoesNotExist()
     }
+
+    @Test
+    @Config(qualifiers = "w640dp-h900dp")
+    fun inAHalfScreenWindowTheTopBarKeepsTheMostUsedActions() {
+        openLecture()
+        compose.onNodeWithContentDescription("Pages").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Layers").assertIsDisplayed()
+        // The note's name keeps its room: the rest are under More.
+        compose.onNodeWithContentDescription("Share as PDF").assertDoesNotExist()
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Share as PDF").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "w1200dp-h900dp")
+    fun onAWideScreenEveryActionIsInTheTopBar() {
+        openLecture()
+        compose.onNodeWithContentDescription("Share as PDF").assertIsDisplayed()
+        compose.onNodeWithContentDescription("More").assertDoesNotExist()
+    }
 }

@@ -247,8 +247,8 @@ internal class NotePanels {
 }
 
 /**
- * The page panel, new page, layers and fit width: buttons on wide screens, a menu on narrow
- * ones (the note's name keeps some room).
+ * The note's commands (pages, layers, pictures, export, …): buttons as far as the window's width
+ * allows, the note's name keeping some room, and the rest under More.
  */
 @Composable
 private fun NoteActions(
@@ -265,13 +265,14 @@ private fun NoteActions(
         if (commands == null) {
             emptyList()
         } else {
+            // Most used first: the first ones stay in the top bar on narrow windows.
             listOf(
                 NoteAction(PagesIcon, R.string.pages) { panels.pages = !panels.pages },
+                NoteAction(LayersIcon, R.string.layers) { panels.layers = true },
                 NoteAction(AddPageIcon, R.string.insert_page) {
                     commands.pages.insertPageAfter(panels.current)
                     panels.current += 1
                 },
-                NoteAction(LayersIcon, R.string.layers) { panels.layers = true },
                 NoteAction(PasteIcon, R.string.paste, paste != null) { paste?.invoke() },
                 NoteAction(ImageIcon, R.string.insert_image) { more.images.insert() },
             ) +
@@ -283,15 +284,18 @@ private fun NoteActions(
                     NoteAction(Icons.Filled.Share, R.string.share_pdf, export != null) { export?.share?.invoke() },
                 )
         }
-    if (LocalConfiguration.current.screenWidthDp >= WIDE_SCREEN_DP) {
-        for (action in actions) {
-            TooltipIconButton(action.icon, stringResource(action.label), enabled && action.enabled, action.run)
-        }
-    } else {
+    // Back, undo, redo and help are always there, and the note's name keeps some room.
+    val room = (LocalConfiguration.current.screenWidthDp - FIXED_DP - NAME_DP) / ACTION_DP
+    val inline = if (room >= actions.size) actions.size else (room - 1).coerceAtLeast(0)
+    for (action in actions.take(inline)) {
+        TooltipIconButton(action.icon, stringResource(action.label), enabled && action.enabled, action.run)
+    }
+    val rest = actions.drop(inline)
+    if (rest.isNotEmpty()) {
         var open by remember { mutableStateOf(false) }
         TooltipIconButton(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (action in actions) {
+            for (action in rest) {
                 DropdownMenuItem(
                     text = { Text(stringResource(action.label)) },
                     leadingIcon = { Icon(action.icon, contentDescription = null) },
@@ -305,6 +309,14 @@ private fun NoteActions(
         }
     }
 }
+
+/** The top bar's buttons there always are (back, undo, redo, help, with the bar's padding), in dp. */
+private const val FIXED_DP = 4 * 48 + 16
+
+/** What the note's name keeps of the top bar, at least, in dp. */
+private const val NAME_DP = 180
+
+private const val ACTION_DP = 48
 
 @Composable
 private fun NotePagePanel(
