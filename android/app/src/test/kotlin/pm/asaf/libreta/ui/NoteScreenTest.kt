@@ -289,7 +289,7 @@ class NoteScreenTest : NoteScreenTesting() {
         assertEquals(LayerView(0, setOf(1)), session.layers.value[0])
         compose.onNodeWithText("Exercise").performClick()
         compose.onNodeWithTag("layer name").performTextReplacement("Notes")
-        compose.onNodeWithText("OK").performClick()
+        compose.onNodeWithText("Rename").performClick()
         compose.onNodeWithText("Add a layer above").performClick()
         // The new layer, between the two, is the one written on.
         assertEquals(listOf("Notes", null, "Solution"), model.pages()[0].layers.map { it.name })

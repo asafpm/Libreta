@@ -80,6 +80,8 @@
     <string name="move_up">Move up</string>
     <string name="move_down">Move down</string>
     <string name="remove">Remove</string>
+    <string name="remove_folder_title">Remove %1$s from the library?</string>
+    <string name="remove_folder_text">Its notes stay where they are: Libreta just stops showing them. It can be added again.</string>
     <string name="sort_by">Sort notes by</string>
     <string name="sort_modified">Last modified</string>
     <string name="sort_name">Name</string>

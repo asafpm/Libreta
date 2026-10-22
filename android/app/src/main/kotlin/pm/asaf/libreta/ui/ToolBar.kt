@@ -169,7 +169,7 @@ private fun RowScope.InkOptions(
     val sizes = PenSize.entries.filter { it in controls.visibleSizes || it == size }
     if (compact) {
         ColourChoice(color, swatches, controls.onColor, onAddColor)
-        WidthChoice(size, sizes, color.toCompose(), controls.onSize)
+        WidthChoice(size, sizes, color.inkShown(), controls.onSize)
         return
     }
     for (swatch in swatches) {
@@ -178,7 +178,7 @@ private fun RowScope.InkOptions(
     AddColorButton(onAddColor)
     Separator()
     for (option in sizes) {
-        WidthOption(option, color.toCompose(), CircleShape, selected = option == size) { controls.onSize(option) }
+        WidthOption(option, color.inkShown(), CircleShape, selected = option == size) { controls.onSize(option) }
     }
 }
 
@@ -262,7 +262,7 @@ internal fun Swatch(
                     .size(32.dp)
                     .border(if (selected) 3.dp else 1.dp, ring, CircleShape)
                     .padding(4.dp)
-                    .background(color.toCompose(), CircleShape),
+                    .background(color.inkShown(), CircleShape),
             )
         }
     }

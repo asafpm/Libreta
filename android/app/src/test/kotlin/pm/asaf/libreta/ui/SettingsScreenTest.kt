@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -29,6 +30,7 @@ import pm.asaf.libreta.core.model.Palette
 import pm.asaf.libreta.core.model.PaperSize
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.StylusButton
+import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.SortOrder
 
 @RunWith(AndroidJUnit4::class)
@@ -38,13 +40,16 @@ class SettingsScreenTest {
 
     private val chosen = ArrayList<Any>()
 
-    private fun show(colors: ToolbarSettings = ToolbarSettings(Palette.DEFAULT_FIXED, 3)) {
+    private fun show(
+        colors: ToolbarSettings = ToolbarSettings(Palette.DEFAULT_FIXED, 3),
+        roots: List<LibraryRoot> = emptyList(),
+    ) {
         var shown by mutableStateOf(colors)
         var template by mutableStateOf(NewPageTemplate())
         compose.setContent {
             MaterialTheme {
                 SettingsScreen(
-                    roots = emptyList(),
+                    roots = roots,
                     sortOrder = SortOrder.MODIFIED,
                     fingerButton = true,
                     stylusButton = StylusButton.ERASER,
@@ -53,7 +58,7 @@ class SettingsScreenTest {
                     actions =
                         SettingsActions(
                             {},
-                            {},
+                            { chosen += "remove ${it.name}" },
                             { _, _ -> },
                             {},
                             { chosen += "finger button $it" },
@@ -87,6 +92,16 @@ class SettingsScreenTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun removingALibraryFolderAsksFirst() {
+        show(roots = listOf(LibraryRoot.Local(android.net.Uri.parse("content://notes/tree/root"), "Notes")))
+        compose.onNodeWithContentDescription("Remove").performClick()
+        compose.onNodeWithText("Remove Notes from the library?").assertIsDisplayed()
+        assertEquals(emptyList<Any>(), chosen)
+        compose.onNodeWithText("Remove").performClick()
+        assertEquals(listOf<Any>("remove Notes"), chosen)
     }
 
     @Test

@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -39,7 +40,13 @@ import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.Tool
+import pm.asaf.libreta.viewer.PageRecolor
 import pm.asaf.libreta.core.model.Color as InkColor
+
+/** This ink colour as pages show it: as dark pages recolour it, when they are dark. */
+@Composable
+internal fun InkColor.inkShown(): Color =
+    if (LocalDarkPages.current) Color(PageRecolor.map(toCompose().toArgb())) else toCompose()
 
 /** The colour chosen, as a button opening the others ([swatches] and a picker): for narrow toolbars. */
 @Composable
@@ -66,7 +73,7 @@ internal fun ColourChoice(
                         .size(32.dp)
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                         .padding(4.dp)
-                        .border(12.dp, color.toCompose(), CircleShape),
+                        .border(12.dp, color.inkShown(), CircleShape),
                 )
             }
         }
