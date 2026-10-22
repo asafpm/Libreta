@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,18 +54,21 @@ internal fun ColourChoice(
     Box {
         WithTooltip(description) {
             Box(
+                contentAlignment = Alignment.Center,
                 modifier =
+                    Modifier.tapTarget(selected = false, onClick = { open = true }).semantics {
+                        contentDescription = description
+                        role = Role.Button
+                    },
+            ) {
+                Box(
                     Modifier
                         .size(32.dp)
                         .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                         .padding(4.dp)
-                        .border(12.dp, color.toCompose(), CircleShape)
-                        .clickable { open = true }
-                        .semantics {
-                            contentDescription = description
-                            role = Role.Button
-                        },
-            )
+                        .border(12.dp, color.toCompose(), CircleShape),
+                )
+            }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             FlowRow(
@@ -101,13 +106,10 @@ internal fun WidthChoice(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier =
-                    Modifier
-                        .size(32.dp)
-                        .clickable { open = true }
-                        .semantics {
-                            contentDescription = description
-                            role = Role.Button
-                        },
+                    Modifier.tapTarget(selected = false, onClick = { open = true }).semantics {
+                        contentDescription = description
+                        role = Role.Button
+                    },
             ) { WidthDot(size, color) }
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
@@ -174,4 +176,22 @@ internal fun Modifier.fadingEdges(state: ScrollState): Modifier =
         }
     }
 
+/**
+ * A swatch or width's tap target: 40 × 48 dp around what is drawn (32 dp), with a round ripple,
+ * selectable ([selected]) by [onClick].
+ */
+internal fun Modifier.tapTarget(
+    selected: Boolean,
+    onClick: () -> Unit,
+): Modifier =
+    size(width = TARGET_WIDTH, height = TARGET_HEIGHT).selectable(
+        selected = selected,
+        interactionSource = null,
+        indication = ripple(bounded = false, radius = TARGET_WIDTH / 2),
+        role = Role.RadioButton,
+        onClick = onClick,
+    )
+
+private val TARGET_WIDTH = 40.dp
+private val TARGET_HEIGHT = 48.dp
 private val FADE = 32.dp

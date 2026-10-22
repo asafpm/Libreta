@@ -139,10 +139,14 @@ internal class SelectionTool(
         val mapping = current?.let { host.mappingOf(it.page) }
         val handle =
             if (current != null && mapping != null) {
+                // Taken from further than drawn, a finger's size, but leaving room inside to move it.
+                val bounds = current.box.box
+                val side = minOf(bounds.right - bounds.left, bounds.bottom - bounds.top) * mapping.zoom
+                val reach = maxOf(handleRadius().toDouble(), minOf(HIT_DP * density.toDouble(), side / HIT_SHARE))
                 current.box.handleAt(
                     mapping.toPageX(viewX),
                     mapping.toPageY(viewY),
-                    handleRadius() / mapping.zoom,
+                    reach / mapping.zoom,
                     rotateOffset() / mapping.zoom,
                 )
             } else {
@@ -326,6 +330,12 @@ internal class SelectionTool(
         /** The smallest a scaled selection gets, in view pixels. */
         const val MIN_SIZE = 5.0
         const val HANDLE_DP = 14f
+
+        /** How far from a handle's middle it is taken: with a 48 dp target's reach. */
+        const val HIT_DP = 22f
+
+        /** At most this share of the selection's smaller side is a handle's reach. */
+        const val HIT_SHARE = 3
         const val ROTATE_GAP_DP = 16f
     }
 }

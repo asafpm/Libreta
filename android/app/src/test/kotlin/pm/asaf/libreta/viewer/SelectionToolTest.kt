@@ -258,6 +258,19 @@ class SelectionToolTest {
     }
 
     @Test
+    fun cornersAreBigEnoughToTakeWithAFinger() {
+        selectRectangle(0, 290.0, 240.0, 410.0, 330.0)
+        val box = checkNotNull(view.selection.bounds)
+        // 12 dp in from the corner: outside the handle drawn, but taken for it (nearer a finger's size).
+        val inside = 12 * context.resources.displayMetrics.density
+        val start = box.right - inside to box.bottom - inside
+        dragLine(start, start.first + box.width() to start.second + box.height())
+        val scaled = checkNotNull(view.selection.bounds)
+        // Scaled (moving it would keep its size).
+        assertTrue("${scaled.width()} for ${box.width()}", scaled.width() > box.width() * 1.5f)
+    }
+
+    @Test
     fun selectionsMoveToAnotherPageOrGoBack() {
         selectRectangle(0, 90.0, 140.0, 210.0, 160.0)
         // Dropped above the first page, off any page: back where it was.

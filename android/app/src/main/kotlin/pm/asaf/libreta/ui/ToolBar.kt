@@ -250,15 +250,21 @@ internal fun Swatch(
     val ring = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     WithTooltip(description) {
         Box(
+            contentAlignment = Alignment.Center,
             modifier =
+                Modifier.tapTarget(selected, onClick).semantics {
+                    contentDescription =
+                        description
+                },
+        ) {
+            Box(
                 Modifier
                     .size(32.dp)
                     .border(if (selected) 3.dp else 1.dp, ring, CircleShape)
                     .padding(4.dp)
-                    .background(color.toCompose(), CircleShape)
-                    .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
-                    .semantics { contentDescription = description },
-        )
+                    .background(color.toCompose(), CircleShape),
+            )
+        }
     }
 }
 
@@ -277,13 +283,14 @@ internal fun WidthOption(
         Box(
             contentAlignment = Alignment.Center,
             modifier =
-                Modifier
-                    .size(32.dp)
-                    .border(2.dp, ring, CircleShape)
-                    .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
-                    .semantics { contentDescription = description },
+                Modifier.tapTarget(selected, onClick).semantics {
+                    contentDescription =
+                        description
+                },
         ) {
-            WidthDot(size, color, shape)
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(32.dp).border(2.dp, ring, CircleShape)) {
+                WidthDot(size, color, shape)
+            }
         }
     }
 }
