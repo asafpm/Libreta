@@ -7,12 +7,18 @@ import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pm.asaf.libreta.R
 import pm.asaf.libreta.Screen
+import pm.asaf.libreta.android.render.PdfPasswordException
 import pm.asaf.libreta.core.store.DocumentStore
 import pm.asaf.libreta.core.store.FileVersion
+import pm.asaf.libreta.core.store.StoreException
 import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.files.DocumentLocation
 import pm.asaf.libreta.files.NoteLoader
@@ -32,11 +38,21 @@ class PdfNotesFlow(
     private val onOpen: (Screen.Note) -> Unit,
     private val onMessage: (String) -> Unit,
 ) {
+    private val busyState = MutableStateFlow<Set<StoreId>>(emptySet())
+
+    /** The PDFs whose notes are being opened (and made the first time). */
+    val busy: StateFlow<Set<StoreId>> = busyState.asStateFlow()
+
     /** Opens the note of [pdf] (in the folder at the end of [path]), made the first time. */
     fun open(
         pdf: LibraryEntry.Pdf,
         path: List<FolderRef>,
-    ) = show(pdf.name) { noteNextTo(pdf, path) }
+    ) {
+        // Already on its way.
+        if (pdf.id in busyState.value) return
+        busyState.update { it + pdf.id }
+        show(pdf.name, done = { busyState.update { it - pdf.id } }) { noteNextTo(pdf, path) }
+    }
 
     /** Opens the note of the PDF [id] (from another app), named [name]. */
     fun openShared(
@@ -68,9 +84,10 @@ class PdfNotesFlow(
         return Screen.Note(file.id, file.name, DocumentLocation(path, file.name))
     }
 
-    /** Shows the note [find] gives, found on [io]; or says the PDF [name] can't be opened. */
+    /** Shows the note [find] gives, found on [io], or says why the PDF [name] can't be opened; then [done]. */
     private fun show(
         name: String,
+        done: () -> Unit = {},
         find: () -> Screen.Note,
     ) {
         scope.launch {
@@ -78,8 +95,15 @@ class PdfNotesFlow(
                 .onSuccess(onOpen)
                 .onFailure { e ->
                     Log.w(TAG, "Cannot open $name", e)
-                    onMessage(context.getString(R.string.error_open_pdf, name))
+                    val why =
+                        when (e) {
+                            is PdfPasswordException -> R.string.error_pdf_password
+                            is StoreException -> R.string.error_read_note
+                            else -> R.string.error_open_pdf
+                        }
+                    onMessage(context.getString(why, name))
                 }
+            done()
         }
     }
 

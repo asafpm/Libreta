@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pm.asaf.libreta.Message
@@ -16,6 +17,7 @@ import pm.asaf.libreta.Messages
 import pm.asaf.libreta.R
 import pm.asaf.libreta.core.store.DocumentStore
 import pm.asaf.libreta.core.store.StoreEntry
+import pm.asaf.libreta.core.store.StoreId
 
 /** A dialog about a library entry. */
 sealed interface EntryRequest {
@@ -51,6 +53,10 @@ class LibraryFlow(
 ) {
     private val files = LibraryFiles(store)
     private val state = MutableStateFlow<EntryRequest?>(null)
+    private val busyState = MutableStateFlow<Set<StoreId>>(emptySet())
+
+    /** The entries being changed (a move between providers can take a while). */
+    val busy: StateFlow<Set<StoreId>> = busyState.asStateFlow()
 
     /** The dialog shown, if any. */
     val request: StateFlow<EntryRequest?> = state.asStateFlow()
@@ -127,8 +133,13 @@ class LibraryFlow(
         change: () -> T,
         done: (T) -> Unit = {},
     ) {
+        // One change at a time for an entry.
+        if (entry.storeId in busyState.value) return
+        busyState.update { it + entry.storeId }
         scope.launch {
-            withContext(io) { runCatching(change) }
+            val result = withContext(io) { runCatching(change) }
+            busyState.update { it - entry.storeId }
+            result
                 .onSuccess(done)
                 .onFailure { e ->
                     Log.w(TAG, "Cannot change ${entry.name}", e)

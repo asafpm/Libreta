@@ -64,6 +64,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
@@ -97,9 +99,11 @@ private fun FolderCardContent(
     over: Boolean,
     onClick: () -> Unit,
 ) {
+    val busy = entry.storeId in actions.busy
     EntryCard(
         entry.takeIf { actions.manage != null },
         onClick,
+        busy,
         colors =
             if (over) {
                 CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -118,7 +122,7 @@ private fun FolderCardContent(
                 style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f).padding(vertical = 16.dp),
             )
-            actions.manage?.let { CardMenu(entry, it, Modifier) } ?: Spacer(Modifier.width(16.dp))
+            actions.manage?.takeUnless { busy }?.let { CardMenu(entry, it, Modifier) } ?: Spacer(Modifier.width(16.dp))
         }
     }
 }
@@ -135,7 +139,8 @@ internal fun DocumentCard(
     place: String? = null,
     onClick: () -> Unit,
 ) {
-    EntryCard(entry.takeIf { actions.manage != null }, onClick) {
+    val busy = entry.storeId in actions.busy
+    EntryCard(entry.takeIf { actions.manage != null }, onClick, busy) {
         Column {
             Box(
                 contentAlignment = Alignment.Center,
@@ -148,7 +153,7 @@ internal fun DocumentCard(
             ) {
                 PreviewImage(entry, previews)
                 if (entry is LibraryEntry.Pdf) PdfLabel(Modifier.align(Alignment.TopStart))
-                actions.manage?.let { CardMenu(entry, it, Modifier.align(Alignment.TopEnd)) }
+                actions.manage?.takeUnless { busy }?.let { CardMenu(entry, it, Modifier.align(Alignment.TopEnd)) }
             }
             Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
@@ -187,13 +192,15 @@ internal fun DocumentCard(
 
 /**
  * A card, which can be picked up with a long press and dragged if [draggable] is given (the
- * entry it shows); the whole card is shown while it is.
+ * entry it shows); the whole card is shown while it is. While [busy] (being changed or opened),
+ * it says so and does nothing.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EntryCard(
     draggable: LibraryEntry?,
     onClick: () -> Unit,
+    busy: Boolean,
     colors: CardColors = CardDefaults.cardColors(),
     border: BorderStroke? = null,
     content: @Composable () -> Unit,
@@ -212,11 +219,25 @@ private fun EntryCard(
                     drawLayer(look)
                 }.clip(CardDefaults.shape)
                 .combinedClickable(
+                    enabled = !busy,
                     onClick = onClick,
                     onLongClickLabel = draggable?.let { stringResource(R.string.drag_to_move) },
                     onLongClick = draggable?.let { { startDrag(view, it, look, density) } },
                 ),
-    ) { content() }
+    ) {
+        Box {
+            content()
+            if (busy) {
+                val working = stringResource(R.string.working)
+                CircularProgressIndicator(
+                    Modifier.align(Alignment.Center).size(32.dp).semantics {
+                        contentDescription =
+                            working
+                    },
+                )
+            }
+        }
+    }
 }
 
 /** Renaming, moving and deleting [entry]. */

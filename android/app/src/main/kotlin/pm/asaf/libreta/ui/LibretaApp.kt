@@ -23,6 +23,7 @@ import pm.asaf.libreta.Screen
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.ToolSettings
+import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.files.DocumentLocation
 import pm.asaf.libreta.library.EntryRequest
 import pm.asaf.libreta.library.Found
@@ -130,6 +131,14 @@ private fun EntryDialogs(
     )
 }
 
+/** The entries being changed, or PDFs whose notes are being opened. */
+@Composable
+private fun busy(model: AppViewModel): Set<StoreId> {
+    val changing by model.entries.busy.collectAsStateWithLifecycle()
+    val opening by model.pdfs.busy.collectAsStateWithLifecycle()
+    return changing + opening
+}
+
 /** Opens [found], from where it is: a folder, a note, or a PDF's note. */
 private fun open(
     model: AppViewModel,
@@ -156,6 +165,7 @@ private fun open(
 private fun libraryActions(
     model: AppViewModel,
     parent: Screen.Folder?,
+    busy: Set<StoreId>,
 ) = LibraryActions(
     openFolder = { entry ->
         val path = parent?.path ?: listOf(entry.parent)
@@ -167,6 +177,7 @@ private fun libraryActions(
     },
     openPdf = { entry -> model.pdfs.open(entry, parent?.path ?: listOf(entry.parent)) },
     manage = model.entries.let { ManageActions(it::rename, it::move, it::delete, it::drop, it::duplicate) },
+    busy = busy,
 )
 
 @Composable
@@ -183,7 +194,7 @@ private fun Home(
         roots = roots,
         folders = folders,
         previews = model.previews,
-        actions = libraryActions(model, parent = null),
+        actions = libraryActions(model, parent = null, busy(model)),
         onNewFolder = model.newFolders::start,
         onNewNote = { folder -> model.newNotes.start(listOf(folder)) },
         onAddFolder = addFolder,
@@ -214,7 +225,7 @@ private fun Folder(
         path = screen.path,
         state = folders[screen.folder],
         previews = model.previews,
-        actions = libraryActions(model, parent = screen),
+        actions = libraryActions(model, parent = screen, busy(model)),
         onNewFolder = { model.newFolders.start(screen.folder) },
         onNewNote = { model.newNotes.start(screen.path) },
         onBreadcrumb = { index -> repeat(screen.path.lastIndex - index) { model.back() } },

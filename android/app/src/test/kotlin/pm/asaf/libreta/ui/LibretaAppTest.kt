@@ -90,10 +90,12 @@ class LibretaAppTest {
         }
     }
 
-    private fun waitForText(text: String) =
-        compose.waitUntil(TIMEOUT) {
-            compose.onAllNodes(hasText(text)).fetchSemanticsNodes().isNotEmpty()
-        }
+    private fun waitForText(
+        text: String,
+        substring: Boolean = false,
+    ) = compose.waitUntil(TIMEOUT) {
+        compose.onAllNodes(hasText(text, substring = substring)).fetchSemanticsNodes().isNotEmpty()
+    }
 
     @Test
     fun withoutFoldersAsksForOne() {
@@ -343,6 +345,18 @@ class LibretaAppTest {
         eventually { model.note.value is NoteState.Loaded }
         val screen = model.screens.value.last() as Screen.Note
         assertEquals(listOf("Notes", "Courses"), screen.location?.folders?.map { it.name })
+    }
+
+    @Test
+    fun aPdfThatNeedsAPasswordSaysSo() {
+        File(testData, "password.pdf").copyTo(File(directory, "paper.pdf"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        show()
+        waitForText("paper.pdf")
+        compose.onNodeWithText("paper.pdf").performClick()
+        waitForText("paper.pdf needs a password", substring = true)
+        assertEquals(listOf("paper.pdf"), directory.list()?.toList())
     }
 
     @Test

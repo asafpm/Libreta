@@ -9,6 +9,7 @@ import android.content.Context
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
 import java.io.IOException
 import java.io.InputStream
 
@@ -21,8 +22,8 @@ object PdfPages {
 
     /**
      * The sizes (points, width to height) of [pdf]'s pages as readers show them: the crop box,
-     * turned by the page's rotation. Fails with an [IOException] for a PDF that isn't one, or
-     * that needs a password.
+     * turned by the page's rotation. Fails with an [IOException] for a PDF that isn't one, a
+     * [PdfPasswordException] for one that needs a password.
      */
     @Throws(IOException::class)
     fun sizes(
@@ -31,7 +32,13 @@ object PdfPages {
     ): List<Pair<Double, Double>> {
         init(context)
         // Large PDFs are buffered in a temporary file rather than in memory.
-        return PDDocument.load(pdf, MemoryUsageSetting.setupTempFileOnly()).use { document ->
+        val loaded =
+            try {
+                PDDocument.load(pdf, MemoryUsageSetting.setupTempFileOnly())
+            } catch (e: InvalidPasswordException) {
+                throw PdfPasswordException(e)
+            }
+        return loaded.use { document ->
             document.pages.map { page ->
                 val box = page.cropBox
                 val width = box.width.toDouble()

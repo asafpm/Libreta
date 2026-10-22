@@ -11,6 +11,7 @@ import pm.asaf.libreta.core.model.SelectMode
 import pm.asaf.libreta.core.model.StylusButton
 import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.ToolSettings
+import pm.asaf.libreta.core.store.StoreId
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
@@ -25,6 +26,8 @@ class LibraryActions(
     val openPdf: (LibraryEntry.Pdf) -> Unit,
     /** Renaming, moving and deleting; null where entries can't be changed (no card menus). */
     val manage: ManageActions? = null,
+    /** Entries being changed or opened: shown so, and not to be changed or opened again meanwhile. */
+    val busy: Set<StoreId> = emptySet(),
 )
 
 /** Asking to rename, move or delete an entry, and moving one dropped on a folder. */

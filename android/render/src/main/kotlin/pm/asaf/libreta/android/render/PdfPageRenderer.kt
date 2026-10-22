@@ -47,7 +47,7 @@ private class AndroidPdfPageRenderer(
         } catch (e: SecurityException) {
             // Locked with a password: a PDF that can't be read, like a damaged one.
             descriptor.close()
-            throw IOException("The PDF needs a password", e)
+            throw PdfPasswordException(e)
         }
 
     override val pageCount: Int = renderer.pageCount
