@@ -30,7 +30,6 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowLooper
-import org.robolectric.shadows.ShadowToast
 import pm.asaf.libreta.AppViewModel
 import pm.asaf.libreta.android.render.RenderThreads
 import pm.asaf.libreta.core.format.XoppWriter
@@ -130,7 +129,7 @@ class LibraryManageTest {
         menu("a.xopp", "Rename")
         compose.onNode(hasSetTextAction()).performTextReplacement("b")
         compose.onNode(hasText("Rename") and hasClickAction()).performClick()
-        waitFor { ShadowToast.getTextOfLatestToast() == "There is already a b.xopp there" }
+        waitForText("There is already a b.xopp there")
         assertEquals(setOf("a.xopp", "b.xopp"), names())
     }
 
@@ -148,7 +147,11 @@ class LibraryManageTest {
         waitFor { compose.onAllNodes(choice("Algebra")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Move here").performClick()
         waitFor { names("Courses") == setOf("Algebra", "lecture.pdf", "lecture.xopp") }
-        waitFor { ShadowToast.getTextOfLatestToast() == "Moved to Courses" }
+        waitForText("Moved to Courses")
+        // Undone: back where it was, with its PDF.
+        compose.onNodeWithText("Undo").performClick()
+        waitFor { names() == setOf("Courses", "lecture.pdf", "lecture.xopp") }
+        assertEquals(setOf("Algebra"), names("Courses"))
     }
 
     @Test

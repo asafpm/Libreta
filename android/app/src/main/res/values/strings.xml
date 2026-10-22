@@ -259,6 +259,10 @@
     <!-- Errors -->
     <string name="not_saved">Not saved: saving failed. The changes are kept here and saving is tried again.</string>
     <string name="retry">Retry</string>
+    <string name="open">Open</string>
+    <string name="page_deleted">Page %1$d deleted</string>
+    <string name="layer_deleted">Layer deleted</string>
+    <string name="layer_merged">Layer merged into the one below</string>
     <string name="saved">Saved</string>
     <string name="saving">Saving…</string>
     <string name="not_saved_short">Not saved</string>

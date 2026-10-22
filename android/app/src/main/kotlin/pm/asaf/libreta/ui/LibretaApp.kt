@@ -3,13 +3,16 @@
 package pm.asaf.libreta.ui
 
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.libreta.AppViewModel
@@ -45,13 +48,17 @@ fun LibretaApp(model: AppViewModel) {
 
     LaunchedEffect(Unit) { model.library.refreshRoots() }
     BackHandler(enabled = screens.size > 1) { model.back() }
-    ErrorMessages(model)
 
-    when (val screen = screens.last()) {
-        Screen.Home -> Home(model, addFolder)
-        is Screen.Folder -> Folder(model, screen)
-        Screen.Settings -> Settings(model, addFolder)
-        is Screen.Note -> Note(model, screen)
+    CompositionLocalProvider(LocalMessages provides model.messages) {
+        Box(Modifier.fillMaxSize()) {
+            when (val screen = screens.last()) {
+                Screen.Home -> Home(model, addFolder)
+                is Screen.Folder -> Folder(model, screen)
+                Screen.Settings -> Settings(model, addFolder)
+                is Screen.Note -> Note(model, screen)
+            }
+            MessageHost(model.messages)
+        }
     }
 
     newNote?.let { request ->
@@ -115,18 +122,6 @@ private fun EntryDialogs(
         model.library::refresh,
         EntryDialogActions(entries::renameTo, entries::moveTo, entries::confirmDelete, entries::cancel),
     )
-}
-
-@Composable
-private fun ErrorMessages(model: AppViewModel) {
-    val error by model.error.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(error) {
-        error?.let {
-            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            model.errorShown()
-        }
-    }
 }
 
 /** Opening folders and notes from a grid; a folder's path continues from [parent]'s. */

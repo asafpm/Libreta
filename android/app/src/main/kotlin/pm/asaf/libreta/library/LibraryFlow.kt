@@ -11,8 +11,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import pm.asaf.libreta.Message
+import pm.asaf.libreta.Messages
 import pm.asaf.libreta.R
 import pm.asaf.libreta.core.store.DocumentStore
+import pm.asaf.libreta.core.store.StoreEntry
 
 /** A dialog about a library entry. */
 sealed interface EntryRequest {
@@ -36,7 +39,7 @@ sealed interface EntryRequest {
 /**
  * Renaming, moving and deleting library entries ([LibraryFiles]): the dialog for one
  * ([request]), then the change, on [io]. The folders changed are listed again in [library];
- * [onMessage] gets what to tell.
+ * [messages] gets what to tell: a move can be undone, and a change that failed tried again.
  */
 class LibraryFlow(
     private val context: Context,
@@ -44,7 +47,7 @@ class LibraryFlow(
     private val library: Library,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
-    private val onMessage: (String) -> Unit,
+    private val messages: Messages,
 ) {
     private val files = LibraryFiles(store)
     private val state = MutableStateFlow<EntryRequest?>(null)
@@ -79,7 +82,7 @@ class LibraryFlow(
     fun renameTo(stem: String) {
         val entry = (state.value as? EntryRequest.Rename)?.entry ?: return
         state.value = null
-        run(entry, R.string.error_rename, listOf(entry.parent)) { files.rename(entry, stem.trim()) }
+        run(entry, R.string.error_rename, listOf(entry.parent), { files.rename(entry, stem.trim()) })
     }
 
     /** Moves the entry asked about into [target]. */
@@ -95,13 +98,10 @@ class LibraryFlow(
         target: FolderRef,
     ) {
         if (target.id == entry.parent.id) return
-        run(
-            entry,
-            R.string.error_move,
-            listOf(entry.parent, target),
-            context.getString(R.string.moved_to, target.name),
-        ) {
-            files.move(entry, target)
+        run(entry, R.string.error_move, listOf(entry.parent, target), { files.move(entry, target) }) { moved ->
+            // Undone by moving it back.
+            val undo = Message.Action(context.getString(R.string.undo)) { drop(moved.at(target), entry.parent) }
+            messages.say(context.getString(R.string.moved_to, target.name), undo)
         }
     }
 
@@ -109,23 +109,28 @@ class LibraryFlow(
     fun confirmDelete(alsoPdf: Boolean) {
         val entry = (state.value as? EntryRequest.Delete)?.entry ?: return
         state.value = null
-        run(entry, R.string.error_delete, listOf(entry.parent)) { files.delete(entry, alsoPdf) }
+        run(entry, R.string.error_delete, listOf(entry.parent), { files.delete(entry, alsoPdf) })
     }
 
-    /** Does [change] to [entry] on [io], then lists [changed] again and says [done] or what failed ([failed]). */
-    private fun run(
+    /**
+     * Does [change] to [entry] on [io], then lists [changed] again and calls [done] with what it
+     * gave; or says what failed ([failed]), offering to try again unless it was refused.
+     */
+    private fun <T> run(
         entry: LibraryEntry,
         failed: Int,
         changed: List<FolderRef>,
-        done: String? = null,
-        change: () -> Unit,
+        change: () -> T,
+        done: (T) -> Unit = {},
     ) {
         scope.launch {
             withContext(io) { runCatching(change) }
-                .onSuccess { done?.let(onMessage) }
+                .onSuccess(done)
                 .onFailure { e ->
                     Log.w(TAG, "Cannot change ${entry.name}", e)
-                    onMessage(message(e, entry, failed))
+                    val retry =
+                        Message.Action(context.getString(R.string.retry)) { run(entry, failed, changed, change, done) }
+                    messages.say(message(e, entry, failed), retry.takeIf { e !is LibraryFiles.Refused })
                 }
             changed.forEach(library::refresh)
         }
@@ -147,5 +152,21 @@ class LibraryFlow(
         const val TAG = "LibraryFlow"
 
         fun Throwable.message(entry: LibraryEntry) = (this as? LibraryFiles.Refused)?.name ?: entry.name
+
+        /** This entry as listed in [folder]. */
+        fun StoreEntry.at(folder: FolderRef): LibraryEntry =
+            when (this) {
+                is StoreEntry.Folder -> {
+                    LibraryEntry.Folder(FolderRef(id, name), modified, folder)
+                }
+
+                is StoreEntry.File -> {
+                    if (FolderListing.isPdfName(name)) {
+                        LibraryEntry.Pdf(id, name, version, folder)
+                    } else {
+                        LibraryEntry.Document(id, name, version, folder)
+                    }
+                }
+            }
     }
 }

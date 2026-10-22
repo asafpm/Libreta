@@ -228,6 +228,24 @@ class NoteScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w900dp-h1200dp")
+    fun anUndoOfferedForADeletedPageDoesNothingOnceTheNoteChanged() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        compose.onNodeWithContentDescription("Pages").performClick()
+        clickFirst("Insert a page after this one")
+        compose.waitForIdle()
+        clickFirst("Delete page")
+        assertEquals(1, model.pages().size)
+        // Written on since: the message's Undo would undo the writing, so it does nothing.
+        val before = model.elements().size
+        write(view, downTime = 1000)
+        compose.onNodeWithText("Undo").performClick()
+        assertEquals(1, model.pages().size)
+        assertEquals(before + 1, model.elements().size)
+    }
+
+    @Test
     fun theTopBarSaysWhetherTheNoteIsSaved() {
         val model = openLecture()
         val view = checkNotNull(documentView(compose.activity.window.decorView))
@@ -384,6 +402,14 @@ class NoteScreenTest {
         }
         assertEquals(first, model.pages()[1])
         clickFirst("Duplicate page")
+        assertEquals(3, model.pages().size)
+        clickFirst("Delete page")
+        assertEquals(2, model.pages().size)
+        // It can be undone from the message saying so.
+        compose.waitUntil(
+            TIMEOUT,
+        ) { compose.onAllNodesWithText("Page", substring = true).fetchSemanticsNodes().any { true } }
+        compose.onNodeWithText("Undo").performClick()
         assertEquals(3, model.pages().size)
         clickFirst("Delete page")
         assertEquals(2, model.pages().size)

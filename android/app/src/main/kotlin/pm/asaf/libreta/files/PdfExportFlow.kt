@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import pm.asaf.libreta.Message
+import pm.asaf.libreta.Messages
 import pm.asaf.libreta.R
 import pm.asaf.libreta.android.render.PdfExport
 import pm.asaf.libreta.android.render.PdfInfo
@@ -29,14 +31,14 @@ import java.io.OutputStream
 
 /**
  * Exporting the open note as a PDF ([PdfExport]): saved where the user chose, or shared.
- * Written on [io]; [progress] shows how far it is, and [cancel] stops it. [onMessage] tells
- * the user how it went.
+ * Written on [io]; [progress] shows how far it is, and [cancel] stops it. [messages] tell
+ * the user how it went (offering to open a PDF saved).
  */
 class PdfExportFlow(
     private val context: Context,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
-    private val onMessage: (String) -> Unit,
+    private val messages: Messages,
 ) {
     private val state = MutableStateFlow<Float?>(null)
 
@@ -59,7 +61,16 @@ class PdfExportFlow(
     ) = run(files, pages, name, {
         context.contentResolver.openOutputStream(target, "wt") ?: throw FileNotFoundException(target.toString())
     }, onCancel = { runCatching { DocumentsContract.deleteDocument(context.contentResolver, target) } }) {
-        onMessage(context.getString(R.string.exported))
+        val open =
+            Message.Action(context.getString(R.string.open)) {
+                val view =
+                    Intent(Intent.ACTION_VIEW)
+                        .setDataAndType(target, PDF_TYPE)
+                        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                // No app to show PDFs: nothing to do.
+                runCatching { context.startActivity(view) }
+            }
+        messages.say(context.getString(R.string.exported), open)
     }
 
     /**
@@ -129,7 +140,7 @@ class PdfExportFlow(
                     .onFailure { e ->
                         if (e !is InterruptedIOException) {
                             Log.w(TAG, "Cannot export $name", e)
-                            onMessage(context.getString(R.string.error_export))
+                            messages.say(context.getString(R.string.error_export))
                         }
                     }
             }

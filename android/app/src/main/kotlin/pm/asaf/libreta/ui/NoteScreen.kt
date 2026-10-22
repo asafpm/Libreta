@@ -46,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -131,7 +132,7 @@ fun NoteScreen(
                 is NoteState.Loaded -> {
                     Row(Modifier.fillMaxSize()) {
                         if (panels.pages && commands != null) {
-                            NotePagePanel(state, panels, commands) { view?.scrollToPage(it) }
+                            NotePagePanel(state, panels, commands, { view }) { view?.scrollToPage(it) }
                         }
                         Column(Modifier.weight(1f).fillMaxHeight()) {
                             ToolBar(
@@ -151,7 +152,7 @@ fun NoteScreen(
                             }
                         }
                     }
-                    if (commands != null) NoteDialogs(state, panels, commands)
+                    if (commands != null) NoteDialogs(state, panels, commands) { view }
                 }
             }
         }
@@ -316,9 +317,12 @@ private fun NotePagePanel(
     state: NoteState.Loaded,
     panels: NotePanels,
     commands: NoteCommands,
+    view: () -> DocumentView?,
     goTo: (Int) -> Unit,
 ) {
     val session = state.session
+    val resources = LocalResources.current
+    val offerUndo = rememberUndoOffer(session, view)
     // Read for its changes: the pages are the session's.
     session.changes.collectAsState().value
     val scope = rememberCoroutineScope()
@@ -344,6 +348,7 @@ private fun NotePagePanel(
             delete = {
                 commands.pages.deletePage(it)
                 panels.current = it.coerceAtMost(session.document.pages.lastIndex)
+                offerUndo(resources.getString(R.string.page_deleted, it + 1))
             },
             move = { from, to ->
                 commands.pages.movePage(from, to)
@@ -360,8 +365,12 @@ private fun NoteDialogs(
     state: NoteState.Loaded,
     panels: NotePanels,
     commands: NoteCommands,
+    view: () -> DocumentView?,
 ) {
     val session = state.session
+    val offerUndo = rememberUndoOffer(session, view)
+    val deleted = stringResource(R.string.layer_deleted)
+    val merged = stringResource(R.string.layer_merged)
     session.changes.collectAsState().value
     val layers by session.layers.collectAsState()
     val pages = session.document.pages
@@ -377,9 +386,15 @@ private fun NoteDialogs(
                     setHidden = { layer, hidden -> commands.layers.setLayerHidden(current, layer, hidden) },
                     rename = { layer, name -> commands.layers.renameLayer(current, layer, name) },
                     add = { below -> commands.layers.addLayer(current, below) },
-                    delete = { commands.layers.removeSelectedLayer(current) },
+                    delete = {
+                        commands.layers.removeSelectedLayer(current)
+                        offerUndo(deleted)
+                    },
                     move = { up -> commands.layers.moveSelectedLayer(current, up) },
-                    mergeDown = { commands.layers.mergeSelectedLayerDown(current) },
+                    mergeDown = {
+                        commands.layers.mergeSelectedLayerDown(current)
+                        offerUndo(merged)
+                    },
                 ),
             onDismiss = { panels.layers = false },
         )

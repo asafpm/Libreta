@@ -2,6 +2,11 @@
 
 package pm.asaf.libreta.ui
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
+import pm.asaf.libreta.Message
+import pm.asaf.libreta.R
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.files.NoteSession
 import pm.asaf.libreta.viewer.DocumentView
@@ -34,4 +39,23 @@ private fun DocumentView.show(
 ) {
     showDocument(pages)
     layerViews = session.layers.value
+}
+
+/**
+ * Says what was just done to [session]'s note (shown in [view]), offering to undo it as long
+ * as nothing else changed since.
+ */
+@Composable
+internal fun rememberUndoOffer(
+    session: NoteSession,
+    view: () -> DocumentView?,
+): (String) -> Unit {
+    val messages = LocalMessages.current
+    val label = stringResource(R.string.undo)
+    return remember(session, messages, label) {
+        { text: String ->
+            val changes = session.changes.value
+            messages?.say(text, Message.Action(label) { if (session.changes.value == changes) undo(session, view()) })
+        }
+    }
 }

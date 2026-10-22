@@ -13,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,16 @@ fun rememberImageActions(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val photo = File(File(context.cacheDir, CAMERA).apply { mkdirs() }, "photo.jpg")
-    val insert: (Uri, Pair<Float, Float>?) -> Unit = { uri, at -> scope.insert(context, uri, at, view, page, onSelect) }
+    val messages = LocalMessages.current
+    val resources = LocalResources.current
+    val failed = {
+        val text = resources.getString(R.string.error_insert_image)
+        messages?.say(text) ?: Toast.makeText(context, text, Toast.LENGTH_LONG).show()
+    }
+    val insert: (
+        Uri,
+        Pair<Float, Float>?,
+    ) -> Unit = { uri, at -> scope.insert(context, uri, at, view, page, onSelect, failed) }
     val pick =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { insert(it, null) }
@@ -80,13 +90,14 @@ private fun CoroutineScope.insert(
     view: () -> DocumentView?,
     page: () -> Int,
     onSelect: () -> Unit,
+    onFailed: () -> Unit,
 ) = launch {
     val image =
         try {
             withContext(Dispatchers.IO) { ImageImport.read(context, uri) }
         } catch (e: IOException) {
             Log.w(TAG, "Cannot insert $uri", e)
-            Toast.makeText(context, R.string.error_insert_image, Toast.LENGTH_LONG).show()
+            onFailed()
             return@launch
         }
     onSelect()

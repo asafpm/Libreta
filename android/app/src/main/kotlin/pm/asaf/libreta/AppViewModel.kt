@@ -135,6 +135,9 @@ class AppViewModel
         private val context: Context get() = getApplication()
         private val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
 
+        /** What to tell the user, e.g. a failed file operation, or a change that can be undone. */
+        val messages = Messages()
+
         /** Where notes are: the folders granted through the Storage Access Framework. */
         private val store = SafDocumentStore(application.contentResolver)
         private val openedPdfs =
@@ -151,7 +154,7 @@ class AppViewModel
                 viewModelScope,
                 io,
                 openedPdfs.folder,
-                onAddFailed = { errorState.value = application.getString(R.string.error_add_folder) },
+                onAddFailed = { messages.say(application.getString(R.string.error_add_folder)) },
             )
         val previews =
             PreviewCache(application, store, locate = { NoteLoader.locate(store, library.roots.value, it.id, it.name) })
@@ -177,7 +180,7 @@ class AppViewModel
                     library.refresh(path.last())
                     open(Screen.Note(file.id, file.name, DocumentLocation(path, file.name)))
                 },
-                onError = { errorState.value = it },
+                onError = { messages.say(it) },
             )
 
         val newFolders =
@@ -187,7 +190,7 @@ class AppViewModel
                 viewModelScope,
                 io,
                 onCreated = { parent -> library.refresh(parent) },
-                onError = { errorState.value = it },
+                onError = { messages.say(it) },
             )
 
         /** Opening PDFs in notes, and the notes of PDFs from other apps. */
@@ -200,15 +203,15 @@ class AppViewModel
                 viewModelScope,
                 io,
                 onOpen = { showNote(it) },
-                onMessage = { errorState.value = it },
+                onMessage = { messages.say(it) },
             )
 
         /** Renaming, moving and deleting folders and notes. */
         val entries =
-            LibraryFlow(application, store, library, viewModelScope, io, onMessage = { errorState.value = it })
+            LibraryFlow(application, store, library, viewModelScope, io, messages)
 
         /** Exporting the open note as a PDF. */
-        val exports = PdfExportFlow(application, viewModelScope, io, onMessage = { errorState.value = it })
+        val exports = PdfExportFlow(application, viewModelScope, io, messages)
 
         private val noteState = MutableStateFlow<NoteState?>(null)
         val note: StateFlow<NoteState?> = noteState.asStateFlow()
@@ -220,7 +223,7 @@ class AppViewModel
         private val saver = NoteSaver(application, store, Backups(File(application.filesDir, "backups")), recovery)
 
         /** Notes whose last changes weren't saved when the app last stopped. */
-        val recovered = RecoveredNotes(application, store, recovery, viewModelScope, io) { errorState.value = it }
+        val recovered = RecoveredNotes(application, store, recovery, viewModelScope, io) { messages.say(it) }
 
         /** The save in progress: a note is read only after it, in case it is the same file. */
         private var saving: Job? = null
@@ -246,7 +249,7 @@ class AppViewModel
                 saver,
                 viewModelScope,
                 io,
-                onMessage = { errorState.value = it },
+                onMessage = { messages.say(it) },
                 onSaved = { note -> note.file.location?.let { library.refresh(it.folders.last()) } },
                 onReopen = { unsaved ->
                     if (stack.value.last() is Screen.Note) back()
@@ -258,15 +261,6 @@ class AppViewModel
                     saveNote()
                 },
             )
-
-        private val errorState = MutableStateFlow<String?>(null)
-
-        /** A message to show once, e.g. a failed file operation. */
-        val error: StateFlow<String?> = errorState.asStateFlow()
-
-        fun errorShown() {
-            errorState.value = null
-        }
 
         // Navigation
 
@@ -392,11 +386,11 @@ class AppViewModel
         ) {
             when {
                 result is SaveResult.SavedAsCopy -> {
-                    errorState.value = context.getString(R.string.saved_as_copy, result.name)
+                    messages.say(context.getString(R.string.saved_as_copy, result.name))
                 }
 
                 result is SaveResult.Failed && !lastSaveFailed -> {
-                    errorState.value = context.getString(R.string.error_save_note, note.file.name)
+                    messages.say(context.getString(R.string.error_save_note, note.file.name))
                 }
             }
             lastSaveFailed = result is SaveResult.Failed
