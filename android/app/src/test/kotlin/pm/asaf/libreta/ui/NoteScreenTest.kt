@@ -88,6 +88,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class NoteScreenTest : NoteScreenTesting() {
     @Test
+    @Config(qualifiers = "w1200dp-h900dp")
     fun theChosenPenWritesTheNextStroke() {
         val model = openLecture()
 
@@ -149,6 +150,7 @@ class NoteScreenTest : NoteScreenTesting() {
     }
 
     @Test
+    @Config(qualifiers = "w1200dp-h900dp")
     fun eachToolKeepsItsOwnSettings() {
         val model = openLecture()
         val view = checkNotNull(documentView(compose.activity.window.decorView))
@@ -172,6 +174,7 @@ class NoteScreenTest : NoteScreenTesting() {
     }
 
     @Test
+    @Config(qualifiers = "w1200dp-h900dp")
     fun pickedColoursAreUsedAndRemembered() {
         val model = openLecture()
         compose.onNodeWithContentDescription("Add a colour").performScrollTo().performClick()
@@ -187,6 +190,7 @@ class NoteScreenTest : NoteScreenTesting() {
     }
 
     @Test
+    @Config(qualifiers = "w1200dp-h900dp")
     fun theToolbarOffersTheFixedAndThreeRecentColours() {
         openLecture()
         for (hex in listOf("#111111", "#222222", "#333333", "#444444")) {
@@ -203,6 +207,7 @@ class NoteScreenTest : NoteScreenTesting() {
     }
 
     @Test
+    @Config(qualifiers = "w1200dp-h900dp")
     fun theToolbarOffersTheWidthsChosen() {
         val model = openLecture()
         compose.runOnIdle {

@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -62,61 +63,65 @@ fun ToolBar(
     val tools = controls.tools
     var picking by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.surfaceContainer, modifier = modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp),
-        ) {
-            ToolButton(Tool.PEN, PenIcon, R.string.tool_pen, controls)
-            ToolButton(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter, controls)
-            ToolButton(Tool.ERASER, EraserIcon, R.string.tool_eraser, controls)
-            ToolButton(Tool.SELECT, SelectIcon, R.string.tool_select, controls)
-            ToolButton(Tool.TEXT, TextIcon, R.string.tool_text, controls)
-            Separator()
-            when (tools.tool) {
-                Tool.PEN -> {
-                    InkOptions(tools.pen.color, tools.pen.size, controls) { picking = true }
-                    Separator()
-                    Toggle(PressureIcon, R.string.pen_pressure, tools.pen.pressure) { pressure ->
-                        controls.onChange { it.copy(pen = it.pen.copy(pressure = pressure)) }
+        BoxWithConstraints {
+            // Narrow (a phone, half a screen, the page panel open): colours and widths in menus.
+            val compact = maxWidth < COMPACT_WIDTH
+            val scroll = rememberScrollState()
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier =
+                    Modifier
+                        .fadingEdges(
+                            scroll,
+                        ).horizontalScroll(scroll)
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                ToolButton(Tool.PEN, PenIcon, R.string.tool_pen, controls)
+                ToolButton(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter, controls)
+                ToolButton(Tool.ERASER, EraserIcon, R.string.tool_eraser, controls)
+                ToolButton(Tool.SELECT, SelectIcon, R.string.tool_select, controls)
+                ToolButton(Tool.TEXT, TextIcon, R.string.tool_text, controls)
+                Separator()
+                when (tools.tool) {
+                    Tool.PEN -> {
+                        InkOptions(tools.pen.color, tools.pen.size, controls, compact) { picking = true }
+                        Separator()
+                        Toggle(PressureIcon, R.string.pen_pressure, tools.pen.pressure) { pressure ->
+                            controls.onChange { it.copy(pen = it.pen.copy(pressure = pressure)) }
+                        }
+                    }
+
+                    Tool.HIGHLIGHTER -> {
+                        InkOptions(
+                            tools.highlighter.color,
+                            tools.highlighter.size,
+                            controls,
+                            compact,
+                        ) { picking = true }
+                    }
+
+                    Tool.ERASER -> {
+                        EraserOptions(controls)
+                    }
+
+                    Tool.SELECT -> {
+                        SelectOptions(controls, onRestyle) { picking = true }
+                    }
+
+                    Tool.TEXT -> {
+                        TextOptions(controls) { picking = true }
                     }
                 }
-
-                Tool.HIGHLIGHTER -> {
-                    InkOptions(tools.highlighter.color, tools.highlighter.size, controls) { picking = true }
+                if (controls.fingerButton) {
+                    Separator()
+                    Toggle(FingerIcon, R.string.draw_with_finger, controls.fingerDraws, controls.onFingerDraws)
                 }
-
-                Tool.ERASER -> {
-                    EraserOptions(controls)
-                }
-
-                Tool.SELECT -> {
-                    SelectOptions(controls, onRestyle) { picking = true }
-                }
-
-                Tool.TEXT -> {
-                    TextOptions(controls) { picking = true }
-                }
+                Spacer(Modifier.width(6.dp))
             }
-            if (controls.fingerButton) {
-                Separator()
-                Toggle(FingerIcon, R.string.draw_with_finger, controls.fingerDraws, controls.onFingerDraws)
-            }
-            Spacer(Modifier.width(6.dp))
         }
     }
-    if (picking) {
-        val current = if (tools.tool == Tool.HIGHLIGHTER) tools.highlighter.color else tools.pen.color
-        ColorPickerDialog(
-            initial = current,
-            onPick = {
-                picking = false
-                controls.onCustomColor(it)
-                if (tools.tool == Tool.SELECT) onRestyle(it, null)
-            },
-            onDismiss = { picking = false },
-        )
-    }
+    if (picking) ToolColorPicker(controls, onRestyle) { picking = false }
 }
 
 /** A setting turned on and off, shown by its [icon]: filled while on. */
@@ -155,17 +160,24 @@ private fun RowScope.InkOptions(
     color: InkColor,
     size: PenSize,
     controls: ToolControls,
+    compact: Boolean,
     onAddColor: () -> Unit,
 ) {
     ShapeMenu(controls)
     Separator()
     val swatches = (controls.fixedColors + controls.recentColors + color).distinct()
+    val sizes = PenSize.entries.filter { it in controls.visibleSizes || it == size }
+    if (compact) {
+        ColourChoice(color, swatches, controls.onColor, onAddColor)
+        WidthChoice(size, sizes, color.toCompose(), controls.onSize)
+        return
+    }
     for (swatch in swatches) {
         Swatch(swatch, colorName(swatch), selected = swatch == color) { controls.onColor(swatch) }
     }
     AddColorButton(onAddColor)
     Separator()
-    for (option in PenSize.entries.filter { it in controls.visibleSizes || it == size }) {
+    for (option in sizes) {
         WidthOption(option, color.toCompose(), CircleShape, selected = option == size) { controls.onSize(option) }
     }
 }
@@ -252,7 +264,7 @@ internal fun Swatch(
 
 /** A width, shown as a dot (or square) growing with the size. */
 @Composable
-private fun WidthOption(
+internal fun WidthOption(
     size: PenSize,
     color: Color,
     shape: Shape,
@@ -309,6 +321,9 @@ private val ERASER_TYPES =
         EraserType.WHITEOUT to R.string.eraser_whiteout,
         EraserType.DELETE_STROKE to R.string.eraser_delete_stroke,
     )
+
+/** Below this width, the toolbar offers colours and widths in menus. */
+private val COMPACT_WIDTH = 700.dp
 
 /** Dot sizes in dp, from very fine to very thick. */
 private val DOT_SIZES = listOf(4, 7, 10, 14, 20)

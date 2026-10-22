@@ -260,4 +260,22 @@ class NoteScreenExtrasTest : NoteScreenTesting() {
         compose.onNodeWithContentDescription("Share as PDF").assertIsDisplayed()
         compose.onNodeWithContentDescription("More").assertDoesNotExist()
     }
+
+    @Test
+    @Config(qualifiers = "w400dp-h800dp")
+    fun aNarrowToolbarOffersColoursAndWidthsInMenus() {
+        val model = openLecture()
+        // The colour and the width chosen, each a button.
+        compose.onNodeWithContentDescription("Colour: Royal blue").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Colour: Red").performClick()
+        assertEquals(
+            pm.asaf.libreta.core.model.Color
+                .of(237, 83, 83),
+            model.tools.tools.value.pen.color,
+        )
+        compose.onNodeWithContentDescription("Colour: Red").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Width: Medium").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Width: Very thick").performClick()
+        assertEquals(pm.asaf.libreta.core.model.PenSize.VERY_THICK, model.tools.tools.value.pen.size)
+    }
 }
