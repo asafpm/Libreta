@@ -35,6 +35,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,7 +72,6 @@ import pm.asaf.libreta.files.PdfExportFlow
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
 import pm.asaf.libreta.viewer.LowLatencyWetInk
-import pm.asaf.libreta.viewer.fitWidth
 import pm.asaf.libreta.viewer.scrollToPage
 
 /**
@@ -231,10 +231,13 @@ private class NoteAction(
 
 /** What is open around the note, and the page in view. */
 @Stable
-private class NotePanels {
+internal class NotePanels {
     var pages by mutableStateOf(false)
     var layers by mutableStateOf(false)
     var current by mutableIntStateOf(0)
+
+    /** The zoom in view, in pixels a point. */
+    var zoom by mutableDoubleStateOf(0.0)
 
     /** The page whose background is being chosen. */
     var background by mutableStateOf<Int?>(null)
@@ -284,7 +287,6 @@ private fun NoteActions(
         for (action in actions) {
             TooltipIconButton(action.icon, stringResource(action.label), enabled && action.enabled, action.run)
         }
-        TextButton(onClick = { view?.fitWidth() }, enabled = enabled) { Text(stringResource(R.string.fit_width)) }
     } else {
         var open by remember { mutableStateOf(false) }
         TooltipIconButton(Icons.Filled.MoreVert, stringResource(R.string.more_actions)) { open = true }
@@ -300,14 +302,6 @@ private fun NoteActions(
                     },
                 )
             }
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.fit_width)) },
-                enabled = enabled,
-                onClick = {
-                    open = false
-                    view?.fitWidth()
-                },
-            )
         }
     }
 }
@@ -421,101 +415,6 @@ private fun UndoButtons(
     val history by session.undoState.collectAsState()
     TooltipIconButton(UndoIcon, stringResource(R.string.undo), view != null && history.canUndo) { undo(session, view) }
     TooltipIconButton(RedoIcon, stringResource(R.string.redo), view != null && history.canRedo) { redo(session, view) }
-}
-
-/**
- * Finishes the text being typed in [view] when the app leaves the screen: it is then in the
- * note, saved as the app stops (before it, as lifecycle observers hear of it first), and not
- * lost if the app is killed in the background.
- */
-@Composable
-private fun FinishTextOnStop(view: () -> DocumentView?) {
-    val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val current by rememberUpdatedState(view)
-    DisposableEffect(lifecycle) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_STOP) current()?.text?.finish()
-            }
-        lifecycle.addObserver(observer)
-        onDispose { lifecycle.removeObserver(observer) }
-    }
-}
-
-/** The pages, with wet ink in a front buffer above them; [onView] gets the view (null when gone). */
-@Composable
-private fun NoteCanvas(
-    state: NoteState.Loaded,
-    threads: RenderThreads,
-    position: ViewerPosition,
-    tools: ToolControls,
-    panels: NotePanels,
-    onView: (DocumentView?) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var document by remember { mutableStateOf<DocumentView?>(null) }
-    val darkPages = LocalDarkPages.current
-    val layers by state.session.layers.collectAsState()
-    FinishTextOnStop { document }
-    AndroidView(
-        factory = { context ->
-            val view =
-                DocumentView(context).apply {
-                    val session = state.session
-                    setDocument(
-                        session.document.pages,
-                        state.caches,
-                        state.files::newRenderer,
-                        threads,
-                        session.versions(),
-                        session.layers.value,
-                    )
-                    onEdit = session::edited
-                    onLayerView = session::setLayerView
-                    onCurrentPage = { panels.current = it }
-                    onSelection = { panels.selection = selection.bounds }
-                    text.onStyle = { style -> tools.onChange { it.copy(text = style) } }
-                    position.get()?.let { restore(it) }
-                }
-            document = view
-            onView(view)
-            view.stackedOver(context)
-        },
-        update = {
-            document?.tools = tools.tools
-            document?.fingerDraws = tools.fingerDraws
-            document?.layerViews = layers
-            document?.darkPages = darkPages
-        },
-        onRelease = {
-            document?.let { released ->
-                released.text.finish()
-                position.set(released.anchor)
-                state.session.keepVersions(released.versions)
-                released.close()
-            }
-            document = null
-            onView(null)
-        },
-        modifier = modifier,
-    )
-}
-
-/**
- * This view with what goes over it: the field text is typed in (it takes its own touches), and
- * the front buffer wet ink is drawn in.
- */
-private fun DocumentView.stackedOver(context: Context): FrameLayout {
-    val ink = LowLatencyCanvasView(context)
-    wetInk = LowLatencyWetInk(ink)
-    val field = EditText(context)
-    text.field = field
-    val wrap = FrameLayout.LayoutParams.WRAP_CONTENT
-    return FrameLayout(context).apply {
-        addView(this@stackedOver)
-        addView(field, FrameLayout.LayoutParams(wrap, wrap))
-        addView(ink)
-    }
 }
 
 /** From this width the note's actions are buttons, and the page panel is wide. */

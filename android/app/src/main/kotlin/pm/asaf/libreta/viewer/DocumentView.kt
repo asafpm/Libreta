@@ -233,6 +233,10 @@ class DocumentView
         var onCurrentPage: ((Int) -> Unit)? = null
         private var lastCurrentPage = -1
 
+        /** Called with the zoom (pixels a point), when it changes. */
+        var onZoom: ((Double) -> Unit)? = null
+        private var lastZoom = 0.0
+
         /** The page at the middle of the view (0 before there is one). */
         val currentPage: Int
             get() {
@@ -297,8 +301,8 @@ class DocumentView
         fun navigate(move: Navigation) {
             val pages = content?.pages?.size ?: return
             when (move) {
-                Navigation.FitWidth -> {
-                    zoomTo(0f, 0f) { navigator -> navigator.fitWidthZoom(width.toDouble()) }
+                Navigation.FitWidth, Navigation.FitPage, is Navigation.ZoomTo, is Navigation.ZoomBy -> {
+                    zoom(move)
                 }
 
                 is Navigation.ToPage -> {
@@ -310,12 +314,6 @@ class DocumentView
 
                 is Navigation.PageBy -> {
                     navigate(Navigation.ToPage(currentPage + move.delta))
-                }
-
-                is Navigation.ZoomBy -> {
-                    viewport?.let { now ->
-                        zoomTo(move.focusX ?: (width / 2f), move.focusY ?: (height / 2f)) { now.zoom * move.factor }
-                    }
                 }
 
                 is Navigation.ScrollBy -> {
@@ -330,6 +328,38 @@ class DocumentView
 
                 is Navigation.ScreenBy -> {
                     navigate(Navigation.ScrollBy(0f, (move.screens * (height - KEEP_IN_VIEW_PX)).toFloat()))
+                }
+            }
+        }
+
+        /** The zooming [move]s. */
+        private fun zoom(move: Navigation) {
+            when (move) {
+                Navigation.FitWidth -> {
+                    zoomTo(0f, 0f) { navigator -> navigator.fitWidthZoom(width.toDouble()) }
+                }
+
+                Navigation.FitPage -> {
+                    content?.let { shown ->
+                        val index = currentPage
+                        val page = shown.layout.pageBounds(index)
+                        zoomTo(0f, 0f) { minOf(width / (page.right - page.left), height / (page.bottom - page.top)) }
+                        navigate(Navigation.ToPage(index))
+                    }
+                }
+
+                is Navigation.ZoomTo -> {
+                    zoomTo(width / 2f, height / 2f) { move.zoom }
+                }
+
+                is Navigation.ZoomBy -> {
+                    viewport?.let { now ->
+                        zoomTo(move.focusX ?: (width / 2f), move.focusY ?: (height / 2f)) { now.zoom * move.factor }
+                    }
+                }
+
+                else -> {
+                    Unit
                 }
             }
         }
@@ -426,6 +456,10 @@ class DocumentView
             if (current != lastCurrentPage) {
                 lastCurrentPage = current
                 onCurrentPage?.invoke(current)
+            }
+            if (viewport.zoom != lastZoom) {
+                lastZoom = viewport.zoom
+                onZoom?.invoke(viewport.zoom)
             }
         }
 

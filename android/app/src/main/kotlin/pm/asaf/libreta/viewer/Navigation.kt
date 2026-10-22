@@ -7,6 +7,14 @@ sealed interface Navigation {
     /** Zoom to fit the page width, the top of the view kept in place. */
     data object FitWidth : Navigation
 
+    /** Zoom to show the whole page in view, from its top. */
+    data object FitPage : Navigation
+
+    /** Zoom to [zoom] (pixels a point), keeping the middle of the view in place. */
+    data class ZoomTo(
+        val zoom: Double,
+    ) : Navigation
+
     /** The top of page [index], at the same zoom. */
     data class ToPage(
         val index: Int,

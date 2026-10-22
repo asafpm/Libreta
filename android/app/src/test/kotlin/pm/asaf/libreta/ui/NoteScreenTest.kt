@@ -40,6 +40,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
@@ -85,118 +86,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class NoteScreenTest {
-    @get:Rule
-    val compose = createAndroidComposeRule<ComponentActivity>()
-
-    @get:Rule
-    val temporary = TemporaryFolder()
-
-    private val application = ApplicationProvider.getApplicationContext<Application>()
-    private val testData = File(checkNotNull(System.getProperty("libreta.testdata")))
-    private lateinit var directory: File
-
-    @Before
-    fun setUp() {
-        directory = temporary.newFolder("Notes")
-        FakeDocumentsProvider.install(directory)
-        val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
-        preferences.edit().clear().commit()
-        File(testData, "note-taking.xopp").copyTo(File(directory, "Lecture.xopp"))
-        LibraryRoots(preferences).add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
-    }
-
-    private fun eventually(condition: () -> Boolean) {
-        val end = System.currentTimeMillis() + TIMEOUT
-        while (!condition()) {
-            check(System.currentTimeMillis() < end) { "Timed out" }
-            ShadowLooper.idleMainLooper()
-            compose.mainClock.advanceTimeByFrame()
-            Thread.sleep(10)
-        }
-    }
-
-    private fun documentView(view: View): DocumentView? =
-        view as? DocumentView
-            ?: (view as? ViewGroup)?.let { group ->
-                (0 until group.childCount).firstNotNullOfOrNull { documentView(group.getChildAt(it)) }
-            }
-
-    private fun stylus(
-        view: DocumentView,
-        action: Int,
-        downTime: Long,
-        time: Long,
-        x: Float,
-        y: Float,
-    ) {
-        val properties =
-            MotionEvent.PointerProperties().apply {
-                id = 0
-                toolType = MotionEvent.TOOL_TYPE_STYLUS
-            }
-        val coordinates =
-            MotionEvent.PointerCoords().apply {
-                this.x = x
-                this.y = y
-                pressure = 0.5f
-            }
-        val event =
-            MotionEvent.obtain(
-                downTime,
-                time,
-                action,
-                1,
-                arrayOf(properties),
-                arrayOf(coordinates),
-                0,
-                0,
-                1f,
-                1f,
-                0,
-                0,
-                InputDevice.SOURCE_STYLUS,
-                0,
-            )
-        view.dispatchTouchEvent(event)
-        event.recycle()
-    }
-
-    /** Opens Lecture.xopp in the app, rendering paused. */
-    private fun openLecture(autosave: Autosave = Autosave()): AppViewModel {
-        val paused = StandardTestDispatcher()
-        val model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused), autosave)
-        compose.setContent {
-            MaterialTheme { CompositionLocalProvider(LocalKeyShortcuts provides shortcuts) { LibretaApp(model) } }
-        }
-        compose.waitUntil(TIMEOUT) { compose.onAllNodes(hasText("Lecture.xopp")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("Lecture.xopp").performClick()
-        eventually { model.note.value is NoteState.Loaded }
-        return model
-    }
-
-    /** Writes a horizontal stroke a third of the way down the view. */
-    private fun write(
-        view: DocumentView,
-        downTime: Long = 1000,
-    ) {
-        compose.runOnIdle {
-            val y = view.height / 3f
-            stylus(view, MotionEvent.ACTION_DOWN, downTime, downTime, 200f, y)
-            for (step in 1..8) {
-                stylus(view, MotionEvent.ACTION_MOVE, downTime, downTime + step * 10, 200f + step * 30f, y)
-            }
-            stylus(view, MotionEvent.ACTION_UP, downTime, downTime + 100, 440f, y)
-        }
-    }
-
-    private fun AppViewModel.elements(): List<Element> =
-        (note.value as NoteState.Loaded)
-            .document.pages[0]
-            .layers
-            .last()
-            .elements
-
+class NoteScreenTest : NoteScreenTesting() {
     @Test
     fun theChosenPenWritesTheNextStroke() {
         val model = openLecture()
@@ -225,48 +115,6 @@ class NoteScreenTest {
             AppViewModel(application)
                 .tools.tools.value.pen.size,
         )
-    }
-
-    @Test
-    @Config(qualifiers = "w900dp-h1200dp")
-    fun anUndoOfferedForADeletedPageDoesNothingOnceTheNoteChanged() {
-        val model = openLecture()
-        val view = checkNotNull(documentView(compose.activity.window.decorView))
-        compose.onNodeWithContentDescription("Pages").performClick()
-        clickFirst("Insert a page after this one")
-        compose.waitForIdle()
-        clickFirst("Delete page")
-        assertEquals(1, model.pages().size)
-        // Written on since: the message's Undo would undo the writing, so it does nothing.
-        val before = model.elements().size
-        write(view, downTime = 1000)
-        compose.onNodeWithText("Undo").performClick()
-        assertEquals(1, model.pages().size)
-        assertEquals(before + 1, model.elements().size)
-    }
-
-    @Test
-    fun theTopBarSaysWhetherTheNoteIsSaved() {
-        val model = openLecture()
-        val view = checkNotNull(documentView(compose.activity.window.decorView))
-        compose.onNodeWithText("Saved").assertIsDisplayed()
-        write(view, downTime = 1000)
-        compose.onNodeWithText("Saving…").assertIsDisplayed()
-        compose.runOnIdle { model.saveNote() }
-        eventually { compose.onAllNodesWithText("Saved").fetchSemanticsNodes().isNotEmpty() }
-    }
-
-    @Test
-    fun aNoteSavedAsAConflictCopyIsTitledSo() {
-        val model = openLecture()
-        val view = checkNotNull(documentView(compose.activity.window.decorView))
-        write(view, downTime = 1000)
-        // Changed elsewhere meanwhile: saved next to it.
-        val file = File(directory, "Lecture.xopp")
-        File(testData, "physics.xopp").copyTo(file, overwrite = true)
-        file.setLastModified(file.lastModified() + 60_000)
-        compose.runOnIdle { model.saveNote() }
-        eventually { compose.onAllNodesWithText("(conflict", substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test
@@ -369,11 +217,6 @@ class NoteScreenTest {
         compose.onNodeWithContentDescription("Width: Medium").assertDoesNotExist()
     }
 
-    private fun AppViewModel.pages() = (note.value as NoteState.Loaded).session.document.pages
-
-    private fun clickFirst(description: String) =
-        compose.onAllNodesWithContentDescription(description)[0].performClick()
-
     @Test
     @Config(qualifiers = "w900dp-h1200dp")
     fun pagesAreInsertedDuplicatedMovedAndDeleted() {
@@ -466,125 +309,6 @@ class NoteScreenTest {
         compose.runOnIdle { model.tools.setFingerButton(false) }
         compose.onNodeWithContentDescription("Draw with finger").assertDoesNotExist()
         assertEquals(false, model.tools.fingerDraws.value)
-    }
-
-    @Test
-    fun holdingAButtonShowsItsName() {
-        val model = openLecture()
-        compose.onNodeWithContentDescription("Pen pressure").performScrollTo().performTouchInput { longClick() }
-        // The name, as text (the button's is a description).
-        compose.waitUntil(TIMEOUT) { compose.onAllNodesWithText("Pen pressure").fetchSemanticsNodes().isNotEmpty() }
-        // Not pressed.
-        assertEquals(true, model.tools.tools.value.pen.pressure)
-    }
-
-    @Test
-    fun theStylusHoveringOverAButtonShowsItsName() {
-        openLecture()
-        val bounds = compose.onNodeWithContentDescription("Undo").getBoundsInRoot()
-        val (x, y) =
-            with(compose.density) {
-                (bounds.left + bounds.right).toPx() / 2 to
-                    (bounds.top + bounds.bottom).toPx() / 2
-            }
-        val root = compose.activity.window.decorView
-        compose.runOnIdle {
-            for (action in listOf(MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_MOVE)) {
-                root.dispatchGenericMotionEvent(hover(action, x, y))
-            }
-        }
-        compose.mainClock.advanceTimeBy(1_000)
-        compose.waitUntil(TIMEOUT) { compose.onAllNodesWithText("Undo").fetchSemanticsNodes().isNotEmpty() }
-    }
-
-    @Test
-    fun theHelpButtonSaysWhatEachButtonDoes() {
-        openLecture()
-        compose.onNodeWithContentDescription("Help").performClick()
-        compose.onNodeWithText("Tools").assertIsDisplayed()
-        compose.onNodeWithText("Writes in the colour and width chosen.", substring = true).assertIsDisplayed()
-        compose.onNodeWithText("OK").performClick()
-        compose.onNodeWithText("Tools").assertDoesNotExist()
-    }
-
-    /** A stylus hovering at a point of the window. */
-    private fun hover(
-        action: Int,
-        x: Float,
-        y: Float,
-    ): MotionEvent {
-        val properties =
-            MotionEvent.PointerProperties().apply {
-                id = 0
-                toolType = MotionEvent.TOOL_TYPE_STYLUS
-            }
-        val coordinates =
-            MotionEvent.PointerCoords().apply {
-                this.x = x
-                this.y = y
-            }
-        val time = android.os.SystemClock.uptimeMillis()
-        return MotionEvent.obtain(
-            time,
-            time,
-            action,
-            1,
-            arrayOf(properties),
-            arrayOf(coordinates),
-            0,
-            0,
-            1f,
-            1f,
-            0,
-            0,
-            android.view.InputDevice.SOURCE_STYLUS,
-            0,
-        )
-    }
-
-    private fun editText(view: View): android.widget.EditText? =
-        view as? android.widget.EditText
-            ?: (view as? ViewGroup)?.let { group ->
-                (0 until group.childCount).firstNotNullOfOrNull { editText(group.getChildAt(it)) }
-            }
-
-    @Test
-    fun textBeingTypedIsKeptWhenTheAppGoesToTheBackground() {
-        val model = openLecture()
-        compose.onNodeWithContentDescription("Text").performClick()
-        val view = checkNotNull(documentView(compose.activity.window.decorView))
-        compose.runOnIdle {
-            // On the page, in the middle of the view.
-            val (x, y) = view.width / 2f to view.height / 2f
-            stylus(view, MotionEvent.ACTION_DOWN, 1000, 1000, x, y)
-            stylus(view, MotionEvent.ACTION_UP, 1000, 1010, x, y)
-        }
-        compose.waitForIdle()
-        compose.runOnIdle { checkNotNull(editText(compose.activity.window.decorView)).setText("Typed") }
-        // The app leaves the screen (and may be killed in the background): the text is in the note to save.
-        compose.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.CREATED)
-        eventually {
-            (model.note.value as NoteState.Loaded).document.pages.any { page ->
-                page.layers.any { layer -> layer.elements.any { it is Element.Text && it.text == "Typed" } }
-            }
-        }
-    }
-
-    @Test
-    fun penPressureCanBeTurnedOff() {
-        val model = openLecture()
-        compose.onNodeWithContentDescription("Pen").performClick()
-        compose
-            .onNodeWithContentDescription("Pen pressure")
-            .performScrollTo()
-            .assertIsOn()
-            .performClick()
-        assertEquals(false, model.tools.tools.value.pen.pressure)
-        compose.onNodeWithContentDescription("Pen pressure").assertIsOff()
-        // A pen setting: not offered for the other tools.
-        compose.onNodeWithContentDescription("Highlighter").performScrollTo().performClick()
-        assertEquals(Tool.HIGHLIGHTER, model.tools.tools.value.tool)
-        compose.onNodeWithContentDescription("Pen pressure").assertDoesNotExist()
     }
 
     @Test
@@ -696,14 +420,6 @@ class NoteScreenTest {
         assertEquals(Tool.SELECT, model.tools.tools.value.tool)
     }
 
-    private val shortcuts = KeyShortcuts()
-
-    /** A key pressed with [meta] (e.g. Ctrl), as the activity hands it on. */
-    private fun press(
-        key: Int,
-        meta: Int = 0,
-    ) = compose.runOnIdle { shortcuts.dispatch(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, key, 0, meta)) }
-
     @Test
     @Config(qualifiers = "w900dp-h1200dp")
     fun theKeyboardChoosesToolsAndShapesAndUndoes() {
@@ -737,10 +453,5 @@ class NoteScreenTest {
         val groups = shortcutGroups(application)
         assertEquals(3, groups.size)
         assertTrue(groups.flatMap { it.items }.any { it.label == "Undo" && it.keycode == KeyEvent.KEYCODE_Z })
-    }
-
-    private companion object {
-        const val TIMEOUT = 10_000L
-        const val DRAG_STEPS = 10
     }
 }

@@ -160,7 +160,6 @@ private val NOTE =
                 entry(ImageIcon, R.string.insert_image, R.string.help_image),
                 entry(CameraIcon, R.string.take_photo, R.string.help_photo),
                 entry(ExportIcon, R.string.help_export_title, R.string.help_export),
-                HelpEntry(Look.None, R.string.fit_width, R.string.help_fit_width),
             ),
         ),
         HelpSection(
@@ -169,6 +168,7 @@ private val NOTE =
                 HelpEntry(Look.None, R.string.help_button_title, R.string.help_button),
                 HelpEntry(Look.None, R.string.help_eraser_end_title, R.string.help_eraser_end),
                 HelpEntry(Look.None, R.string.help_hover_title, R.string.help_hover),
+                HelpEntry(Look.None, R.string.help_page_zoom_title, R.string.help_page_zoom),
                 HelpEntry(Look.None, R.string.help_fingers_title, R.string.help_fingers),
                 HelpEntry(Look.None, R.string.help_keyboard_title, R.string.help_keyboard),
             ),

@@ -91,6 +91,13 @@
 
     <!-- Note -->
     <string name="fit_width">Fit width</string>
+    <string name="fit_page">Fit page</string>
+    <string name="real_size">100% (real size)</string>
+    <string name="page_of">%1$d / %2$d</string>
+    <string name="zoom_percent">%1$d%%</string>
+    <string name="go_to_page">Go to page</string>
+    <string name="page_number_of">Page (1 to %1$d)</string>
+    <string name="go">Go</string>
     <string name="undo">Undo</string>
     <string name="redo">Redo</string>
     <string name="ok">OK</string>
@@ -161,7 +168,8 @@
     <string name="help_photo">Takes a photo with the camera and puts it on the page.</string>
     <string name="help_export_title">Export and share</string>
     <string name="help_export">Saves the note as a PDF, or sends it as a PDF to another app.</string>
-    <string name="help_fit_width">Zooms so that the page fills the screen\'s width.</string>
+    <string name="help_page_zoom_title">The page and the zoom</string>
+    <string name="help_page_zoom">At the bottom of the note: tap the page number to go to another page, and the zoom to fit the width, fit the page, or show it at its real size.</string>
     <string name="help_input">Stylus, fingers and keyboard</string>
     <string name="help_button_title">The stylus\'s side button</string>
     <string name="help_button">Holding it erases. Settings can make it highlight instead, or do nothing.</string>
