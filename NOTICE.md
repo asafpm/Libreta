@@ -34,8 +34,7 @@ Xournal++ live in `testdata/xournalpp/`.
   `test/files/` and `development/documentation/` (see the README there).
 - `testdata/libreta-pdf.xopp.bg.pdf`: a copy of Xournal++'s
   `test/files/packaged_xopp/pdfBackground/old.xopp.bg.pdf`; `testdata/password.pdf`
-  is the same PDF locked with a password. `testdata/libreta-notes.xopp` holds the
-  LaTeX image of `test/files/load/linebreaksLatex.xopp`.
+  is the same PDF locked with a password.
 - `docs/xopp-format.md`: format specification describing Xournal++'s loader
   and saver, with source references.
 - `core/format/src/commonMain/.../ColorCodec.kt`: colour-name tables from

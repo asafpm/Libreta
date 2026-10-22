@@ -59,7 +59,7 @@ class SampleContentTest {
     fun notes() {
         val elements = load("libreta-notes.xopp").elements()
         val tex = elements.filterIsInstance<Element.TexImage>().single()
-        assertEquals("{.\n}", tex.latex)
+        assertEquals("E = mc^2", tex.latex)
         assertEquals("%PDF", tex.data.substring(0, 4).utf8())
         val image = elements.filterIsInstance<Element.Image>().single()
         assertEquals("PNG", image.data.substring(1, 4).utf8())

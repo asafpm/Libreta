@@ -5,7 +5,16 @@ package pm.asaf.libreta.android.render
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.tom_roush.pdfbox.cos.COSArray
+import com.tom_roush.pdfbox.cos.COSName
+import com.tom_roush.pdfbox.cos.COSString
+import com.tom_roush.pdfbox.pdmodel.PDDocument
+import com.tom_roush.pdfbox.pdmodel.PDPage
+import com.tom_roush.pdfbox.pdmodel.PDPageContentStream
+import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
+import com.tom_roush.pdfbox.pdmodel.font.PDType1Font
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import okio.buffer
@@ -36,8 +45,7 @@ import kotlin.math.sin
  * The handwritten samples in testdata/, made up by [Handwriting] so they hold nobody's notes:
  * - libreta-sample.xopp: eight Letter pages of lecture notes, with equations, figures and a
  *   highlighter, half of them written with pressure: a long, dense document;
- * - libreta-notes.xopp: one A4 landscape page with pressure, text, a figure and a LaTeX formula
- *   (from Xournal++'s load/linebreaksLatex.xopp);
+ * - libreta-notes.xopp: one A4 landscape page with pressure, text, a figure and a LaTeX formula;
  * - libreta-pdf.xopp: notes on the two pages of Xournal++'s test PDF
  *   (packaged_xopp/pdfBackground/old.xopp.bg.pdf), attached as libreta-pdf.xopp.bg.pdf.
  * Written again when screenshots are recorded; otherwise they must match.
@@ -128,7 +136,7 @@ class WrittenSamplesTest {
         ink += highlight(46.0, NOTES_TOP + 4 * LINE - 4, 400.0)
         val red = Handwriting(101, RED, PenSize.THICK.width, pressure = true)
         ink += red.ellipse(40.0, NOTES_TOP + 8 * LINE - 14, 200.0, NOTES_TOP + 8 * LINE + 6)
-        ink += texImage().copy(bounds = Bounds(300.0, 500.0, 360.0, 560.0))
+        ink += formula()
         val extras = ArrayList<Element>()
         extras += Element.Text("Waves on a string", "Sans Bold", 20.0, 50.0, 30.0, Color.BLACK)
         extras += Element.Image(Bounds(560.0, 90.0, 790.0, 243.0), figure(100))
@@ -195,13 +203,36 @@ class WrittenSamplesTest {
             .toByteString()
     }
 
-    private fun texImage(): Element.TexImage =
-        TestDocuments
-            .load("xournalpp/load/linebreaksLatex.xopp")
-            .pages
-            .flatMap { page -> page.layers.flatMap { it.elements } }
-            .filterIsInstance<Element.TexImage>()
-            .first()
+    /** "E = mc²" as a LaTeX image holds it: a PDF of the formula alone, in Times. */
+    private fun formula(): Element.TexImage {
+        PdfPages.init(ApplicationProvider.getApplicationContext())
+        val pdf =
+            PDDocument().use { document ->
+                val page = PDPage(PDRectangle(0f, 0f, 70f, 16f))
+                document.addPage(page)
+                PDPageContentStream(document, page).use { text ->
+                    text.beginText()
+                    text.setFont(PDType1Font.TIMES_ITALIC, 12f)
+                    text.newLineAtOffset(2f, 4f)
+                    text.showText("E = mc")
+                    text.setFont(PDType1Font.TIMES_ROMAN, 8f)
+                    text.newLineAtOffset(36f, 5f)
+                    text.showText("2")
+                    text.endText()
+                }
+                // A fixed file ID: otherwise each save makes a new one.
+                val id = COSString(ByteArray(16))
+                document.document.trailer.setItem(
+                    COSName.ID,
+                    COSArray().apply {
+                        add(id)
+                        add(id)
+                    },
+                )
+                ByteArrayOutputStream().also(document::save).toByteArray()
+            }
+        return Element.TexImage("E = mc^2", Bounds(300.0, 500.0, 405.0, 524.0), pdf.toByteString())
+    }
 
     private companion object {
         const val SAMPLE = "libreta-sample.xopp"
