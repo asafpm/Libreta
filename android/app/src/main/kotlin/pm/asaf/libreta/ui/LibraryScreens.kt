@@ -64,8 +64,12 @@ fun HomeScreen(
     onAddFolder: () -> Unit,
     onSettings: () -> Unit,
     opened: FolderRef? = null,
+    /** The notes opened last, and how to open one again. */
+    recent: List<LibraryEntry.Document> = emptyList(),
+    onOpenRecent: (LibraryEntry.Document) -> Unit = {},
 ) {
     val locals = roots.filterIsInstance<LibraryRoot.Local>()
+    val recentTitle = stringResource(R.string.recent)
     val openedState = opened?.let { folders[it] }
     val anyOpened = (openedState as? FolderState.Loaded)?.entries?.isNotEmpty() == true
     Scaffold(
@@ -84,6 +88,7 @@ fun HomeScreen(
         } else {
             LibraryGrid(Modifier.padding(padding)) {
                 if (locals.isEmpty()) item(key = "add", span = { GridItemSpan(maxLineSpan) }) { NoFolders(onAddFolder) }
+                recentItems(recentTitle, recent, previews, onOpenRecent)
                 for (root in locals) {
                     val drop = actions.manage?.drop
                     sectionHeader(root.folder, root.name, drop, { onNewFolder(root.folder) }) { onNewNote(root.folder) }

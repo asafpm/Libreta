@@ -195,8 +195,8 @@ class LibretaAppTest {
 
         // On the home screen, apart; then moved into the library with its PDF.
         compose.onNodeWithContentDescription("Back").performClick()
-        waitForText("Opened PDFs")
-        compose.onNodeWithText("paper.xopp").assertIsDisplayed()
+        // Below the notes opened last, where it is too.
+        scrollTo("Opened PDFs")
         compose.onNodeWithContentDescription("More for paper.xopp").performClick()
         compose.onNodeWithText("Move to a folder…").performClick()
         compose.onNode(hasText("Notes") and hasClickAction()).performClick()
@@ -260,6 +260,30 @@ class LibretaAppTest {
                 .Recovery(File(application.filesDir, "recovery"))
                 .copies(),
         )
+    }
+
+    @Test
+    fun notesOpenedShowUnderRecent() {
+        File(testData, "physics.xopp").copyTo(File(directory, "Courses/Physics.xopp"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        val model = show()
+        waitForText("Courses")
+        compose.onNodeWithText("Courses").performClick()
+        waitForText("Physics.xopp")
+        compose.onNodeWithText("Physics.xopp").performClick()
+        eventually { model.note.value is NoteState.Loaded }
+        // Back home: the note is there, on top, without going into its folder.
+        compose.runOnIdle { model.back() }
+        eventually { model.screens.value.last() is Screen.Folder }
+        compose.runOnIdle { model.back() }
+        eventually { model.screens.value.last() == Screen.Home }
+        waitForText("Recent")
+        compose.onNodeWithText("Physics.xopp").performClick()
+        eventually { model.note.value is NoteState.Loaded }
+        val screen = model.screens.value.last() as Screen.Note
+        // Opened as from its folder: its background files are looked for there.
+        assertEquals(listOf("Notes", "Courses"), screen.location?.folders?.map { it.name })
     }
 
     @Test

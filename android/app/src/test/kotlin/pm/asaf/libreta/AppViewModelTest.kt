@@ -70,4 +70,24 @@ class AppViewModelTest {
         ShadowLooper.idleMainLooper()
         assert(model.note.value is NoteState.Loaded)
     }
+
+    @Test
+    fun aNoteLeftOpenOpensAgainWhenTheAppStarts() {
+        val note = lecture()
+        // The app was stopped by Android while the note was open.
+        pm.asaf.libreta.library
+            .RecentNotes(
+                application.getSharedPreferences("library", Context.MODE_PRIVATE),
+                pm.asaf.libreta.store
+                    .SafDocumentStore(application.contentResolver),
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+                kotlinx.coroutines.Dispatchers.Unconfined,
+            ).opened(
+                pm.asaf.libreta.library
+                    .RecentNote(note.id, note.name, note.location),
+            )
+        val paused = StandardTestDispatcher()
+        val again = AppViewModel(application, StandardTestDispatcher(io), RenderThreads(workers = 1, paused, paused))
+        assertEquals(note, again.screens.value.last())
+    }
 }

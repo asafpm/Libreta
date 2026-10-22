@@ -155,6 +155,23 @@ fun NewNoteButton(onClick: () -> Unit) {
     }
 }
 
+/** The notes opened last ([entries]), opened again by [onOpen]; nothing if there are none. */
+fun LazyGridScope.recentItems(
+    title: String,
+    entries: List<LibraryEntry.Document>,
+    previews: PreviewCache,
+    onOpen: (LibraryEntry.Document) -> Unit,
+) {
+    if (entries.isEmpty()) return
+    sectionTitle("recent", title)
+    // Changed where they are, not here: no menus.
+    val actions = LibraryActions({}, {}, {})
+    items(
+        entries,
+        key = { "recent/${it.id.value}" },
+    ) { entry -> DocumentCard(entry, previews, actions) { onOpen(entry) } }
+}
+
 /** The contents of a folder, or its loading or error state, as grid items. */
 fun LazyGridScope.folderItems(
     key: String,

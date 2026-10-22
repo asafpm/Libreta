@@ -141,7 +141,8 @@ class NoteScreenTest : NoteScreenTesting() {
         // Leaving saves; the note opens as it was left, with nothing to undo.
         compose.runOnIdle { model.back() }
         eventually { model.note.value == null }
-        compose.onNodeWithText("Lecture.xopp").performClick()
+        // Under Recent too.
+        compose.onAllNodesWithText("Lecture.xopp")[0].performScrollTo().performClick()
         eventually { model.note.value is NoteState.Loaded }
         assertEquals(before + 1, model.elements().size)
         assertEquals(kept, model.elements().last())

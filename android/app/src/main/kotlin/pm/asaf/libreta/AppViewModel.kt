@@ -51,6 +51,8 @@ import pm.asaf.libreta.library.NewNoteFlow
 import pm.asaf.libreta.library.OpenedPdfs
 import pm.asaf.libreta.library.PdfNotesFlow
 import pm.asaf.libreta.library.PreviewCache
+import pm.asaf.libreta.library.RecentNote
+import pm.asaf.libreta.library.RecentNotes
 import pm.asaf.libreta.settings.AppearancePreferences
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.PagePreferences
@@ -140,6 +142,10 @@ class AppViewModel
 
         /** Where notes are: the folders granted through the Storage Access Framework. */
         private val store = SafDocumentStore(application.contentResolver)
+
+        /** The notes opened last, and the one left open. */
+        val recent = RecentNotes(preferences, store, viewModelScope, io)
+
         private val openedPdfs =
             OpenedPdfs(
                 application,
@@ -267,10 +273,22 @@ class AppViewModel
         fun open(screen: Screen) {
             stack.update { it + screen }
             when (screen) {
-                is Screen.Folder -> library.refresh(screen.folder)
-                is Screen.Note -> loadNote(screen)
-                Screen.Home -> library.refreshRoots()
-                Screen.Settings -> Unit
+                is Screen.Folder -> {
+                    library.refresh(screen.folder)
+                }
+
+                is Screen.Note -> {
+                    loadNote(screen)
+                }
+
+                Screen.Home -> {
+                    library.refreshRoots()
+                    recent.refresh()
+                }
+
+                Screen.Settings -> {
+                    Unit
+                }
             }
         }
 
@@ -282,9 +300,18 @@ class AppViewModel
             stack.value = screens.dropLast(1)
             // Coming back to a folder: it may have a new note in it.
             when (val shown = stack.value.last()) {
-                is Screen.Folder -> library.refresh(shown.folder)
-                Screen.Home -> library.refreshRoots()
-                else -> Unit
+                is Screen.Folder -> {
+                    library.refresh(shown.folder)
+                }
+
+                Screen.Home -> {
+                    library.refreshRoots()
+                    recent.refresh()
+                }
+
+                else -> {
+                    Unit
+                }
             }
             return true
         }
@@ -339,7 +366,10 @@ class AppViewModel
                 // Still shown, as this opening of it? (The same note opened again is loaded again.)
                 if (stack.value.lastOrNull() === screen) {
                     noteState.value = state
-                    if (state is NoteState.Loaded) startAutosave(state)
+                    if (state is NoteState.Loaded) {
+                        startAutosave(state)
+                        recent.opened(RecentNote(screen.id, screen.name, screen.location))
+                    }
                 } else {
                     (state as? NoteState.Loaded)?.files?.close()
                 }
@@ -426,6 +456,7 @@ class AppViewModel
             autosaving?.cancel()
             autosaving = null
             retrying?.cancel()
+            recent.closed()
             saveNote { result ->
                 if (result is SaveResult.Failed && note != null && screen != null) {
                     unsaved.keep(UnsavedNote(screen, note))
@@ -436,6 +467,11 @@ class AppViewModel
             noteState.value = null
             saveStatusState.value = SaveStatus.SAVED
             noteAnchor = null
+        }
+
+        init {
+            // Android stopped the app while a note was open: it opens again.
+            recent.takeOpen()?.let { open(Screen.Note(it.id, it.name, it.location)) }
         }
 
         // Saved when the app stopped (MainActivity.onStop); the scope is gone now.

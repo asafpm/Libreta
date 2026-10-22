@@ -46,7 +46,10 @@ fun LibretaApp(model: AppViewModel) {
         }
     val addFolder = { pickFolder.launch(null) }
 
-    LaunchedEffect(Unit) { model.library.refreshRoots() }
+    LaunchedEffect(Unit) {
+        model.library.refreshRoots()
+        model.recent.refresh()
+    }
     BackHandler(enabled = screens.size > 1) { model.back() }
 
     CompositionLocalProvider(LocalMessages provides model.messages) {
@@ -146,6 +149,7 @@ private fun Home(
     model: AppViewModel,
     addFolder: () -> Unit,
 ) {
+    val recent by model.recent.entries.collectAsStateWithLifecycle()
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val folders by model.library.folders.collectAsStateWithLifecycle()
     HomeScreen(
@@ -158,6 +162,12 @@ private fun Home(
         onAddFolder = addFolder,
         onSettings = { model.open(Screen.Settings) },
         opened = model.library.opened,
+        recent = recent,
+        onOpenRecent = { entry ->
+            model.recent.notes.value.firstOrNull { it.id == entry.id }?.let {
+                model.open(Screen.Note(it.id, entry.name, it.location))
+            }
+        },
     )
 }
 
