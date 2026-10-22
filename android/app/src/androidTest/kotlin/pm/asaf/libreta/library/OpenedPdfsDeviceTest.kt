@@ -27,7 +27,7 @@ class OpenedPdfsDeviceTest {
     @Test
     fun notesOfOpenedPdfsAreKeptInTheAppWithTheirPdf() {
         // A PDF to open, in the provider itself (another app's would come with a grant).
-        val bytes = assets.open("pdf_annotation.xopp.bg.pdf").use { it.readBytes() }
+        val bytes = assets.open("libreta-pdf.xopp.bg.pdf").use { it.readBytes() }
         val shared = store.create(folder.id, "shared.pdf.tmp")
         store.write(shared.id, bytes.toByteString(), expected = null)
         val opened = OpenedPdfs(context, store, folder)

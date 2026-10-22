@@ -105,8 +105,8 @@ class LibretaAppTest {
 
     @Test
     fun browsesFoldersAndCreatesANote() {
-        File(testData, "physics.xopp").copyTo(File(directory, "Physics.xopp"))
-        File(testData, "note-taking.xopp").copyTo(File(directory, "Courses/Algebra.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Physics.xopp"))
+        File(testData, "libreta-notes.xopp").copyTo(File(directory, "Courses/Algebra.xopp"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -137,7 +137,7 @@ class LibretaAppTest {
 
     @Test
     fun aPdfOpensInANoteMadeNextToIt() {
-        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
+        File(testData, "libreta-pdf.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -145,8 +145,9 @@ class LibretaAppTest {
         compose.onNodeWithText("paper.pdf").performClick()
         eventually { model.note.value is NoteState.Loaded }
         compose.onNodeWithText("paper.xopp").assertIsDisplayed()
-        val page = (model.note.value as NoteState.Loaded).document.pages.single()
-        assertEquals(792.0, page.width, 0.5)
+        val pages = (model.note.value as NoteState.Loaded).document.pages
+        assertEquals(2, pages.size)
+        assertEquals(612.0, pages.first().width, 0.5)
         assertTrue(File(directory, "paper.xopp").isFile)
 
         // Back in the folder, the note stands for the PDF.
@@ -158,7 +159,7 @@ class LibretaAppTest {
     /** A PDF in Downloads, outside the library ("Notes"), shared by another app. */
     private fun sharedPdf(): StoreId {
         FakeDocumentsProvider.install(temporary.root)
-        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(temporary.root, "Downloads/paper.pdf"))
+        File(testData, "libreta-pdf.xopp.bg.pdf").copyTo(File(temporary.root, "Downloads/paper.pdf"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri("Notes"), "Notes"))
         return FakeDocumentsProvider.fileId("Downloads/paper.pdf")
@@ -187,12 +188,8 @@ class LibretaAppTest {
         compose.runOnIdle { model.openExternal(pdf) }
         eventually { model.note.value is NoteState.Loaded }
         assertEquals(
-            792.0,
-            (model.note.value as NoteState.Loaded)
-                .document.pages
-                .single()
-                .width,
-            0.5,
+            listOf(612.0, 612.0),
+            (model.note.value as NoteState.Loaded).document.pages.map { it.width },
         )
         // Nothing is added to the user's folders.
         assertEquals(emptyList<String>(), directory.list()?.toList())
@@ -228,7 +225,7 @@ class LibretaAppTest {
 
     @Test
     fun aPdfFromAnotherAppThatIsInTheLibraryGetsItsNoteThere() {
-        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
+        File(testData, "libreta-pdf.xopp.bg.pdf").copyTo(File(directory, "paper.pdf"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -246,11 +243,11 @@ class LibretaAppTest {
 
     @Test
     fun changesNotSavedWhenTheAppStoppedAreOfferedBack() {
-        File(testData, "note-taking.xopp").copyTo(File(directory, "Lecture.xopp"))
+        File(testData, "libreta-notes.xopp").copyTo(File(directory, "Lecture.xopp"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         // The app was killed while saving: what it was saving is kept.
-        val changed = File(testData, "physics.xopp").readBytes()
+        val changed = File(testData, "libreta-sample.xopp").readBytes()
         pm.asaf.libreta.files
             .Recovery(File(application.filesDir, "recovery"))
             .keep(FakeDocumentsProvider.fileId("Lecture.xopp"), "Lecture.xopp", okio.ByteString.of(*changed))
@@ -269,7 +266,7 @@ class LibretaAppTest {
 
     @Test
     fun notesOpenedShowUnderRecent() {
-        File(testData, "physics.xopp").copyTo(File(directory, "Courses/Physics.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Courses/Physics.xopp"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -294,8 +291,8 @@ class LibretaAppTest {
     @Test
     @org.robolectric.annotation.Config(qualifiers = "w900dp-h1200dp")
     fun notesAreSortedAsChosenInTheTopBar() {
-        File(testData, "physics.xopp").copyTo(File(directory, "a.xopp")).setLastModified(1_000_000)
-        File(testData, "physics.xopp").copyTo(File(directory, "b.xopp")).setLastModified(2_000_000)
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "a.xopp")).setLastModified(1_000_000)
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "b.xopp")).setLastModified(2_000_000)
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -321,18 +318,18 @@ class LibretaAppTest {
     fun pullingTheLibraryDownListsItAgain() {
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
-        File(testData, "physics.xopp").copyTo(File(directory, "a.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "a.xopp"))
         show()
         waitForText("a.xopp")
         // Added by a sync app meanwhile.
-        File(testData, "physics.xopp").copyTo(File(directory, "b.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "b.xopp"))
         compose.onNode(hasScrollToNodeAction()).performTouchInput { swipeDown() }
         waitForText("b.xopp")
     }
 
     @Test
     fun searchFindsNotesAllThroughTheLibrary() {
-        File(testData, "physics.xopp").copyTo(File(directory, "Courses/Algebra.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Courses/Algebra.xopp"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()
@@ -398,7 +395,7 @@ class LibretaAppTest {
 
     @Test
     fun opensANote() {
-        File(testData, "physics.xopp").copyTo(File(directory, "Physics.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Physics.xopp"))
         LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
             .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         val model = show()

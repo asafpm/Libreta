@@ -45,11 +45,11 @@ class LargeDocumentTest {
     private val context = instrumentation.targetContext
     private val debuggable = context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
-    /** physics.xopp's 8 pages, 13 times. */
+    /** libreta-sample.xopp's 8 pages, 13 times. */
     private fun largeDocument(): Document {
         val sample =
             instrumentation.context.assets
-                .open("physics.xopp")
+                .open("libreta-sample.xopp")
                 .source()
                 .buffer()
                 .use { XoppReader.read(it.readByteString()).document }

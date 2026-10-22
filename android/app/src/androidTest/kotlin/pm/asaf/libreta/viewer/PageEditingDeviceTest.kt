@@ -109,7 +109,7 @@ class PageEditingDeviceTest {
 
     private fun physics(): Document =
         instrumentation.context.assets
-            .open("physics.xopp")
+            .open("libreta-sample.xopp")
             .source()
             .buffer()
             .use { XoppReader.read(it.readByteString()).document }

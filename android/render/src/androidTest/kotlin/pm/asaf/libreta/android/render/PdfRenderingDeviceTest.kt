@@ -68,12 +68,12 @@ class PdfRenderingDeviceTest {
         val pdf =
             File(
                 context.cacheDir,
-                "pdf_annotation.xopp.bg.pdf",
-            ).apply { writeBytes(asset("pdf_annotation.xopp.bg.pdf")) }
+                "libreta-pdf.xopp.bg.pdf",
+            ).apply { writeBytes(asset("libreta-pdf.xopp.bg.pdf")) }
         PdfBackgroundSource(pdf).use { source ->
-            val page = document("pdf_annotation.xopp").pages[0]
+            val page = document("libreta-pdf.xopp").pages[0]
             val bitmap = PageRenderer(context, source).renderToBitmap(page, ZOOM)
-            save(bitmap, "pdf_annotation_p1.png")
+            save(bitmap, "libreta_pdf_p1.png")
             // The PDF's own content (not just the annotations) is drawn: compare with a render
             // without the PDF, which shows only the "missing" placeholder.
             val withoutPdf = PageRenderer(context).renderToBitmap(page, ZOOM)
@@ -84,7 +84,7 @@ class PdfRenderingDeviceTest {
 
     @Test
     fun aPdfWithAPasswordFailsToOpenAsAnIOException() {
-        // testdata/password.pdf: pdf_annotation.xopp.bg.pdf locked with qpdf (user password "secret").
+        // testdata/password.pdf: libreta-pdf.xopp.bg.pdf locked with qpdf (user password "secret").
         val pdf = File(context.cacheDir, "password.pdf").apply { writeBytes(asset("password.pdf")) }
         try {
             // PdfRenderer throws a SecurityException; callers handle files they can't read as IOExceptions.
@@ -128,7 +128,7 @@ class PdfRenderingDeviceTest {
     fun aTileAtHighZoomShowsThePdfAsTheWholePageDoes() {
         val zoom = 6f
         val size = TileGrid.SIZE
-        val pdf = File(context.cacheDir, "zoomed.pdf").apply { writeBytes(asset("pdf_annotation.xopp.bg.pdf")) }
+        val pdf = File(context.cacheDir, "zoomed.pdf").apply { writeBytes(asset("libreta-pdf.xopp.bg.pdf")) }
         try {
             // What the PDF looks like at that zoom, rendered whole by PdfRenderer.
             val whole =
@@ -170,7 +170,7 @@ class PdfRenderingDeviceTest {
     @Test
     fun closingWhileDrawingIsSafe() {
         val pdf =
-            File(context.cacheDir, "closing.pdf").apply { writeBytes(asset("pdf_annotation.xopp.bg.pdf")) }
+            File(context.cacheDir, "closing.pdf").apply { writeBytes(asset("libreta-pdf.xopp.bg.pdf")) }
         val source = PdfBackgroundSource(pdf)
         val canvas = android.graphics.Canvas(Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888))
         var failure: Throwable? = null
@@ -197,7 +197,7 @@ class PdfRenderingDeviceTest {
 
     @Test
     fun latexFormulaStoredAsPdf() {
-        val page = document("note-taking.xopp").pages[0]
+        val page = document("libreta-notes.xopp").pages[0]
         val tex =
             page.layers
                 .flatMap { it.elements }
@@ -208,7 +208,7 @@ class PdfRenderingDeviceTest {
         val rasterizer = AndroidPdfRasterizer(folder)
         assertNotNull(rasterizer.render(tex.data, 0, 200, 50))
         val bitmap = PageRenderer(context, pdfRasterizer = rasterizer).renderToBitmap(page, ZOOM)
-        save(bitmap, "note_taking_p1.png")
+        save(bitmap, "libreta_notes_p1.png")
         assertTrue(darkPixels(bitmap, tex.bounds, ZOOM) > MIN_FORMULA_PIXELS, "formula not drawn")
     }
 

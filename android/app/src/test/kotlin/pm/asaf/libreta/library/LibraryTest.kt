@@ -58,10 +58,10 @@ class LibraryTest {
 
     @Test
     fun listsFoldersThenDocuments() {
-        copy("physics.xopp", "Physics.xopp", 3_000_000)
-        copy("note-taking.xopp", "algebra.xopp", 2_000_000)
+        copy("libreta-sample.xopp", "Physics.xopp", 3_000_000)
+        copy("libreta-notes.xopp", "algebra.xopp", 2_000_000)
         copy("xournalpp/preview-test2.xoj", "Old.XOJ", 4_000_000)
-        copy("physics.xopp", "Courses/Mechanics.xopp", 1_000_000)
+        copy("libreta-sample.xopp", "Courses/Mechanics.xopp", 1_000_000)
         File(directory, "Archive").mkdirs()
         File(directory, "readme.txt").writeText("not a note")
         File(directory, ".hidden.xopp").writeText("")
@@ -81,13 +81,13 @@ class LibraryTest {
 
     @Test
     fun pdfsAreListedUnlessTheyHaveANote() {
-        copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
-        copy("pdf_annotation.xopp.bg.pdf", "slides.PDF", 2_000_000)
-        copy("pdf_annotation.xopp.bg.pdf", "annotated.pdf", 1_000_000)
-        copy("pdf_annotation.xopp", "annotated.pdf.xopp", 1_000_000)
+        copy("libreta-pdf.xopp.bg.pdf", "paper.pdf", 3_000_000)
+        copy("libreta-pdf.xopp.bg.pdf", "slides.PDF", 2_000_000)
+        copy("libreta-pdf.xopp.bg.pdf", "annotated.pdf", 1_000_000)
+        copy("libreta-pdf.xopp", "annotated.pdf.xopp", 1_000_000)
         // A note carrying its PDF, as Xournal++ attaches one.
-        copy("pdf_annotation.xopp", "carrying.xopp", 500_000)
-        copy("pdf_annotation.xopp.bg.pdf", "carrying.xopp.bg.pdf", 500_000)
+        copy("libreta-pdf.xopp", "carrying.xopp", 500_000)
+        copy("libreta-pdf.xopp.bg.pdf", "carrying.xopp.bg.pdf", 500_000)
         val listed = FolderListing.list(store, root)
         // "annotated.pdf" has a note, which stands for it; "carrying.xopp.bg.pdf" is part of its note.
         assertEquals(listOf("paper.pdf", "slides.PDF", "annotated.pdf.xopp", "carrying.xopp"), listed.map { it.name })
@@ -98,20 +98,20 @@ class LibraryTest {
     fun pdfsHavePreviews() =
         runTest {
             BlankPdfPages.install()
-            copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+            copy("libreta-pdf.xopp.bg.pdf", "paper.pdf", 3_000_000)
             val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
             val io = StandardTestDispatcher(testScheduler)
             val preview =
                 PreviewCache(context, store, temporary.newFolder("previews"), io).previews(pdf).toList().single()
-            // Its first page, landscape like the PDF.
-            assertTrue("${preview.width} x ${preview.height}", preview.width > preview.height)
+            // Its first page, portrait like the PDF.
+            assertTrue("${preview.width} x ${preview.height}", preview.width < preview.height)
         }
 
     @Test
     fun previewsInMemoryAreLetGoWhenMemoryIsShort() =
         runTest {
             BlankPdfPages.install()
-            copy("pdf_annotation.xopp.bg.pdf", "paper.pdf", 3_000_000)
+            copy("libreta-pdf.xopp.bg.pdf", "paper.pdf", 3_000_000)
             val pdf = FolderListing.list(store, root).single() as LibraryEntry.Pdf
             val previews =
                 PreviewCache(context, store, temporary.newFolder("previews"), StandardTestDispatcher(testScheduler))
@@ -129,8 +129,8 @@ class LibraryTest {
             // Its PDF can't be drawn, in a way nobody expected.
             pm.asaf.libreta.android.render.PdfPageRenderer.open = { throw IllegalStateException("broken") }
             try {
-                copy("pdf_annotation.xopp.bg.pdf", "pdf_annotation.xopp.bg.pdf", 3_000_000)
-                copy("pdf_annotation.xopp", "pdf_annotation.xopp", 3_000_000)
+                copy("libreta-pdf.xopp.bg.pdf", "libreta-pdf.xopp.bg.pdf", 3_000_000)
+                copy("libreta-pdf.xopp", "libreta-pdf.xopp", 3_000_000)
                 val note = FolderListing.list(store, root).single() as LibraryEntry.Document
                 val io = StandardTestDispatcher(testScheduler)
                 val previews = PreviewCache(context, store, temporary.newFolder("previews"), io).previews(note)
@@ -232,20 +232,20 @@ class LibraryTest {
     @Test
     fun previewsStartWithTheEmbeddedOneAndAreCached() =
         runTest {
-            copy("physics.xopp", "Physics.xopp", 1_000_000)
+            copy("xournalpp/packaged_xopp/suite.xopp", "Suite.xopp", 1_000_000)
             val cacheDirectory = temporary.newFolder("previews")
             val io = StandardTestDispatcher(testScheduler)
-            val first = PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList()
-            // Xournal++'s 99 x 128 preview, then page 1 at the thumbnail width.
-            assertEquals(listOf(99, 384), first.map { it.width })
+            val first = PreviewCache(context, store, cacheDirectory, io).previews(document("Suite.xopp")).toList()
+            // Xournal++'s 91 x 128 preview, then page 1 at the thumbnail width.
+            assertEquals(listOf(91, 384), first.map { it.width })
             // A new cache (the app restarted) finds the rendered one on disk.
-            val again = PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList()
+            val again = PreviewCache(context, store, cacheDirectory, io).previews(document("Suite.xopp")).toList()
             assertEquals(listOf(384), again.map { it.width })
             // A changed file gets a new preview.
-            File(directory, "Physics.xopp").setLastModified(2_000_000)
+            File(directory, "Suite.xopp").setLastModified(2_000_000)
             assertEquals(
                 2,
-                PreviewCache(context, store, cacheDirectory, io).previews(document("Physics.xopp")).toList().size,
+                PreviewCache(context, store, cacheDirectory, io).previews(document("Suite.xopp")).toList().size,
             )
         }
 

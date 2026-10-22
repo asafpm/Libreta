@@ -9,8 +9,8 @@ licensed GPL-2.0-or-later.
 | everything except `development/` | `test/files/` (same relative paths) |
 | `development/` | `development/documentation/` |
 
-Left out: `big-test.xoj` and `packaged_xopp/big-test.xopp` (6 MB each, covered
-by `testdata/physics.xopp`), `load/test.xoi` (empty), and the palette,
+Left out: `big-test.xoj` and `packaged_xopp/big-test.xopp` (6 MB each; the long
+document Libreta tests with is its own `testdata/libreta-sample.xopp`), `load/test.xoi` (empty), and the palette,
 metadata and image fixtures, which are not Xournal++ document files.
 
 The expectations Libreta's tests check for these files come from Xournal++'s

@@ -103,9 +103,9 @@ class PdfExportDeviceTest {
         val report = StringBuilder()
         val samples =
             listOf(
-                Triple("pdf_annotation.xopp", "pdf_annotation", "pdf_annotation.xopp.bg.pdf"),
-                Triple("note-taking.xopp", "note-taking", null),
-                Triple("physics.xopp", "physics", null),
+                Triple("libreta-pdf.xopp", "libreta-pdf", "libreta-pdf.xopp.bg.pdf"),
+                Triple("libreta-notes.xopp", "libreta-notes", null),
+                Triple("libreta-sample.xopp", "libreta-sample", null),
                 Triple("libreta-edits.xopp", "libreta-edits", null),
                 Triple("libreta-selection.xopp", "libreta-selection", null),
             )
@@ -127,13 +127,13 @@ class PdfExportDeviceTest {
             report.appendLine("$name: ${document.pages.size} pages, ${file.length() / 1024} KB, $took ms")
         }
         // The PDF's own content is in the export, not only the ink.
-        val note = document("pdf_annotation.xopp")
-        val (withPdf, _) = export(note, "with-pdf", "pdf_annotation.xopp.bg.pdf")
+        val note = document("libreta-pdf.xopp")
+        val (withPdf, _) = export(note, "with-pdf", "libreta-pdf.xopp.bg.pdf")
         val inkOnly = PageRenderer(context).renderToBitmap(note.pages[0].copy(background = null), ZOOM)
         assertTrue(darkPixels(pages(withPdf, 0, ZOOM).third) > darkPixels(inkOnly) + MIN_PDF_PIXELS)
 
         // The 104-page note.
-        val physics = document("physics.xopp")
+        val physics = document("libreta-sample.xopp")
         val large = physics.copy(pages = List(REPEATS) { physics.pages }.flatten())
         val (file, took) = export(large, "large")
         report.appendLine("104-page note: ${file.length() / 1024} KB, $took ms (${took / large.pages.size} ms a page)")

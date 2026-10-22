@@ -53,15 +53,13 @@ class RenderExportTest {
 
         val DOCUMENTS =
             listOf(
-                "note-taking.xopp",
-                "pdf_annotation.xopp",
-                "physics.xopp",
+                "libreta-notes.xopp",
+                "libreta-pdf.xopp",
+                "libreta-sample.xopp",
                 "libreta-edits.xopp",
                 "libreta-pages.xopp",
                 "libreta-selection.xopp",
                 "libreta-extras.xopp",
-                "muzzy_pixmap_bg.xopp",
-                "2026-10-13-Note-22-46.xoj",
                 "xournalpp/cjk/测试.xopp",
                 "xournalpp/development/README-Eraser-and-padded-box.xopp",
                 "xournalpp/development/Setsquare_annotations.xopp",

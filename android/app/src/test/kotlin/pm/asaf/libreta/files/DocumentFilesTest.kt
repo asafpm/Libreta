@@ -186,7 +186,7 @@ class DocumentFilesTest {
 
     @Test
     fun findsOpenedFilesInTheLibrary() {
-        copy("Courses/Physics", "physics.xopp")
+        copy("Courses/Physics", "libreta-sample.xopp")
         val roots = listOf(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
         // As a file manager would send it: a plain document uri.
         val id =
@@ -194,14 +194,14 @@ class DocumentFilesTest {
                 DocumentsContract
                     .buildDocumentUri(
                         FakeDocumentsProvider.AUTHORITY,
-                        "root/Courses/Physics/physics.xopp",
+                        "root/Courses/Physics/libreta-sample.xopp",
                     ).toString(),
             )
-        val location = assertNotNull(NoteLoader.locate(store, roots, id, "physics.xopp"))
+        val location = assertNotNull(NoteLoader.locate(store, roots, id, "libreta-sample.xopp"))
         assertEquals(listOf("Notes", "Courses", "Physics"), location.folders.map { it.name })
         assertEquals("root/Courses/Physics", documentIdOf(location.folders.last().id))
         // Not below any root.
         val elsewhere = listOf(LibraryRoot.Local(FakeDocumentsProvider.treeUri("Other"), "Other"))
-        assertNull(NoteLoader.locate(store, elsewhere, id, "physics.xopp"))
+        assertNull(NoteLoader.locate(store, elsewhere, id, "libreta-sample.xopp"))
     }
 }

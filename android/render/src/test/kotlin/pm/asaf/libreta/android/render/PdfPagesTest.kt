@@ -73,8 +73,8 @@ class PdfPagesTest {
 
     @Test
     fun theSamplePdfIsRead() {
-        val sample = File(checkNotNull(System.getProperty("libreta.testdata")), "pdf_annotation.xopp.bg.pdf")
+        val sample = File(checkNotNull(System.getProperty("libreta.testdata")), "libreta-pdf.xopp.bg.pdf")
         val sizes = PdfPages.sizes(context, sample.inputStream())
-        assertEquals(792.0 to 612.0, sizes.first().let { Math.round(it.first) * 1.0 to Math.round(it.second) * 1.0 })
+        assertEquals(612.0 to 792.0, sizes.first().let { Math.round(it.first) * 1.0 to Math.round(it.second) * 1.0 })
     }
 }

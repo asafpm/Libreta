@@ -145,9 +145,8 @@ For a full page, the clip range is the whole page.
 **Libreta:**
 - PDF pages are rendered by Android's `PdfRenderer` (pdfium), at no less than one
   pixel per point, like Xournal++.
-  - Rendering can differ in small details from Xournal++'s poppler. In
-    `pdf_annotation.xopp`'s background, for example, pdfium draws arrowheads that
-    poppler omits.
+  - Rendering can differ in small details from Xournal++'s poppler: pdfium has
+    been seen to draw arrowheads that poppler omits.
   - `PdfRenderer` reports page sizes in whole points.
 - If the PDF or page is missing, the page is white, with "PDF background missing"
   in DejaVu Sans Bold 26 pt, `#cccccc`, centred.

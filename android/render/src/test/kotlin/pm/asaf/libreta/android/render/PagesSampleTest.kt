@@ -19,7 +19,7 @@ import pm.asaf.libreta.core.model.PaperSize
 import pm.asaf.libreta.core.model.applying
 
 /**
- * testdata/libreta-pages.xopp: physics.xopp's first pages rearranged with Libreta's page and
+ * testdata/libreta-pages.xopp: libreta-sample.xopp's first pages rearranged with Libreta's page and
  * layer commands (inserted, duplicated, moved and deleted pages, new backgrounds, layers
  * added, renamed, moved and merged), for scripts/render-crosscheck.sh (Xournal++ must open it
  * and show the same). Written again when screenshots are recorded; otherwise it must match.
@@ -36,7 +36,7 @@ class PagesSampleTest {
     }
 
     private fun edited(): Document {
-        val physics = TestDocuments.load("physics.xopp")
+        val physics = TestDocuments.load("libreta-sample.xopp")
         var document = physics.copy(pages = physics.pages.take(3), creator = "Libreta pages sample", preview = null)
 
         fun Document.then(edit: Edit?) = applying(checkNotNull(edit))

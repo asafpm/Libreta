@@ -177,7 +177,7 @@ in `pdfBackground/*.xopp` and `relativePaths.xopp`). Relative paths such as
 **`type="pixmap"`** (attribute order on write: `type domain filename`)
 | `domain` | `filename` means |
 |---|---|
-| `absolute` | Image path, absolute or relative to the `.xopp` file's directory (e.g. `../../../bait/Photos/muzzy.jpg`). |
+| `absolute` | Image path, absolute or relative to the `.xopp` file's directory (e.g. `../../images/photo.jpg`). |
 | `attach` | gzip: sidecar file `<xopp path>.<filename>`, e.g. `pages.xoj.bg_1.png`. zip: attachment path. Written as `bg_<n>.png`. |
 | `clone` | Page index (0-based) of an earlier page whose image is reused (`LoadHandler.cpp:423-434`). |
 

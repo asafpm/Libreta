@@ -42,7 +42,7 @@ class PagePanelTest {
 
     private fun show(count: Int = 4) {
         val physics =
-            File(checkNotNull(System.getProperty("libreta.testdata")), "physics.xopp")
+            File(checkNotNull(System.getProperty("libreta.testdata")), "libreta-sample.xopp")
                 .source()
                 .buffer()
                 .use { XoppReader.read(it) }
@@ -149,7 +149,7 @@ class PagePanelTest {
         const val HINT = "Hold a page and drag it to move it"
         const val TIMEOUT = 10_000L
 
-        /** physics.xopp's first page, Letter. */
+        /** libreta-sample.xopp's first page, Letter. */
         const val PAGE_WIDTH = 611.99998f
         const val PAGE_HEIGHT = 791.99998f
         const val STEPS = 20

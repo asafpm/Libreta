@@ -21,7 +21,7 @@ import pm.asaf.libreta.core.model.StrokeTool
 import kotlin.math.sin
 
 /**
- * testdata/libreta-edits.xopp: page 1 of physics.xopp edited the way Libreta edits, with a pen
+ * testdata/libreta-edits.xopp: page 1 of libreta-sample.xopp edited the way Libreta edits, with a pen
  * with pressure, overlapping highlighters, whiteout, the standard eraser and delete-stroke,
  * for screenshots and for scripts/render-crosscheck.sh (Xournal++ must show the same). The
  * file is written again when screenshots are recorded; otherwise it must match.
@@ -38,7 +38,7 @@ class EditedSampleTest {
     }
 
     private fun edited(): Document {
-        val physics = TestDocuments.load("physics.xopp")
+        val physics = TestDocuments.load("libreta-sample.xopp")
         var page = physics.pages[0]
         // The standard eraser down through the equations, and delete-stroke across a line of them.
         page = erase(page, deleteStrokes = false, 300.0, 120.0, 300.0, 520.0)

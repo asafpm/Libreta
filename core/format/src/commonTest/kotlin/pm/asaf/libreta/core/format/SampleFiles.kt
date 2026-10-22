@@ -8,14 +8,12 @@ import okio.buffer
 
 /** The sample documents in `testdata/`, grouped by what they can be used to test. */
 internal object SampleFiles {
-    /** Libreta's own samples. */
+    /** Libreta's own samples, written as Xournal++ writes. */
     val own: List<String> =
         listOf(
-            "note-taking.xopp",
-            "pdf_annotation.xopp",
-            "physics.xopp",
-            "muzzy_pixmap_bg.xopp",
-            "2026-10-13-Note-22-46.xoj",
+            "libreta-notes.xopp",
+            "libreta-pdf.xopp",
+            "libreta-sample.xopp",
         )
 
     /** Xournal++'s test files that are gzip-compressed or plain XML. */
@@ -70,7 +68,7 @@ internal object SampleFiles {
     private val oldXournal: Set<String> =
         setOf("xournalpp/load/layer.xml", "xournalpp/load/layer.xoj", "xournalpp/load/text.xml")
 
-    /** Gzip/plain files written by Xournal++ (any version), whose XML layout we reproduce exactly. */
+    /** Gzip/plain files written by Libreta or Xournal++ (any version), whose XML layout we reproduce exactly. */
     val xournalppWrittenXml: List<String> = own + xournalppGzipOrPlain.filterNot { it in oldXournal }
 
     /** The XML of a gzip-compressed or plain sample. */

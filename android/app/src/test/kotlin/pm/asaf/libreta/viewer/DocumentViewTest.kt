@@ -40,7 +40,7 @@ import kotlin.math.roundToInt
 class DocumentViewTest {
     private val context = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val pages: List<Page> =
-        File(checkNotNull(System.getProperty("libreta.testdata")), "physics.xopp")
+        File(checkNotNull(System.getProperty("libreta.testdata")), "libreta-sample.xopp")
             .source()
             .buffer()
             .use { XoppReader.read(it.readByteString()).document.pages }

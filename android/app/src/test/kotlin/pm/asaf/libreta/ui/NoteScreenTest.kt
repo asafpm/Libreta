@@ -283,21 +283,21 @@ class NoteScreenTest : NoteScreenTesting() {
         val session = (model.note.value as NoteState.Loaded).session
         val before = model.pages()[0].layers.map { it.elements.size }
         compose.onNodeWithContentDescription("Layers").performClick()
-        // The note's layers: Exercise below Solution. Write on Exercise, hide Solution.
-        compose.onNodeWithContentDescription("Write on Exercise").performClick()
-        compose.onNodeWithContentDescription("Hide Solution").performClick()
+        // The note's layers: Ink below Figures. Write on Ink, hide Figures.
+        compose.onNodeWithContentDescription("Write on Ink").performClick()
+        compose.onNodeWithContentDescription("Hide Figures").performClick()
         assertEquals(LayerView(0, setOf(1)), session.layers.value[0])
-        compose.onNodeWithText("Exercise").performClick()
+        compose.onNodeWithText("Ink").performClick()
         compose.onNodeWithTag("layer name").performTextReplacement("Notes")
         compose.onNodeWithText("Rename").performClick()
         compose.onNodeWithText("Add a layer above").performClick()
         // The new layer, between the two, is the one written on.
-        assertEquals(listOf("Notes", null, "Solution"), model.pages()[0].layers.map { it.name })
+        assertEquals(listOf("Notes", null, "Figures"), model.pages()[0].layers.map { it.name })
         assertEquals(LayerView(1, setOf(2)), session.layers.value[0])
         compose.onNodeWithContentDescription("Write on Layer 2").assertIsSelected()
         compose.onNodeWithText("Delete layer").performClick()
         compose.onNodeWithText("Move layer up").performClick()
-        assertEquals(listOf("Solution", "Notes"), model.pages()[0].layers.map { it.name })
+        assertEquals(listOf("Figures", "Notes"), model.pages()[0].layers.map { it.name })
         assertEquals(LayerView(1, setOf(0)), session.layers.value[0])
         compose.onNodeWithText("Move layer down").performClick()
         // Touches go to the page view, under the sheet.
@@ -419,9 +419,10 @@ class NoteScreenTest : NoteScreenTesting() {
         }
         val clip = ClipData(ClipDescription("Picture", arrayOf("image/png")), ClipData.Item(Uri.fromFile(png)))
         compose.runOnIdle { application.getSystemService(ClipboardManager::class.java).setPrimaryClip(clip) }
+        val before = model.elements().count { it is Element.Image }
         compose.onNodeWithContentDescription("Paste").performClick()
-        eventually { model.elements().any { it is Element.Image } }
-        val image = model.elements().filterIsInstance<Element.Image>().single()
+        eventually { model.elements().count { it is Element.Image } > before }
+        val image = model.elements().filterIsInstance<Element.Image>().last()
         assertEquals(80.0, image.bounds.right - image.bounds.left, 0.01)
         assertEquals(Tool.SELECT, model.tools.tools.value.tool)
     }

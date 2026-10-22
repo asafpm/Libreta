@@ -81,8 +81,8 @@ class TileRenderingTest {
         // Zooms where tile edges fall between page units, on strokes, text and every ruling.
         val cases =
             listOf(
-                Triple("physics.xopp", 0, 1.7f),
-                Triple("note-taking.xopp", 0, 2.3f),
+                Triple("libreta-sample.xopp", 0, 1.7f),
+                Triple("libreta-notes.xopp", 0, 2.3f),
                 Triple("xournalpp/load/pages.xoj", 2, 1.3f),
                 Triple("xournalpp/load/pages.xoj", 4, 1.3f),
             )
@@ -90,7 +90,7 @@ class TileRenderingTest {
             val page = TestDocuments.load(path).pages[index]
             // Not bit-exact: Skia's anti-aliasing of a path varies slightly with its extent and
             // clip, and background rulings are one path spanning the clip, so they differ between
-            // a tile and the page (physics.xopp at 1.7: 99% of pixels equal, 0.12% off by more
+            // a tile and the page (libreta-sample.xopp at 1.7: 99% of pixels equal, 0.12% off by more
             // than 2, as isolated specks along rulings; no visible seams).
             val fraction =
                 differingFraction(newRenderer().renderToBitmap(page, zoom), assembled(page, zoom), tolerance = 2)
@@ -152,7 +152,7 @@ class TileRenderingTest {
     @Test
     fun rendersRequestedTilesAndThumbnails() =
         runTest {
-            val page = TestDocuments.load("physics.xopp").pages[0]
+            val page = TestDocuments.load("libreta-sample.xopp").pages[0]
             val caches = caches()
             var notified = 0
             val renderer = newTileRenderer(listOf(page, page), caches) { notified++ }
@@ -173,7 +173,7 @@ class TileRenderingTest {
     @Test
     fun tilesAreLetGoWhenMemoryIsShort() =
         runTest {
-            val page = TestDocuments.load("physics.xopp").pages[0]
+            val page = TestDocuments.load("libreta-sample.xopp").pages[0]
             val caches = caches()
             val renderer = newTileRenderer(listOf(page), caches)
             renderer.request(page.allTiles(1f).map { RenderJob.TileJob(0, 1f, it) })
@@ -203,7 +203,7 @@ class TileRenderingTest {
                         zoom: Float,
                     ): Boolean = throw IllegalStateException("Already closed")
                 }
-            val plain = TestDocuments.load("physics.xopp").pages[0]
+            val plain = TestDocuments.load("libreta-sample.xopp").pages[0]
             val pdf = plain.copy(background = Background.Pdf(1, FileDomain.ABSOLUTE, "paper.pdf"))
             val caches = caches()
             val context = ApplicationProvider.getApplicationContext<android.content.Context>()
@@ -220,7 +220,7 @@ class TileRenderingTest {
     @Test
     fun staleRequestsAreDropped() =
         runTest {
-            val page = TestDocuments.load("physics.xopp").pages[0]
+            val page = TestDocuments.load("libreta-sample.xopp").pages[0]
             val caches = caches()
             val renderer = newTileRenderer(listOf(page), caches)
             val atZoom1 = page.allTiles(1f).map { RenderJob.TileJob(0, 1f, it) }
@@ -262,7 +262,7 @@ class TileRenderingTest {
     @Test
     fun anEditedPageReRendersOnlyTheTilesItChanged() =
         runTest {
-            val page = TestDocuments.load("physics.xopp").pages[0]
+            val page = TestDocuments.load("libreta-sample.xopp").pages[0]
             val caches = caches()
             var rendered = 0
             val renderer = newTileRenderer(listOf(page), caches) { rendered++ }

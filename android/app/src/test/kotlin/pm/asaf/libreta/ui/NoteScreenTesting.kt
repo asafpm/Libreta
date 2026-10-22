@@ -103,7 +103,7 @@ abstract class NoteScreenTesting {
         FakeDocumentsProvider.install(directory)
         val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
-        File(testData, "note-taking.xopp").copyTo(File(directory, "Lecture.xopp"))
+        File(testData, "libreta-notes.xopp").copyTo(File(directory, "Lecture.xopp"))
         LibraryRoots(preferences).add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
     }
 

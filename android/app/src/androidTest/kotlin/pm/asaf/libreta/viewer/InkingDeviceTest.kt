@@ -82,7 +82,7 @@ class InkingDeviceTest {
     private fun physics(): List<Page> {
         val sample =
             instrumentation.context.assets
-                .open("physics.xopp")
+                .open("libreta-sample.xopp")
                 .source()
                 .buffer()
                 .use { XoppReader.read(it.readByteString()).document }

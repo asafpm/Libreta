@@ -50,11 +50,11 @@ class OpenedPdfsTest {
         BlankPdfPages.install()
     }
 
-    /** A PDF another app shares, named [name]; [sample] gives its bytes. */
-    private fun shared(
-        name: String,
-        sample: String = "pdf_annotation.xopp.bg.pdf",
-    ) = File(testData, sample).copyTo(File(outside, name), overwrite = true).let { FakeDocumentsProvider.fileId(name) }
+    /** The sample PDF, shared by another app as [name]. */
+    private fun shared(name: String) =
+        File(testData, "libreta-pdf.xopp.bg.pdf")
+            .copyTo(File(outside, name), overwrite = true)
+            .let { FakeDocumentsProvider.fileId(name) }
 
     private fun open(name: String) = opened.open(shared(name), name, "Libreta test")
 
@@ -86,13 +86,10 @@ class OpenedPdfsTest {
     fun theSamePdfReopensItsNoteAndAnotherOneOfTheSameNameGetsItsOwn() {
         val first = open("paper.pdf")
         assertEquals(first.id, open("paper.pdf").id)
-        // Another PDF, also called paper.pdf.
-        val other =
-            opened.open(
-                shared("paper.pdf", "xournalpp/packaged_xopp/pdfBackground/old.xopp.bg.pdf"),
-                "paper.pdf",
-                "x",
-            )
+        // Another PDF, also called paper.pdf (the same pages, with a comment after them).
+        val bytes = File(testData, "libreta-pdf.xopp.bg.pdf").readBytes() + "\n% another PDF\n".toByteArray()
+        File(outside, "paper.pdf").writeBytes(bytes)
+        val other = opened.open(FakeDocumentsProvider.fileId("paper.pdf"), "paper.pdf", "x")
         assertNotEquals(first.id, other.id)
         assertEquals("paper (1).xopp", other.name)
         assertTrue(File(inside, "paper (1).xopp.bg.pdf").isFile)

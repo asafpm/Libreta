@@ -15,6 +15,7 @@ import pm.asaf.libreta.core.format.XoppReader
 import pm.asaf.libreta.core.model.Background
 import pm.asaf.libreta.core.model.Document
 import pm.asaf.libreta.core.model.FileDomain
+import pm.asaf.libreta.core.model.Page
 import java.io.File
 
 /** Pages of the sample documents in testdata/ (PDF content needs a device, see androidTest). */
@@ -26,21 +27,28 @@ class DocumentRenderingTest {
         pageIndex: Int,
         name: String,
         zoom: Float = 1f,
+        change: (Page) -> Page = { it },
     ) {
         val file = TestDocuments.file(path)
         val document = TestDocuments.load(path)
         val renderer = PageRenderer(ApplicationProvider.getApplicationContext(), SidecarImages(file))
-        Screenshots.assertMatches(renderer.renderToBitmap(document.pages[pageIndex], zoom), "documents/$name")
+        Screenshots.assertMatches(renderer.renderToBitmap(change(document.pages[pageIndex]), zoom), "documents/$name")
     }
 
     @Test
-    fun physics() = assertPage("physics.xopp", 0, "physics-p1")
+    fun sample() = assertPage("libreta-sample.xopp", 0, "sample-p1")
 
     @Test
-    fun noteTaking() = assertPage("note-taking.xopp", 0, "note-taking-p1")
+    fun sampleWithPressure() = assertPage("libreta-sample.xopp", 1, "sample-p2")
 
     @Test
-    fun pixmapBackgroundMissing() = assertPage("muzzy_pixmap_bg.xopp", 0, "muzzy-p1", zoom = 2f)
+    fun notes() = assertPage("libreta-notes.xopp", 0, "notes-p1")
+
+    @Test
+    fun pixmapBackgroundMissing() =
+        assertPage("libreta-notes.xopp", 0, "pixmap-missing", zoom = 0.5f) {
+            it.copy(background = Background.Pixmap(FileDomain.ABSOLUTE, "../../nowhere/missing.jpg"))
+        }
 
     @Test
     fun allRulingsAndAttachedImage() {

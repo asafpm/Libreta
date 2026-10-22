@@ -101,7 +101,7 @@ class ErasingDeviceTest {
     private fun open(edits: MutableList<Edit>): Pair<ActivityScenario<ComponentActivity>, DocumentView> {
         val sample =
             instrumentation.context.assets
-                .open("physics.xopp")
+                .open("libreta-sample.xopp")
                 .source()
                 .buffer()
                 .use { XoppReader.read(it.readByteString()).document }

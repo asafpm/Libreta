@@ -16,7 +16,7 @@ class NoteEncoderTest {
     @Test
     fun encodesAsTheWriterDoes() {
         val document =
-            File(testData, "physics.xopp")
+            File(testData, "libreta-sample.xopp")
                 .source()
                 .buffer()
                 .use { XoppReader.read(it) }

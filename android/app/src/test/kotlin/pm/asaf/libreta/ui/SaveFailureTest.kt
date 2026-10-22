@@ -69,7 +69,7 @@ class SaveFailureTest {
         val preferences = application.getSharedPreferences("library", Context.MODE_PRIVATE)
         preferences.edit().clear().commit()
         LibraryRoots(preferences).add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
-        note = File(testData, "physics.xopp").copyTo(File(directory, "Lecture.xopp"))
+        note = File(testData, "libreta-sample.xopp").copyTo(File(directory, "Lecture.xopp"))
         val paused = StandardTestDispatcher()
         model = AppViewModel(application, Dispatchers.IO, RenderThreads(workers = 1, paused, paused))
         compose.setContent { MaterialTheme { LibretaApp(model) } }

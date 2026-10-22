@@ -31,9 +31,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * testdata/libreta-selection.xopp: note-taking.xopp edited with Libreta's selection (strokes
- * rotated, scaled, mirrored and restyled; text scaled; an image and a TeX image scaled and
- * stretched; strokes moved to a new page, with copies left), for scripts/render-crosscheck.sh
+ * testdata/libreta-selection.xopp: libreta-notes.xopp edited with Libreta's selection (strokes
+ * rotated, scaled, mirrored and restyled; text scaled and recoloured; an image stretched and a
+ * TeX image scaled; strokes moved to a new page, with copies left), for scripts/render-crosscheck.sh
  * (Xournal++ must open it and show the same). Written again when screenshots are recorded;
  * otherwise it must match.
  */
@@ -41,7 +41,7 @@ import kotlin.math.sin
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SelectionSampleTest {
     private val measurer = PageRenderer(ApplicationProvider.getApplicationContext()).textMeasurer
-    private var document = TestDocuments.load("note-taking.xopp").copy(creator = "Libreta selection sample")
+    private var document = TestDocuments.load("libreta-notes.xopp").copy(creator = "Libreta selection sample")
 
     @Test
     fun theSampleIsWhatLibretaSelectionMakes() {
@@ -56,49 +56,50 @@ class SelectionSampleTest {
     }
 
     private fun edit() {
-        // The θ formula (Solution layer, strokes only): a twelfth of a turn up.
-        drag(SOLUTION, Region(540.0, 140.0, 842.0, 240.0), SelectionHandle.ROTATE) { box ->
+        // The start of the first two lines (strokes only): a twelfth of a turn up.
+        drag(INK, Region(40.0, 80.0, 300.0, 135.0), SelectionHandle.ROTATE) { box ->
             box.centerX + ROTATE_REACH * cos(-PI / 6) to box.centerY + ROTATE_REACH * sin(-PI / 6)
         }
-        // The right-hand equations, mirrored by their left edge taken past the right one.
-        drag(SOLUTION, Region(420.0, 300.0, 842.0, 440.0), SelectionHandle.LEFT) { box ->
+        // The end of three lines, mirrored by their left edge taken past the right one.
+        drag(INK, Region(300.0, 200.0, 530.0, 280.0), SelectionHandle.LEFT) { box ->
             box.box.right + MIRROR_PAST to box.centerY
         }
-        // 0.75P and the TeX image: larger by a corner, then moved down.
-        val left = Region(0.0, 240.0, 420.0, 440.0)
-        drag(SOLUTION, left, SelectionHandle.BOTTOM_RIGHT) { box -> box.box.right + 60 to box.box.bottom + 30 }
-        drag(SOLUTION, Region(0.0, 240.0, 520.0, 520.0), SelectionHandle.MOVE) { box ->
-            box.centerX + 20 to box.centerY + 60
+        // The last line and the TeX image: larger by a corner, then moved up.
+        drag(INK, Region(0.0, 440.0, 560.0, 595.0), SelectionHandle.BOTTOM_RIGHT) { box ->
+            box.box.right + 40 to box.box.bottom + 20
         }
-        // The two links (text): larger by a corner, and red.
-        val links =
-            drag(EXERCISE, Region(170.0, 0.0, 842.0, 70.0), SelectionHandle.TOP_LEFT) { box ->
-                box.box.left - 40 to box.box.top - 10
+        drag(INK, Region(0.0, 430.0, 620.0, 595.0), SelectionHandle.MOVE) { box ->
+            box.centerX + 20 to box.centerY - 30
+        }
+        // The title (text): larger by a corner, and red.
+        val title =
+            drag(EXTRAS, Region(0.0, 0.0, 842.0, 70.0), SelectionHandle.TOP_LEFT) { box ->
+                box.box.left - 20 to box.box.top - 10
             }
-        restyle(EXERCISE, links, Color.of(204, 0, 0), null)
-        // The figure (an image, with strokes on it): stretched by its right edge, strokes thicker.
+        restyle(EXTRAS, title, Color.of(204, 0, 0), null)
+        // The figure (an image, with arrows on it): stretched by its right edge, arrows thicker.
         val figure =
-            drag(EXERCISE, Region(60.0, 60.0, 545.0, 300.0), SelectionHandle.RIGHT) { box ->
-                box.box.right + 80 to box.centerY
+            drag(EXTRAS, Region(550.0, 80.0, 800.0, 260.0), SelectionHandle.RIGHT) { box ->
+                box.box.right + 40 to box.centerY
             }
-        restyle(EXERCISE, figure, null, PenSize.THICK)
+        restyle(EXTRAS, figure, null, PenSize.THICK)
         moveToNewPage()
     }
 
-    /** "Exercise from" onto a new page, with two copies left on the way. */
+    /** The exercise (text) onto a new page, with two copies left on the way. */
     private fun moveToNewPage() {
         then(PageOperations.insertPage(document, 1, NewPageTemplate().newPage(document.pages[0], 0)))
-        val indices = select(0, EXERCISE, Region(0.0, 0.0, 170.0, 50.0))
-        val elements = indices.map { document.pages[0].layers[EXERCISE].elements[it] }
+        val indices = select(0, EXTRAS, Region(550.0, 410.0, 842.0, 470.0))
+        val elements = indices.map { document.pages[0].layers[EXTRAS].elements[it] }
         for (step in 1..2) {
             val stamp = SelectionTransform(dx = STAMP_STEP * step, dy = STAMP_STEP * step)
-            then(SelectionOperations.add(document, 0, EXERCISE, elements.map(stamp::apply)).edit)
+            then(SelectionOperations.add(document, 0, EXTRAS, elements.map(stamp::apply)).edit)
         }
-        val moved = SelectionTransform(dx = 100.0, dy = 200.0)
+        val moved = SelectionTransform(dx = -400.0, dy = -300.0)
         val target = document.pages[1].layers.lastIndex
         then(
             SelectionOperations
-                .moveToPage(document, 0, EXERCISE, indices, 1, target, elements.map(moved::apply))
+                .moveToPage(document, 0, EXTRAS, indices, 1, target, elements.map(moved::apply))
                 .edit,
         )
     }
@@ -171,8 +172,8 @@ class SelectionSampleTest {
 
     private companion object {
         const val PATH = "libreta-selection.xopp"
-        const val EXERCISE = 0
-        const val SOLUTION = 1
+        const val INK = 0
+        const val EXTRAS = 1
         const val ROTATE_OFFSET = 20.0
         const val ROTATE_REACH = 100.0
         const val MIRROR_PAST = 80.0

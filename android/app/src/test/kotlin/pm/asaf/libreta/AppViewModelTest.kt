@@ -35,7 +35,7 @@ class AppViewModelTest {
     fun setUp() {
         val directory = temporary.newFolder("Notes")
         FakeDocumentsProvider.install(directory)
-        File(testData, "physics.xopp").copyTo(File(directory, "Lecture.xopp"))
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Lecture.xopp"))
         application
             .getSharedPreferences("library", Context.MODE_PRIVATE)
             .edit()

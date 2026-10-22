@@ -59,9 +59,7 @@ class RoundTripTest {
         // shortest-exact formatting reproduces; older versions padded decimals ("1.41000000").
         val byteExact =
             listOf(
-                "physics.xopp",
-                "muzzy_pixmap_bg.xopp",
-                "2026-10-13-Note-22-46.xoj",
+                "libreta-sample.xopp",
                 "xournalpp/cjk/测试.xopp",
                 "xournalpp/load/linebreaksLatex.xopp",
                 "xournalpp/load/relativePaths.xopp",

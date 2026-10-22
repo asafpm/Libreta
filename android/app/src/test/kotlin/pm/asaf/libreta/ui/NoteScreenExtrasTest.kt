@@ -160,7 +160,7 @@ class NoteScreenExtrasTest : NoteScreenTesting() {
         write(view, downTime = 1000)
         // Changed elsewhere meanwhile: saved next to it.
         val file = File(directory, "Lecture.xopp")
-        File(testData, "physics.xopp").copyTo(file, overwrite = true)
+        File(testData, "libreta-sample.xopp").copyTo(file, overwrite = true)
         file.setLastModified(file.lastModified() + 60_000)
         compose.runOnIdle { model.saveNote() }
         eventually { compose.onAllNodesWithText("(conflict", substring = true).fetchSemanticsNodes().isNotEmpty() }

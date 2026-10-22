@@ -20,6 +20,6 @@ class ElementsXmlTest {
         assertEquals(elements, ElementsXml.decode(ElementsXml.encode(elements)))
         assertNull(ElementsXml.decode("hello"))
         // A whole note isn't elements.
-        assertNull(ElementsXml.decode(XoppWriter.toXml(XoppReader.read(TestData.read("physics.xopp")).document)))
+        assertNull(ElementsXml.decode(XoppWriter.toXml(XoppReader.read(TestData.read("libreta-sample.xopp")).document)))
     }
 }

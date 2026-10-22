@@ -103,7 +103,7 @@ class NoteSaverTest {
 
     @Test
     fun savesTheNoteInPlace() {
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         val before =
             note.document.pages[0]
                 .layers
@@ -136,8 +136,8 @@ class NoteSaverTest {
 
     @Test
     fun theOriginalIsBackedUpOncePerSession() {
-        val original = File(testData, "note-taking.xopp").readBytes()
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val original = File(testData, "libreta-notes.xopp").readBytes()
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         note.write()
         saver.save(note.file, note.session, note.files)
         note.write(stroke.copy(width = 1.0))
@@ -157,7 +157,7 @@ class NoteSaverTest {
     @Test
     fun aSyncAppTouchingTheFileIsNoConflict() {
         // Like Nextcloud's app: after uploading, it reports the server's time for the same content.
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         val file = File(directory, "Lecture.xopp")
         file.setLastModified(file.lastModified() + 60_000)
         note.write()
@@ -174,16 +174,16 @@ class NoteSaverTest {
 
     @Test
     fun aFileChangedElsewhereIsNotOverwritten() {
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         note.write()
         // E.g. a sync app replaced it meanwhile.
         val elsewhere = File(directory, "Lecture.xopp")
-        File(testData, "physics.xopp").copyTo(elsewhere, overwrite = true)
+        File(testData, "libreta-sample.xopp").copyTo(elsewhere, overwrite = true)
         elsewhere.setLastModified(elsewhere.lastModified() + 60_000)
 
         val result = assertIs<SaveResult.SavedAsCopy>(saver.save(note.file, note.session, note.files))
         assertTrue(result.name, result.name.matches(Regex("""Lecture \(conflict \d{4}-\d\d-\d\d \d\d-\d\d\)\.xopp""")))
-        assertEquals(File(testData, "physics.xopp").length(), elsewhere.length())
+        assertEquals(File(testData, "libreta-sample.xopp").length(), elsewhere.length())
         assertEquals(
             stroke,
             read(result.name)
@@ -222,10 +222,10 @@ class NoteSaverTest {
 
     @Test
     fun aConflictCopyThatCanNotBeWrittenIsNotLeftBehind() {
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         val saver = NoteSaver(context, OnlyWritingTo(store) { note.file.id }, backups, recovery)
         note.write()
-        File(testData, "physics.xopp").copyTo(File(directory, "Lecture.xopp"), overwrite = true)
+        File(testData, "libreta-sample.xopp").copyTo(File(directory, "Lecture.xopp"), overwrite = true)
         assertIs<SaveResult.Failed>(saver.save(note.file, note.session, note.files))
         // No empty copy, and the changes are still to be saved.
         assertEquals(listOf("Lecture.xopp"), directory.list()?.toList())
@@ -234,7 +234,7 @@ class NoteSaverTest {
 
     @Test
     fun whatCouldNotBeSavedIsKeptInTheAppUntilItIs() {
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         note.write()
         val offline = NoteSaver(context, OnlyWritingTo(store) { StoreId("nowhere") }, backups, recovery)
         assertIs<SaveResult.Failed>(offline.save(note.file, note.session, note.files))
@@ -257,14 +257,14 @@ class NoteSaverTest {
 
     @Test
     fun aCopyCanBeSavedElsewhere() {
-        val note = open("note-taking.xopp", "Lecture.xopp")
+        val note = open("libreta-notes.xopp", "Lecture.xopp")
         note.write()
         val target = store.create(root.id, "Rescued.xopp")
         assertEquals(SaveResult.Saved, saver.saveCopy(note.session, note.files, target.id))
         assertEquals(stroke, lastElement("Rescued.xopp"))
         // The note's own file is as it was.
         assertTrue(
-            File(testData, "note-taking.xopp").readBytes().contentEquals(File(directory, "Lecture.xopp").readBytes()),
+            File(testData, "libreta-notes.xopp").readBytes().contentEquals(File(directory, "Lecture.xopp").readBytes()),
         )
     }
 

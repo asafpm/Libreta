@@ -41,7 +41,7 @@ class PdfNotesTest {
     }
 
     private fun pdf(name: String): LibraryEntry.Pdf {
-        File(testData, "pdf_annotation.xopp.bg.pdf").copyTo(File(directory, name))
+        File(testData, "libreta-pdf.xopp.bg.pdf").copyTo(File(directory, name))
         return FolderListing.list(store, root).filterIsInstance<LibraryEntry.Pdf>().single { it.name == name }
     }
 
@@ -57,9 +57,10 @@ class PdfNotesTest {
                 .buffer()
                 .use { XoppReader.read(it) }
                 .document
-        val page = document.pages.single()
-        assertEquals(792.0, page.width, 0.5)
-        assertEquals(612.0, page.height, 0.5)
+        assertEquals(2, document.pages.size)
+        val page = document.pages.first()
+        assertEquals(612.0, page.width, 0.5)
+        assertEquals(792.0, page.height, 0.5)
         // The PDF named relative to the note, as Xournal++ writes it.
         assertEquals(Background.Pdf(1, FileDomain.ABSOLUTE, "paper.pdf"), page.background)
         assertEquals("Libreta test", document.creator)
@@ -77,7 +78,7 @@ class PdfNotesTest {
     @Test
     fun aNoteUnderAnotherOfXournalsNamesIsOpened() {
         // Made by Xournal++ elsewhere, with the name it may give.
-        File(testData, "pdf_annotation.xopp").copyTo(File(directory, "paper.pdf.xopp"))
+        File(testData, "libreta-pdf.xopp").copyTo(File(directory, "paper.pdf.xopp"))
         val pdf = LibraryEntry.Pdf(FakeDocumentsProvider.fileId("paper.pdf"), "paper.pdf", pdf("x.pdf").version, root)
         File(directory, "x.pdf").renameTo(File(directory, "paper.pdf"))
         assertEquals("paper.pdf.xopp", open(pdf).name)

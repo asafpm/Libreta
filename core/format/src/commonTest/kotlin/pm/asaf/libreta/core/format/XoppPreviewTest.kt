@@ -20,7 +20,12 @@ class XoppPreviewTest {
 
     @Test
     fun readsTheEmbeddedPreviewOfGzipDocuments() {
-        for (path in listOf("physics.xopp", "note-taking.xopp", "pdf_annotation.xopp", "xournalpp/preview-test2.xoj")) {
+        for (path in listOf(
+            "xournalpp/packaged_xopp/suite.xopp",
+            "xournalpp/development/Setsquare_annotations.xopp",
+            "xournalpp/packaged_xopp/pdfBackground/old.xopp",
+            "xournalpp/preview-test2.xoj",
+        )) {
             val preview = assertNotNull(preview(path), path)
             assertTrue(preview.isPng(), path)
             // Same bytes as the full reader gets.
