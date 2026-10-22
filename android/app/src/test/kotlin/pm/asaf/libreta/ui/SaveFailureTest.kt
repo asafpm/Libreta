@@ -95,7 +95,7 @@ class SaveFailureTest {
         loaded.session.edited(Edit(listOf(PageChange(0, page, page.withElementAdded(stroke)))))
         note.setWritable(false)
         compose.runOnIdle { model.saveNote() }
-        eventually { model.saveFailed.value }
+        eventually { (model.saveStatus.value == pm.asaf.libreta.SaveStatus.NOT_SAVED) }
         return loaded
     }
 
@@ -107,7 +107,7 @@ class SaveFailureTest {
     @Test
     fun aNoteThatCanNotBeSavedSaysSoAndKeepsItsChangesWhenClosed() {
         val loaded = editWhileSavingFails()
-        compose.onNodeWithText("Not saved", substring = true).assertIsDisplayed()
+        compose.onNodeWithText("saving failed", substring = true).assertIsDisplayed()
         // Leaving it: it is kept, and the user chooses.
         compose.onNodeWithContentDescription("Back").performClick()
         eventually { model.unsaved.note.value != null }
@@ -127,8 +127,8 @@ class SaveFailureTest {
         eventually { model.unsaved.note.value != null }
         compose.onNodeWithText("Keep editing").performClick()
         // The same session, with its changes, still not saved.
-        eventually { model.note.value === loaded && model.saveFailed.value }
-        compose.onNodeWithText("Not saved", substring = true).assertIsDisplayed()
+        eventually { model.note.value === loaded && (model.saveStatus.value == pm.asaf.libreta.SaveStatus.NOT_SAVED) }
+        compose.onNodeWithText("saving failed", substring = true).assertIsDisplayed()
         note.setWritable(true)
         compose.onNodeWithText("Retry").performClick()
         eventually { !loaded.session.dirty }

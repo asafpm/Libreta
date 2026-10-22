@@ -13,6 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pm.asaf.libreta.AppViewModel
+import pm.asaf.libreta.NoteState
+import pm.asaf.libreta.SaveStatus
 import pm.asaf.libreta.Screen
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.PenSize
@@ -197,7 +199,6 @@ private fun Settings(
     val theme by model.appearance.theme.collectAsStateWithLifecycle()
     val darkPages by model.appearance.darkPages.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
-    val saveFailed by model.saveFailed.collectAsStateWithLifecycle()
     val library = model.library
     SettingsScreen(
         roots = roots,
@@ -238,13 +239,14 @@ private fun Note(
     val fingerDraws by model.tools.fingerDraws.collectAsStateWithLifecycle()
     val fingerButton by model.tools.fingerButton.collectAsStateWithLifecycle()
     val newPages by model.pages.template.collectAsStateWithLifecycle()
-    val saveFailed by model.saveFailed.collectAsStateWithLifecycle()
+    val saveStatus by model.saveStatus.collectAsStateWithLifecycle()
     val pickFolder =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
             uri?.let(model::addFolderForNote)
         }
     NoteScreen(
-        name = screen.name,
+        // After a conflict, the copy the note is saved to.
+        name = (note as? NoteState.Loaded)?.file?.name ?: screen.name,
         state = note,
         threads = model.renderThreads,
         position = ViewerPosition({ model.noteAnchor }, { model.noteAnchor = it }),
@@ -263,7 +265,8 @@ private fun Note(
         onAddFolder = { pickFolder.launch(Uri.parse(screen.id.value)) },
         onBack = { model.back() },
         template = newPages,
-        onRetrySave = if (saveFailed) ({ model.saveNote() }) else null,
+        saveStatus = saveStatus,
+        onRetrySave = if (saveStatus == SaveStatus.NOT_SAVED) ({ model.saveNote() }) else null,
         clipboard = model.clipboard,
         exports = model.exports,
     )

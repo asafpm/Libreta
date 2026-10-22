@@ -57,6 +57,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.Dispatchers
 import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.R
+import pm.asaf.libreta.SaveStatus
 import pm.asaf.libreta.android.render.RenderThreads
 import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.Page
@@ -90,6 +91,8 @@ fun NoteScreen(
     template: NewPageTemplate = NewPageTemplate(),
     clipboard: NoteClipboard? = null,
     exports: PdfExportFlow? = null,
+    /** Whether its changes are saved, shown under its name. */
+    saveStatus: SaveStatus = SaveStatus.SAVED,
     /** Saves again; given while saving fails, to say so until it works. */
     onRetrySave: (() -> Unit)? = null,
 ) {
@@ -108,7 +111,7 @@ fun NoteScreen(
     }
     Scaffold(
         topBar = {
-            NoteTopBar(name, onBack) {
+            NoteTopBar(name, saveStatus.takeIf { loaded != null }, onBack) {
                 if (loaded != null && commands != null) UndoButtons(loaded.session, view)
                 NoteActions(panels, commands, view, more)
                 HelpButton(HelpTopic.NOTE)
@@ -159,16 +162,34 @@ fun NoteScreen(
 @Composable
 private fun NoteTopBar(
     name: String,
+    status: SaveStatus?,
     onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit,
 ) {
     TopAppBar(
-        title = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        title = {
+            Column {
+                Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                status?.let { SaveStatusLine(it) }
+            }
+        },
         navigationIcon = {
             BackButton(onBack)
         },
         actions = actions,
     )
+}
+
+/** Whether the note's changes are in its file: under its name. */
+@Composable
+private fun SaveStatusLine(status: SaveStatus) {
+    val (text, color) =
+        when (status) {
+            SaveStatus.SAVED -> R.string.saved to MaterialTheme.colorScheme.onSurfaceVariant
+            SaveStatus.SAVING -> R.string.saving to MaterialTheme.colorScheme.onSurfaceVariant
+            SaveStatus.NOT_SAVED -> R.string.not_saved_short to MaterialTheme.colorScheme.error
+        }
+    Text(stringResource(text), style = MaterialTheme.typography.labelSmall, color = color)
 }
 
 /**

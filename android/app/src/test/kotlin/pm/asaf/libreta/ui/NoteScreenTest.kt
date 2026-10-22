@@ -228,6 +228,30 @@ class NoteScreenTest {
     }
 
     @Test
+    fun theTopBarSaysWhetherTheNoteIsSaved() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        compose.onNodeWithText("Saved").assertIsDisplayed()
+        write(view, downTime = 1000)
+        compose.onNodeWithText("Saving…").assertIsDisplayed()
+        compose.runOnIdle { model.saveNote() }
+        eventually { compose.onAllNodesWithText("Saved").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
+    fun aNoteSavedAsAConflictCopyIsTitledSo() {
+        val model = openLecture()
+        val view = checkNotNull(documentView(compose.activity.window.decorView))
+        write(view, downTime = 1000)
+        // Changed elsewhere meanwhile: saved next to it.
+        val file = File(directory, "Lecture.xopp")
+        File(testData, "physics.xopp").copyTo(file, overwrite = true)
+        file.setLastModified(file.lastModified() + 60_000)
+        compose.runOnIdle { model.saveNote() }
+        eventually { compose.onAllNodesWithText("(conflict", substring = true).fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    @Test
     fun undoAndRedoAreSavedAndReopened() {
         val model = openLecture()
         val view = checkNotNull(documentView(compose.activity.window.decorView))

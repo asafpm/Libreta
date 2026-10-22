@@ -104,6 +104,17 @@ sealed interface NoteState {
     ) : NoteState
 }
 
+/** Whether the open note's changes are in its file. */
+enum class SaveStatus {
+    SAVED,
+
+    /** Changed since its last save; saved soon. */
+    SAVING,
+
+    /** Its last save failed. */
+    NOT_SAVED,
+}
+
 /** A note ([screen]) closed while it couldn't be saved: [note] is still open, with its changes. */
 class UnsavedNote(
     val screen: Screen.Note,
@@ -220,10 +231,10 @@ class AppViewModel
         /** Whether the last save failed, not to say so again with each autosave. */
         private var lastSaveFailed = false
 
-        private val saveFailedState = MutableStateFlow(false)
+        private val saveStatusState = MutableStateFlow(SaveStatus.SAVED)
 
-        /** Whether the open note's last save failed: its changes are not in its file yet. */
-        val saveFailed: StateFlow<Boolean> = saveFailedState.asStateFlow()
+        /** Whether the open note's changes are in its file. */
+        val saveStatus: StateFlow<SaveStatus> = saveStatusState.asStateFlow()
 
         /** Saving again after a failure, until one works. */
         private var retrying: Job? = null
@@ -325,7 +336,7 @@ class AppViewModel
         private fun loadNote(screen: Screen.Note) {
             // Each note's failures are its own.
             lastSaveFailed = false
-            saveFailedState.value = false
+            saveStatusState.value = SaveStatus.SAVED
             noteAnchor = null
             noteState.value = NoteState.Loading
             viewModelScope.launch {
@@ -346,7 +357,12 @@ class AppViewModel
             autosaving?.cancel()
             autosaving =
                 viewModelScope.launch {
-                    // Changes from now on.
+                    // Changes from now on: saved soon (unless saving fails).
+                    launch {
+                        note.session.changes.drop(1).collect {
+                            if (saveStatusState.value == SaveStatus.SAVED) saveStatusState.value = SaveStatus.SAVING
+                        }
+                    }
                     autosave.run(note.session.changes.drop(1)) { saveNote().join() }
                 }
         }
@@ -386,7 +402,12 @@ class AppViewModel
             lastSaveFailed = result is SaveResult.Failed
             retrying?.cancel()
             if (noteState.value === note) {
-                saveFailedState.value = result is SaveResult.Failed
+                saveStatusState.value =
+                    when {
+                        result is SaveResult.Failed -> SaveStatus.NOT_SAVED
+                        note.session.dirty -> SaveStatus.SAVING
+                        else -> SaveStatus.SAVED
+                    }
                 // Autosave waits for the next change; the provider may be back before then.
                 if (result is SaveResult.Failed) {
                     retrying =
@@ -419,7 +440,7 @@ class AppViewModel
                 }
             }
             noteState.value = null
-            saveFailedState.value = false
+            saveStatusState.value = SaveStatus.SAVED
             noteAnchor = null
         }
 
