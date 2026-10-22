@@ -25,6 +25,8 @@ import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.ToolSettings
 import pm.asaf.libreta.files.DocumentLocation
 import pm.asaf.libreta.library.EntryRequest
+import pm.asaf.libreta.library.Found
+import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.settings.ColorPreferences
 import pm.asaf.libreta.settings.ToolPreferences
@@ -128,6 +130,28 @@ private fun EntryDialogs(
     )
 }
 
+/** Opens [found], from where it is: a folder, a note, or a PDF's note. */
+private fun open(
+    model: AppViewModel,
+    found: Found,
+) {
+    when (val entry = found.entry) {
+        is LibraryEntry.Folder -> {
+            model.open(Screen.Folder(found.path + entry.folder))
+        }
+
+        is LibraryEntry.Document -> {
+            model.open(
+                Screen.Note(entry.id, entry.name, DocumentLocation(found.path, entry.name)),
+            )
+        }
+
+        is LibraryEntry.Pdf -> {
+            model.pdfs.open(entry, found.path)
+        }
+    }
+}
+
 /** Opening folders and notes from a grid; a folder's path continues from [parent]'s. */
 private fun libraryActions(
     model: AppViewModel,
@@ -152,6 +176,7 @@ private fun Home(
 ) {
     val recent by model.recent.entries.collectAsStateWithLifecycle()
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
+    val found by model.search.results.collectAsStateWithLifecycle()
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val folders by model.library.folders.collectAsStateWithLifecycle()
     HomeScreen(
@@ -170,6 +195,7 @@ private fun Home(
             model.library.refreshRoots().joinAll()
             model.recent.refresh()
         },
+        search = SearchControls(found, model.search::search) { open(model, it) },
         onOpenRecent = { entry ->
             model.recent.notes.value.firstOrNull { it.id == entry.id }?.let {
                 model.open(Screen.Note(it.id, entry.name, it.location))
@@ -204,6 +230,7 @@ private fun Settings(
 ) {
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
+    val found by model.search.results.collectAsStateWithLifecycle()
     val fingerButton by model.tools.fingerButton.collectAsStateWithLifecycle()
     val tools by model.tools.tools.collectAsStateWithLifecycle()
     val fixedColors by model.colors.fixedColors.collectAsStateWithLifecycle()

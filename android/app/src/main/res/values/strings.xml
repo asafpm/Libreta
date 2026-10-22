@@ -35,6 +35,9 @@
     <string name="shape_axes">Coordinate system</string>
     <string name="opened_pdfs">Opened PDFs</string>
     <string name="recent">Recent</string>
+    <string name="search">Search</string>
+    <string name="search_library">Search the library</string>
+    <string name="nothing_found">Nothing found</string>
     <string name="export_pdf">Export PDF…</string>
     <string name="insert_image">Insert image</string>
     <string name="take_photo">Take photo</string>
@@ -183,6 +186,8 @@
     <string name="help_keyboard_title">Keyboard</string>
     <string name="help_keyboard">Meta + / lists the keyboard shortcuts.</string>
     <string name="help_library">Library</string>
+    <string name="help_search">Finds notes, PDFs and folders by name in all the library\'s folders, and opens them from there.</string>
+    <string name="help_sort">Sorts notes by when they were last changed, or by name. Pulling the library down lists it again, with what a sync app changed meanwhile.</string>
     <string name="help_new_folder">Makes a folder in this one.</string>
     <string name="help_new_note">Starts a note here, with the paper size and background chosen.</string>
     <string name="help_card_menu_title">A card\'s menu</string>

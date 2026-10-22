@@ -2,6 +2,7 @@
 
 package pm.asaf.libreta.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -10,17 +11,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -34,26 +38,36 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import pm.asaf.libreta.R
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.FolderState
+import pm.asaf.libreta.library.Found
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.LibraryRoot
 import pm.asaf.libreta.library.PreviewCache
+import pm.asaf.libreta.library.SearchResults
 import pm.asaf.libreta.library.SortOrder
 
 /**
@@ -79,24 +93,48 @@ fun HomeScreen(
     sorting: Sorting? = null,
     /** Lists the library again (pulled down), returning once it has. */
     onRefresh: suspend () -> Unit = {},
+    /** Looking for notes by name, and what was found. */
+    search: SearchControls = SearchControls.NONE,
 ) {
+    var searching by rememberSaveable { mutableStateOf(false) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val stopSearching: () -> Unit = {
+        searching = false
+        query = ""
+        search.onSearch("")
+    }
+    BackHandler(enabled = searching, onBack = stopSearching)
     val locals = roots.filterIsInstance<LibraryRoot.Local>()
     val recentTitle = stringResource(R.string.recent)
     val openedState = opened?.let { folders[it] }
     val anyOpened = (openedState as? FolderState.Loaded)?.entries?.isNotEmpty() == true
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    sorting?.let { SortMenu(it) }
-                    HelpButton(HelpTopic.LIBRARY)
-                    TooltipIconButton(Icons.Filled.Settings, stringResource(R.string.settings), onClick = onSettings)
-                },
-            )
+            if (searching) {
+                SearchBar(query, onBack = stopSearching) {
+                    query = it
+                    search.onSearch(it)
+                }
+            } else {
+                TopAppBar(
+                    title = { Text(stringResource(R.string.app_name)) },
+                    actions = {
+                        TooltipIconButton(Icons.Filled.Search, stringResource(R.string.search)) { searching = true }
+                        sorting?.let { SortMenu(it) }
+                        HelpButton(HelpTopic.LIBRARY)
+                        TooltipIconButton(
+                            Icons.Filled.Settings,
+                            stringResource(R.string.settings),
+                            onClick = onSettings,
+                        )
+                    },
+                )
+            }
         },
     ) { padding ->
-        if (locals.isEmpty() && !anyOpened) {
+        if (searching && query.isNotBlank()) {
+            LibraryGrid(Modifier.padding(padding)) { searchItems(search.results, previews, search.onOpen) }
+        } else if (locals.isEmpty() && !anyOpened) {
             NoFolders(onAddFolder, Modifier.padding(padding))
         } else {
             RefreshableGrid(onRefresh, Modifier.padding(padding)) {
@@ -261,4 +299,47 @@ private fun RefreshableGrid(
         },
         modifier = modifier,
     ) { LibraryGrid(content = content) }
+}
+
+/** Looking for notes by name ([onSearch]), what was found, and opening it ([onOpen]). */
+class SearchControls(
+    val results: SearchResults,
+    val onSearch: (String) -> Unit,
+    val onOpen: (Found) -> Unit,
+) {
+    companion object {
+        /** Nothing found, ever. */
+        val NONE = SearchControls(SearchResults("", emptyList(), done = true), {}, {})
+    }
+}
+
+/** The top bar while searching: the [query] typed ([onQuery]), and back to the library ([onBack]). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SearchBar(
+    query: String,
+    onBack: () -> Unit,
+    onQuery: (String) -> Unit,
+) {
+    val focus = remember { FocusRequester() }
+    TopAppBar(
+        navigationIcon = { BackButton(onBack) },
+        title = {
+            TextField(
+                value = query,
+                onValueChange = onQuery,
+                placeholder = { Text(stringResource(R.string.search_library)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                colors =
+                    TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                    ),
+                modifier = Modifier.fillMaxWidth().focusRequester(focus),
+            )
+        },
+    )
+    // Ready to type.
+    LaunchedEffect(Unit) { focus.requestFocus() }
 }

@@ -123,12 +123,16 @@ private fun FolderCardContent(
     }
 }
 
-/** A note or a PDF (labelled so), with a preview of its first page, and a menu if [actions] has one. */
+/**
+ * A note or a PDF (labelled so), with a preview of its first page, and a menu if [actions] has
+ * one; [place] says where it is (e.g. found by a search).
+ */
 @Composable
 internal fun DocumentCard(
     entry: LibraryEntry.File,
     previews: PreviewCache,
     actions: LibraryActions,
+    place: String? = null,
     onClick: () -> Unit,
 ) {
     EntryCard(entry.takeIf { actions.manage != null }, onClick) {
@@ -153,6 +157,15 @@ internal fun DocumentCard(
                     overflow = TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.titleSmall,
                 )
+                place?.let {
+                    Text(
+                        it,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
                 if (entry.modified > 0) {
                     val context = LocalContext.current
                     val date =

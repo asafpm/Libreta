@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
@@ -180,6 +181,8 @@ private val LIBRARY =
         HelpSection(
             R.string.help_library,
             listOf(
+                entry(Icons.Filled.Search, R.string.search, R.string.help_search),
+                entry(SortIcon, R.string.sort_by, R.string.help_sort),
                 entry(NewFolderIcon, R.string.new_folder, R.string.help_new_folder),
                 entry(Icons.Filled.Add, R.string.new_note, R.string.help_new_note),
                 entry(Icons.Filled.MoreVert, R.string.help_card_menu_title, R.string.help_card_menu),

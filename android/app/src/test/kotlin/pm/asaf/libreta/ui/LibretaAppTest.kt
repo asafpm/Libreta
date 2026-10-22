@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -325,6 +326,23 @@ class LibretaAppTest {
         File(testData, "physics.xopp").copyTo(File(directory, "b.xopp"))
         compose.onNode(hasScrollToNodeAction()).performTouchInput { swipeDown() }
         waitForText("b.xopp")
+    }
+
+    @Test
+    fun searchFindsNotesAllThroughTheLibrary() {
+        File(testData, "physics.xopp").copyTo(File(directory, "Courses/Algebra.xopp"))
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        val model = show()
+        waitForText("Courses")
+        compose.onNodeWithContentDescription("Search").performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("alg")
+        // Where it is, said under it.
+        waitForText("Notes › Courses")
+        compose.onNodeWithText("Algebra.xopp").performClick()
+        eventually { model.note.value is NoteState.Loaded }
+        val screen = model.screens.value.last() as Screen.Note
+        assertEquals(listOf("Notes", "Courses"), screen.location?.folders?.map { it.name })
     }
 
     @Test

@@ -45,6 +45,7 @@ import pm.asaf.libreta.files.UnsavedNotes
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.Library
 import pm.asaf.libreta.library.LibraryFlow
+import pm.asaf.libreta.library.LibrarySearch
 import pm.asaf.libreta.library.NewFolderFlow
 import pm.asaf.libreta.library.NewNoteCreator
 import pm.asaf.libreta.library.NewNoteFlow
@@ -162,6 +163,10 @@ class AppViewModel
                 openedPdfs.folder,
                 onAddFailed = { messages.say(application.getString(R.string.error_add_folder)) },
             )
+
+        /** Looking for notes by name all through the library. */
+        val search = LibrarySearch(store, { library.roots.value }, { library.sortOrder.value }, viewModelScope, io)
+
         val previews =
             PreviewCache(application, store, locate = { NoteLoader.locate(store, library.roots.value, it.id, it.name) })
         val tools = ToolPreferences(preferences)

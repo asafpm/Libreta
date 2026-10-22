@@ -63,8 +63,10 @@ import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.FolderState
+import pm.asaf.libreta.library.Found
 import pm.asaf.libreta.library.LibraryEntry
 import pm.asaf.libreta.library.PreviewCache
+import pm.asaf.libreta.library.SearchResults
 
 /** Cards of folders and notes, wrapping to the width; [content] adds the items. */
 @Composable
@@ -170,6 +172,29 @@ fun LazyGridScope.recentItems(
         entries,
         key = { "recent/${it.id.value}" },
     ) { entry -> DocumentCard(entry, previews, actions) { onOpen(entry) } }
+}
+
+/** What a search found ([results]), each with where it is, opened by [onOpen]. */
+fun LazyGridScope.searchItems(
+    results: SearchResults,
+    previews: PreviewCache,
+    onOpen: (Found) -> Unit,
+) {
+    if (!results.done) fullWidth("searching") { CircularProgressIndicator(Modifier.padding(16.dp)) }
+    if (results.done && results.found.isEmpty()) {
+        fullWidth(
+            "nothing",
+        ) { Text(stringResource(R.string.nothing_found), style = MaterialTheme.typography.bodyMedium) }
+    }
+    // Found here, changed where they are: no menus.
+    val actions = LibraryActions({}, {}, {})
+    items(results.found, key = { "found/${it.entry.storeId.value}" }) { found ->
+        val place = found.path.joinToString(" › ") { it.name }
+        when (val entry = found.entry) {
+            is LibraryEntry.Folder -> FolderCard(entry, actions) { onOpen(found) }
+            is LibraryEntry.File -> DocumentCard(entry, previews, actions, place) { onOpen(found) }
+        }
+    }
 }
 
 /** The contents of a folder, or its loading or error state, as grid items. */
