@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -102,6 +103,18 @@ class SettingsScreenTest {
         assertEquals(emptyList<Any>(), chosen)
         compose.onNodeWithText("Remove").performClick()
         assertEquals(listOf<Any>("remove Notes"), chosen)
+    }
+
+    @Test
+    fun aboutShowsTheLicencesOfWhatTheAppIncludes() {
+        show()
+        compose.onNodeWithText("Source code").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Licences").performScrollTo().performClick()
+        compose.onNodeWithText("PdfBox-Android (Apache PDFBox)").performScrollTo().performClick()
+        compose.onNodeWithText("Adobe Font Metrics", substring = true).assertExists()
+        compose.onAllNodesWithContentDescription("Back")[1].performClick()
+        compose.onNodeWithText("Libreta").performClick()
+        compose.onNodeWithText("Version 3, 29 June 2007", substring = true).assertExists()
     }
 
     @Test

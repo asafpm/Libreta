@@ -56,7 +56,7 @@ import pm.asaf.libreta.library.SortOrder
 
 /**
  * The library folders (add, remove, reorder), how notes are sorted, input, the toolbar's
- * colours and widths, new pages, and the stylus.
+ * colours and widths, new pages, the stylus, and about the app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,6 +121,9 @@ fun SettingsScreen(
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.stylus))
             ButtonChoices(stylusButton, actions.stylusButton)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.about))
+            AboutSection()
         }
     }
 }

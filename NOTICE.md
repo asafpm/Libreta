@@ -3,7 +3,11 @@
 Libreta is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free Software
 Foundation, either version 2 of the License, or (at your option) any later
-version (`GPL-2.0-or-later`). See [LICENSE](LICENSE) for the GPL version 2 text.
+version (`GPL-2.0-or-later`). See [LICENSE](LICENSE) for the GPL version 2 text and
+[licenses/GPL-3.0.txt](licenses/GPL-3.0.txt) for version 3.
+
+The app shows these notices and the licence texts in [licenses/](licenses/) under
+Settings, About.
 
 Libreta is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
@@ -158,7 +162,8 @@ The release archive `liberation-fonts-ttf-2.1.5.tar.gz` had SHA-256
 Libreta depends on libraries under the Apache License 2.0, among them the Kotlin
 standard library, AndroidX/Jetpack Compose, Okio, xmlutil and PdfBox-Android. The
 Apache License 2.0 is compatible with version 3 of the GPL, which this project's
-"or later" clause allows the combined work to be distributed under.
+"or later" clause allows the combined work to be distributed under. Its text is in
+[licenses/Apache-2.0.txt](licenses/Apache-2.0.txt).
 
 ### PdfBox-Android
 
@@ -190,5 +195,8 @@ notice:
 > Includes the Script Property (Scripts-10.0.0.txt)
 > Copyright 2017 Unicode, Inc.
 
+Its licence, with the terms of the Adobe font metrics, Adobe CMaps and PaDaF code
+it includes, is [licenses/PdfBox-Android-LICENSE.txt](licenses/PdfBox-Android-LICENSE.txt),
+and its notice [licenses/PdfBox-Android-NOTICE.txt](licenses/PdfBox-Android-NOTICE.txt).
 It also bundles Liberation Sans Regular (SIL Open Font License 1.1, see Fonts
 above). Its optional BouncyCastle dependency is left out.

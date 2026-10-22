@@ -55,9 +55,35 @@ dependencies {
 
 val testData: Directory = layout.settingsDirectory.dir("testdata")
 
+/** Copies the licence texts the app shows (Settings, About) into its assets, under licenses/. */
+abstract class LicenceAssets : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val texts: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val output: DirectoryProperty
+
+    @TaskAction
+    fun copy() {
+        val directory = output.get().asFile.resolve("licenses")
+        directory.deleteRecursively()
+        directory.mkdirs()
+        // LICENSE is the GPL version 2.
+        texts.forEach { it.copyTo(directory.resolve(if (it.name == "LICENSE") "GPL-2.0.txt" else it.name)) }
+    }
+}
+
+val licenceAssets =
+    tasks.register<LicenceAssets>("licenceAssets") {
+        texts.from(layout.settingsDirectory.file("LICENSE"), layout.settingsDirectory.dir("licenses").asFileTree)
+        output = layout.buildDirectory.dir("generated/licenceAssets")
+    }
+
 // The sample documents, readable by device tests as assets.
 androidComponents {
     onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(licenceAssets, LicenceAssets::output)
         variant.androidTest
             ?.sources
             ?.assets

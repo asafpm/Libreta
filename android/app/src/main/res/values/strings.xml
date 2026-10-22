@@ -304,4 +304,10 @@
     <string name="error_create_folder">Couldn\'t create the folder %1$s</string>
     <string name="error_read_note">Couldn\'t open %1$s</string>
     <string name="error_not_a_note">%1$s isn\'t a Xournal++ note, or it is damaged</string>
+    <string name="about">About</string>
+    <string name="about_version">Libreta %1$s</string>
+    <string name="about_text">Copyright © 2026 Asaf Paris-Mandoki. Libreta is free software: you can redistribute it and change it under the GNU General Public License, version 2 or (at your option) any later version. It comes with no warranty.</string>
+    <string name="about_source">Source code</string>
+    <string name="about_licences">Licences</string>
+    <string name="about_licences_summary">The licences of Libreta and of the libraries and fonts it includes</string>
 </resources>

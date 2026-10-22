@@ -28,6 +28,11 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                     versionName = "0.1.0"
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 }
+                // No dependency list encrypted for Google in the APK: F-Droid can't check it.
+                dependenciesInfo {
+                    includeInApk = false
+                    includeInBundle = false
+                }
                 compileOptions {
                     sourceCompatibility = LibretaBuild.javaVersion
                     targetCompatibility = LibretaBuild.javaVersion
