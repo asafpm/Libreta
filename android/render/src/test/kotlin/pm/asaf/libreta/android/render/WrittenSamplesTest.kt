@@ -157,11 +157,12 @@ class WrittenSamplesTest {
 
     private fun pdf(): Document {
         val red = Handwriting(200, RED, PenSize.MEDIUM.width, pressure = true)
-        // Xournal++'s test PDF has one line on each page, at the top: "Test PDF for Xournal++", "Page 2".
+        // Xournal++'s test PDF has a title at the top ("Test PDF for Xournal++", "Page 2") and, on page 1,
+        // four squares and a circle from 56 to 556 pt across and 126 to 625 pt down: the notes go beside them.
         val first =
             listOf(highlight(56.0, 65.0, 182.0), red.ellipse(120.0, 52.0, 188.0, 78.0)) +
-                red.straight(190.0, 66.0, 260.0, 110.0) +
-                (0 until 6).flatMap { red.line(240.0, 124.0 + it * LINE, 540.0) }
+                red.straight(190.0, 66.0, 330.0, 112.0) +
+                (0 until 6).flatMap { red.line(320.0, 140.0 + it * LINE, 556.0) }
         val blue = Handwriting(201, BLUE, PenSize.MEDIUM.width, pressure = true)
         val second =
             blue.line(56.0, 110.0, 300.0) + blue.straight(56.0, 74.0, 96.0, 74.0) +
