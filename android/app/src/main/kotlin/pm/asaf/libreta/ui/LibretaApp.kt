@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.joinAll
 import pm.asaf.libreta.AppViewModel
 import pm.asaf.libreta.NoteState
 import pm.asaf.libreta.SaveStatus
@@ -150,6 +151,7 @@ private fun Home(
     addFolder: () -> Unit,
 ) {
     val recent by model.recent.entries.collectAsStateWithLifecycle()
+    val sortOrder by model.library.sortOrder.collectAsStateWithLifecycle()
     val roots by model.library.roots.collectAsStateWithLifecycle()
     val folders by model.library.folders.collectAsStateWithLifecycle()
     HomeScreen(
@@ -163,6 +165,11 @@ private fun Home(
         onSettings = { model.open(Screen.Settings) },
         opened = model.library.opened,
         recent = recent,
+        sorting = Sorting(sortOrder, model.library::setSortOrder),
+        onRefresh = {
+            model.library.refreshRoots().joinAll()
+            model.recent.refresh()
+        },
         onOpenRecent = { entry ->
             model.recent.notes.value.firstOrNull { it.id == entry.id }?.let {
                 model.open(Screen.Note(it.id, entry.name, it.location))
@@ -186,6 +193,7 @@ private fun Folder(
         onNewNote = { model.newNotes.start(screen.path) },
         onBreadcrumb = { index -> repeat(screen.path.lastIndex - index) { model.back() } },
         onBack = { model.back() },
+        onRefresh = { model.library.refresh(screen.folder).join() },
     )
 }
 

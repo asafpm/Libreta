@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,16 +60,15 @@ class Library(
         MutableStateFlow(SortOrder.entries.getOrNull(preferences.getInt(SORT_KEY, 0)) ?: SortOrder.MODIFIED)
     val sortOrder: StateFlow<SortOrder> = order.asStateFlow()
 
-    /** Lists the top folder of every root again, and the opened PDFs. */
-    fun refreshRoots() {
-        roots.value.filterIsInstance<LibraryRoot.Local>().forEach { refresh(it.folder) }
-        opened?.let(::refresh)
-    }
+    /** Lists the top folder of every root again, and the opened PDFs. Returns the listings' jobs. */
+    fun refreshRoots(): List<Job> =
+        roots.value.filterIsInstance<LibraryRoot.Local>().map { refresh(it.folder) } +
+            listOfNotNull(opened?.let(::refresh))
 
-    /** Lists [folder] again; its previous contents stay shown meanwhile. */
-    fun refresh(folder: FolderRef) {
+    /** Lists [folder] again; its previous contents stay shown meanwhile. Returns the listing's job. */
+    fun refresh(folder: FolderRef): Job {
         folderStates.update { states -> if (folder in states) states else states + (folder to FolderState.Loading) }
-        scope.launch {
+        return scope.launch {
             val state =
                 withContext(io) {
                     try {

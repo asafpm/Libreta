@@ -95,6 +95,18 @@ val PressureIcon: ImageVector =
             close()
         }.build()
 
+/** Sorting: lines growing shorter, as a list in order. */
+@Suppress("MagicNumber") // path coordinates
+val SortIcon: ImageVector =
+    lineIcon("Sort") {
+        moveTo(4f, 6f)
+        lineTo(20f, 6f)
+        moveTo(4f, 12f)
+        lineTo(15f, 12f)
+        moveTo(4f, 18f)
+        lineTo(10f, 18f)
+    }
+
 /** Help: a question mark in a circle. */
 @Suppress("MagicNumber") // path coordinates
 val HelpIcon: ImageVector =

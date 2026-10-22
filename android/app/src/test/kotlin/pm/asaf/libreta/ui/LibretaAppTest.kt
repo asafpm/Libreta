@@ -19,6 +19,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.Dispatchers
@@ -284,6 +286,45 @@ class LibretaAppTest {
         val screen = model.screens.value.last() as Screen.Note
         // Opened as from its folder: its background files are looked for there.
         assertEquals(listOf("Notes", "Courses"), screen.location?.folders?.map { it.name })
+    }
+
+    @Test
+    @org.robolectric.annotation.Config(qualifiers = "w900dp-h1200dp")
+    fun notesAreSortedAsChosenInTheTopBar() {
+        File(testData, "physics.xopp").copyTo(File(directory, "a.xopp")).setLastModified(1_000_000)
+        File(testData, "physics.xopp").copyTo(File(directory, "b.xopp")).setLastModified(2_000_000)
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        val model = show()
+        waitForText("a.xopp")
+        // Newest first, then by name.
+        assertTrue(shownBefore("b.xopp", "a.xopp"))
+        compose.onNodeWithContentDescription("Sort notes by").performClick()
+        compose.onNodeWithText("Name").performClick()
+        eventually { model.library.sortOrder.value == pm.asaf.libreta.library.SortOrder.NAME }
+        compose.waitUntil(TIMEOUT) { shownBefore("a.xopp", "b.xopp") }
+    }
+
+    /** Whether the card [first] comes before [second], reading row by row. */
+    private fun shownBefore(
+        first: String,
+        second: String,
+    ): Boolean {
+        val (a, b) = listOf(first, second).map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot }
+        return a.top < b.top || (a.top == b.top && a.left < b.left)
+    }
+
+    @Test
+    fun pullingTheLibraryDownListsItAgain() {
+        LibraryRoots(application.getSharedPreferences("library", Context.MODE_PRIVATE))
+            .add(LibraryRoot.Local(FakeDocumentsProvider.treeUri(), "Notes"))
+        File(testData, "physics.xopp").copyTo(File(directory, "a.xopp"))
+        show()
+        waitForText("a.xopp")
+        // Added by a sync app meanwhile.
+        File(testData, "physics.xopp").copyTo(File(directory, "b.xopp"))
+        compose.onNode(hasScrollToNodeAction()).performTouchInput { swipeDown() }
+        waitForText("b.xopp")
     }
 
     @Test
