@@ -20,6 +20,10 @@ Android 10 or later.
 
 It needs JDK 17 or later and the Android SDK (`local.properties` or `ANDROID_HOME`).
 
+Releases are reproducible: F-Droid builds each `v…` tag and publishes it only if its
+build matches the APK signed by the author, made with `scripts/release-apk.sh vX.Y.Z` and
+attached to the GitHub release as `libreta-X.Y.Z.apk`.
+
 ## Licence
 
 Libreta is free software under the GNU General Public License, version 2 or (at your
