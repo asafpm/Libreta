@@ -19,9 +19,16 @@ notes open on the computer with Xournal++ and on the tablet with Libreta.
 - A library of the folders you choose, on the device or in any storage app (such as Nextcloud)
 - No ads, no tracking, no internet access
 
-Android 10 or later. To install it, download `libreta-X.Y.Z.apk` from the
-[latest release](https://github.com/asafpm/Libreta/releases/latest) and open it on the
-device.
+## Android Install
+
+Libreta needs Android 10 or later.
+
+1. On the tablet, download `libreta-X.Y.Z.apk` from the
+   [latest release](https://github.com/asafpm/Libreta/releases/latest).
+2. Open the downloaded file. The first time, Android asks you to allow installing apps
+   from your browser or file manager.
+
+To update, install the APK of a newer release the same way; your notes and settings stay.
 
 ## Building
 
