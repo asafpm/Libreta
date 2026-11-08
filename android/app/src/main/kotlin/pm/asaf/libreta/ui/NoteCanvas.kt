@@ -188,17 +188,17 @@ private fun NoteView(
 
 /**
  * This view with what goes over it: the field text is typed in (it takes its own touches), and
- * the front buffer wet ink is drawn in.
+ * the front buffer wet ink is drawn in, where the device has front buffers.
  */
 private fun DocumentView.stackedOver(context: Context): FrameLayout {
-    val ink = LowLatencyCanvasView(context)
-    wetInk = LowLatencyWetInk(ink)
+    val ink = if (LowLatencyWetInk.supported()) LowLatencyCanvasView(context) else null
+    ink?.let { wetInk = LowLatencyWetInk(it) }
     val field = EditText(context)
     text.field = field
     val wrap = FrameLayout.LayoutParams.WRAP_CONTENT
     return FrameLayout(context).apply {
         addView(this@stackedOver)
         addView(field, FrameLayout.LayoutParams(wrap, wrap))
-        addView(ink)
+        ink?.let { addView(it) }
     }
 }

@@ -285,8 +285,9 @@ internal class InkInput(
                         .let { if (host.darkPages) PageRecolor.map(it) else it },
                 byFinger = byFinger,
                 pressure = ink == Ink.PEN && !byFinger && tools.pen.pressure,
-                // Highlighters blend with the page: drawn in it, as they will look.
-                inView = ink == Ink.HIGHLIGHTER,
+                // Highlighters blend with the page: drawn in it, as they will look. So is
+                // everything when there is no wet ink.
+                inView = ink == Ink.HIGHLIGHTER || host.wetInk == WetInk.None,
             )
         writing = stroke
         add(stroke, builder.add(sample(stroke, x, y, event.getPressure(index))), emptyList())

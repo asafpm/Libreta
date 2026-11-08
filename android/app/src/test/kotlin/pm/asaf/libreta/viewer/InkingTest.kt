@@ -503,6 +503,21 @@ class InkingTest {
     }
 
     @Test
+    fun withoutWetInkThePenIsDrawnInTheView() {
+        scheduler.advanceUntilIdle()
+        view.wetInk = WetInk.None
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        send(MotionEvent.ACTION_DOWN, stylus(300f, 400f))
+        for (step in 1..STEPS) send(MotionEvent.ACTION_MOVE, stylus(300f + 400f * step / STEPS, 400f))
+        view.draw(Canvas(bitmap))
+        val writing = bitmap.getPixel(500, 400)
+        assertTrue(Integer.toHexString(writing), android.graphics.Color.green(writing) < 100)
+        assertEquals(255, android.graphics.Color.red(writing))
+        send(MotionEvent.ACTION_UP, stylus(700f, 400f))
+        assertEquals(StrokeTool.PEN, erasedStrokes().single().tool)
+    }
+
+    @Test
     fun theStylusButtonCanHighlight() {
         view.tools = view.tools.copy(button = StylusButton.HIGHLIGHTER)
         sweep(500f, buttons = MotionEvent.BUTTON_STYLUS_PRIMARY)

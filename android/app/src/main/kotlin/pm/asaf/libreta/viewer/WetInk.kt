@@ -8,6 +8,8 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.hardware.HardwareBuffer
+import android.os.Build
 import androidx.graphics.lowlatency.LowLatencyCanvasView
 import kotlin.math.max
 import kotlin.math.min
@@ -230,8 +232,24 @@ class LowLatencyWetInk(
         return RectF(min(x0, x1) - margin, min(y0, y1) - margin, max(x0, x1) + margin, max(y0, y1) + margin)
     }
 
-    private companion object {
+    companion object {
         /** Pixels erased beyond a stroke's width, for its anti-aliased edge. */
-        const val ERASE_MARGIN = 2f
+        private const val ERASE_MARGIN = 2f
+
+        /**
+         * Whether the device can draw into the buffer on screen. Without it [LowLatencyCanvasView]
+         * falls back to a buffer that some devices crash on when the view draws it (Galaxy Tab
+         * A9, Android 15: a SIGSEGV in RenderThread as a stroke ends), so there is no wet ink.
+         */
+        fun supported(): Boolean =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                HardwareBuffer.isSupported(
+                    1,
+                    1,
+                    HardwareBuffer.RGBA_8888,
+                    1,
+                    HardwareBuffer.USAGE_FRONT_BUFFER or HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or
+                        HardwareBuffer.USAGE_GPU_COLOR_OUTPUT or HardwareBuffer.USAGE_COMPOSER_OVERLAY,
+                )
     }
 }
