@@ -24,8 +24,8 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
                     applicationId = LibretaBuild.NAMESPACE_ROOT
                     minSdk = LibretaBuild.MIN_SDK
                     targetSdk = LibretaBuild.TARGET_SDK
-                    versionCode = 1
-                    versionName = "0.1.0"
+                    versionCode = 2
+                    versionName = "0.1.1"
                     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
                 }
                 // No dependency list encrypted for Google in the APK: F-Droid can't check it.

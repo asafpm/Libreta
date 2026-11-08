@@ -1,0 +1,1 @@
+Fixes a crash after each stroke on devices without front-buffer drawing, such as the Galaxy Tab A9.

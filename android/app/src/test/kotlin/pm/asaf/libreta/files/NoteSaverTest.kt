@@ -35,6 +35,7 @@ import pm.asaf.libreta.library.FakeDocumentsProvider
 import pm.asaf.libreta.library.FolderListing
 import pm.asaf.libreta.library.FolderRef
 import pm.asaf.libreta.library.LibraryEntry
+import pm.asaf.libreta.library.NewNoteCreator
 import pm.asaf.libreta.store.SafDocumentStore
 import java.io.File
 import kotlin.test.assertIs
@@ -123,7 +124,7 @@ class NoteSaverTest {
         assertEquals(stroke, elements.last())
         // Everything else is as it was.
         assertEquals(note.document.pages.drop(1), saved.document.pages.drop(1))
-        assertEquals("Libreta 0.1.0", saved.document.creator)
+        assertEquals(NewNoteCreator.creator(context), saved.document.creator)
         // A new Xournal++-sized preview: the longer side 128 px.
         val preview = checkNotNull(saved.document.preview).toByteArray()
         val bitmap = BitmapFactory.decodeByteArray(preview, 0, preview.size)
