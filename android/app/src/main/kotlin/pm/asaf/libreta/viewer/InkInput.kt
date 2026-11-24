@@ -2,6 +2,7 @@
 
 package pm.asaf.libreta.viewer
 
+import android.os.SystemClock
 import android.view.MotionEvent
 import pm.asaf.libreta.core.geometry.InkSample
 import pm.asaf.libreta.core.geometry.ShapePoint
@@ -33,6 +34,17 @@ internal class PageMapping(
 
     fun toViewY(y: Double): Float = (top + y * zoom).toFloat()
 }
+
+/** What a stroke is written with. */
+private enum class Ink { PEN, HIGHLIGHTER, WHITEOUT, LASER }
+
+/** The ink [tool] writes with: the pen unless it is the highlighter or the laser pointer. */
+private fun inkOf(tool: Tool): Ink =
+    when (tool) {
+        Tool.HIGHLIGHTER -> Ink.HIGHLIGHTER
+        Tool.LASER -> Ink.LASER
+        else -> Ink.PEN
+    }
 
 /**
  * Turns touches into strokes and erasing. The stylus uses the chosen tool (fingers too if
@@ -67,6 +79,9 @@ internal class InkInput(
             page: Int,
             stroke: Element.Stroke,
         )
+
+        /** The laser pointer's traces: what it draws joins them instead of the page. */
+        val laser: LaserTraces
 
         /** Starts erasing: deleting the strokes touched, or cutting them; a square of half side [halfSize] points. */
         fun startErasing(
@@ -118,6 +133,8 @@ internal class InkInput(
         val pressure: Boolean,
         /** Drawn by the view rather than as wet ink. */
         val inView: Boolean,
+        /** A laser pointer trace, not kept in the page. */
+        val laser: Boolean,
     ) {
         /** Where and when the pen last moved more than a jitter: held there long enough, the stroke straightens. */
         private var stillX = Float.NaN
@@ -141,8 +158,6 @@ internal class InkInput(
             return event.eventTime - stillSince >= HOLD_MS && length >= MIN_STRAIGHT_PX
         }
     }
-
-    private enum class Ink { PEN, HIGHLIGHTER, WHITEOUT }
 
     private var writing: Writing? = null
 
@@ -232,17 +247,14 @@ internal class InkInput(
                 selection.begin(event, index)
             }
 
-            tools.drawingType != DrawingType.FREEHAND -> {
+            // The laser pointer only draws freehand.
+            tools.drawingType != DrawingType.FREEHAND && chosen != Tool.LASER -> {
                 // Like Xournal++, nothing is drawn off the pages.
                 if (!shapes.begin(event, index, tools, chosen)) ignoring = !event.isSequenceEnd()
             }
 
-            chosen == Tool.HIGHLIGHTER -> {
-                begin(event, index, finger, Ink.HIGHLIGHTER)
-            }
-
             else -> {
-                begin(event, index, finger, Ink.PEN)
+                begin(event, index, finger, inkOf(chosen))
             }
         }
         return true
@@ -270,6 +282,7 @@ internal class InkInput(
                 Ink.PEN -> StrokeInk(StrokeTool.PEN, tools.pen.color, tools.pen.size.width)
                 Ink.WHITEOUT -> StrokeInk(StrokeTool.ERASER, WHITE, tools.eraser.width)
                 Ink.HIGHLIGHTER -> StrokeInk(StrokeTool.HIGHLIGHTER, tools.highlighter.color, tools.highlighter.width)
+                Ink.LASER -> StrokeInk(tools.laser.strokeTool, tools.laser.color, tools.laser.width)
             }
         val color = strokeInk.color
         val builder = StrokeBuilder(strokeInk.tool, color, strokeInk.width)
@@ -286,10 +299,12 @@ internal class InkInput(
                 byFinger = byFinger,
                 pressure = ink == Ink.PEN && !byFinger && tools.pen.pressure,
                 // Highlighters blend with the page: drawn in it, as they will look. So is
-                // everything when there is no wet ink.
-                inView = ink == Ink.HIGHLIGHTER || host.wetInk == WetInk.None,
+                // everything when there is no wet ink, and the laser pointer's traces, which fade.
+                inView = ink == Ink.HIGHLIGHTER || ink == Ink.LASER || host.wetInk == WetInk.None,
+                laser = ink == Ink.LASER,
             )
         writing = stroke
+        if (stroke.laser) host.laser.start()
         add(stroke, builder.add(sample(stroke, x, y, event.getPressure(index))), emptyList())
     }
 
@@ -331,7 +346,7 @@ internal class InkInput(
                 first,
                 stroke.builder.add(sample(stroke, event.getX(index), event.getY(index), event.getPressure(index))),
             )
-        if (stroke.heldStill(event, index)) {
+        if (!stroke.laser && stroke.heldStill(event, index)) {
             straighten(stroke, event)
             return
         }
@@ -357,7 +372,12 @@ internal class InkInput(
         writing = null
         val pressure = if (stroke.pressure) event.getPressure(index).toDouble() else null
         if (!stroke.inView) host.wetInk.commit()
-        host.commit(stroke.page.page, stroke.builder.finish(pressure))
+        val finished = stroke.builder.finish(pressure)
+        if (stroke.laser) {
+            host.laser.finish(stroke.page.page, finished, SystemClock.uptimeMillis(), host.tools.laser.fadeDelayMillis)
+        } else {
+            host.commit(stroke.page.page, finished)
+        }
         if (stroke.inView) host.drawInView(stroke.page.page, null)
         if (!event.isSequenceEnd()) ignoring = true
     }
@@ -370,6 +390,9 @@ internal class InkInput(
         val stroke = writing
         writing = null
         if (stroke?.inView == true) host.drawInView(stroke.page.page, null) else host.wetInk.cancel()
+        if (stroke?.laser == true) {
+            host.laser.finish(stroke.page.page, null, SystemClock.uptimeMillis(), host.tools.laser.fadeDelayMillis)
+        }
         if (handOver) host.startGesture(event) else ignoring = !event.isSequenceEnd()
     }
 

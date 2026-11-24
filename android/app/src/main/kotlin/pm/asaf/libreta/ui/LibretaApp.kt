@@ -271,9 +271,11 @@ private fun Settings(
                 model.colors::setRecentLimit,
                 model.tools::setSizeVisible,
                 model.pages::setTemplate,
+                { delay -> model.tools.change { it.copy(laser = it.laser.copy(fadeDelayMillis = delay)) } },
             ),
         onBack = { model.back() },
         appearance = AppearanceSettings(theme, darkPages, model.appearance::setTheme, model.appearance::setDarkPages),
+        laserFadeDelay = tools.laser.fadeDelayMillis,
     )
 }
 

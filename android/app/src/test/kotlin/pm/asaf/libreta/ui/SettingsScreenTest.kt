@@ -88,11 +88,21 @@ class SettingsScreenTest {
                                 chosen += it
                                 template = it
                             },
+                            laserFadeDelay = { chosen += "laser $it" },
                         ),
                     onBack = {},
                 )
             }
         }
+    }
+
+    @Test
+    fun choosesHowLongLaserPointerTracesStay() {
+        show()
+        compose.onNodeWithText("1 s").performScrollTo().assertIsSelected()
+        compose.onNodeWithText("0.5 s").performScrollTo().performClick()
+        compose.onNodeWithText("3 s").performScrollTo().performClick()
+        assertEquals(listOf<Any>("laser 500", "laser 3000"), chosen)
     }
 
     @Test

@@ -78,6 +78,8 @@ class SettingsActions(
     val sizeVisible: (PenSize, Boolean) -> Unit,
     /** How new pages and notes look. */
     val newPages: (NewPageTemplate) -> Unit,
+    /** How long the laser pointer's traces stay before fading, in milliseconds. */
+    val laserFadeDelay: (Long) -> Unit = {},
 )
 
 /** How the app looks, as set in Settings. */

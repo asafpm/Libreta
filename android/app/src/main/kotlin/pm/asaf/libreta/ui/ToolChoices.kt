@@ -146,6 +146,7 @@ internal fun ToolColorPicker(
     val current =
         when (tools.tool) {
             Tool.HIGHLIGHTER -> tools.highlighter.color
+            Tool.LASER -> tools.laser.color
             Tool.TEXT -> tools.text.color
             Tool.PEN, Tool.ERASER, Tool.SELECT -> tools.pen.color
         }

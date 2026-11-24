@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,6 +49,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pm.asaf.libreta.R
+import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.StylusButton
@@ -56,7 +58,7 @@ import pm.asaf.libreta.library.SortOrder
 
 /**
  * The library folders (add, remove, reorder), how notes are sorted, input, the toolbar's
- * colours and widths, new pages, the stylus, and about the app.
+ * colours and widths, new pages, the stylus, the laser pointer, and about the app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +72,7 @@ fun SettingsScreen(
     actions: SettingsActions,
     onBack: () -> Unit,
     appearance: AppearanceSettings? = null,
+    laserFadeDelay: Long = LaserSettings().fadeDelayMillis,
 ) {
     Scaffold(
         topBar = {
@@ -122,6 +125,9 @@ fun SettingsScreen(
             Heading(stringResource(R.string.stylus))
             ButtonChoices(stylusButton, actions.stylusButton)
             HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Heading(stringResource(R.string.laser_fade))
+            LaserFadeChoices(laserFadeDelay, actions.laserFadeDelay)
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
             Heading(stringResource(R.string.about))
             AboutSection()
         }
@@ -151,6 +157,33 @@ private fun ButtonChoices(
     )
     for ((choice, label) in STYLUS_BUTTONS) {
         RadioOption(stringResource(label), button == choice) { onChange(choice) }
+    }
+}
+
+/** How long the laser pointer's traces stay once it rests. */
+@Composable
+private fun LaserFadeChoices(
+    delay: Long,
+    onChange: (Long) -> Unit,
+) {
+    Text(
+        stringResource(R.string.laser_fade_summary),
+        style = MaterialTheme.typography.bodyMedium,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        for (choice in LASER_FADE_DELAYS) {
+            val whole = choice % MILLIS_PER_SECOND == 0L
+            val seconds = if (whole) "${choice / MILLIS_PER_SECOND}" else "${choice.toDouble() / MILLIS_PER_SECOND}"
+            FilterChip(
+                selected = choice == delay,
+                onClick = { onChange(choice) },
+                label = { Text(stringResource(R.string.seconds, seconds)) },
+            )
+        }
     }
 }
 
@@ -260,6 +293,11 @@ private fun RadioOption(
         Text(label, modifier = Modifier.padding(start = 16.dp))
     }
 }
+
+/** The laser pointer's fade delays offered, in milliseconds. */
+private val LASER_FADE_DELAYS = listOf(500L, 1000L, 2000L, 3000L)
+
+private const val MILLIS_PER_SECOND = 1000L
 
 private val STYLUS_BUTTONS =
     listOf(

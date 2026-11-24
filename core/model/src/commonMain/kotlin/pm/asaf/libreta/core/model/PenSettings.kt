@@ -63,8 +63,31 @@ data class HighlighterSettings(
     }
 }
 
+/** What the laser pointer draws like: Xournal++'s laser pointer pen, or its laser pointer highlighter. */
+enum class LaserLook { PEN, HIGHLIGHTER }
+
+/**
+ * The laser pointer: strokes shown over the page, never saved, that all fade out once nothing
+ * has been drawn with it for [fadeDelayMillis] (Xournal++'s laser pointer, whose delay is 500 ms
+ * by default; a second gives an audience more time).
+ */
+data class LaserSettings(
+    val look: LaserLook = LaserLook.PEN,
+    val color: Color = Palette.LASER,
+    val size: PenSize = PenSize.THICK,
+    val fadeDelayMillis: Long = 1000L,
+) {
+    /** In points: the pen's or the highlighter's width at [size]. */
+    val width: Double
+        get() = if (look == LaserLook.HIGHLIGHTER) HighlighterSettings(size = size).width else size.width
+
+    /** The kind of stroke it draws. */
+    val strokeTool: StrokeTool
+        get() = if (look == LaserLook.HIGHLIGHTER) StrokeTool.HIGHLIGHTER else StrokeTool.PEN
+}
+
 /** The tool chosen in the toolbar. */
-enum class Tool { PEN, HIGHLIGHTER, ERASER, SELECT, TEXT }
+enum class Tool { PEN, HIGHLIGHTER, LASER, ERASER, SELECT, TEXT }
 
 /**
  * What the pen and the highlighter draw (Xournal++'s drawing types): freehand strokes, or a
@@ -98,6 +121,7 @@ data class ToolSettings(
     val selectMode: SelectMode = SelectMode.RECTANGLE,
     val drawingType: DrawingType = DrawingType.FREEHAND,
     val text: TextSettings = TextSettings(),
+    val laser: LaserSettings = LaserSettings(),
 )
 
 object Palette {
@@ -107,9 +131,12 @@ object Palette {
     /** Xournal++'s default highlighter colour. */
     val HIGHLIGHTER: Color = Color.of(255, 255, 0)
 
+    /** The laser pointer's default colour: the toolbar's red. */
+    val LASER: Color = Color.of(237, 83, 83)
+
     /** The colours a toolbar offers by default: black, the default pen, red, dark green and the default highlighter. */
     val DEFAULT_FIXED: List<Color>
-        get() = listOf(Color.of(0, 0, 0), DEFAULT_PEN, Color.of(237, 83, 83), Color.of(58, 145, 4), HIGHLIGHTER)
+        get() = listOf(Color.of(0, 0, 0), DEFAULT_PEN, LASER, Color.of(58, 145, 4), HIGHLIGHTER)
 
     /** Xournal++'s default palette, `palettes/xournalpp.gpl`, in its order. */
     val XOURNALPP: List<Color> =

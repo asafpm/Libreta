@@ -138,6 +138,20 @@ val HighlighterIcon: ImageVector =
         lineTo(21f, 21f)
     }
 
+/** Laser pointer: a dot at the end of a trace curving up to it. */
+@Suppress("MagicNumber") // path coordinates
+val LaserIcon: ImageVector =
+    lineIcon("Laser pointer") {
+        moveTo(3f, 20f)
+        quadTo(6f, 12f, 10f, 15f)
+        quadTo(13f, 17f, 14.2f, 10.5f)
+        moveTo(14.5f, 6.5f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, 20.5f, 6.5f)
+        arcTo(3f, 3f, 0f, isMoreThanHalf = true, isPositiveArc = true, 14.5f, 6.5f)
+        moveTo(17.5f, 6.5f)
+        lineTo(17.5f, 6.55f)
+    }
+
 /** Eraser: a tilted block with a band, resting on a line. */
 @Suppress("MagicNumber") // path coordinates
 val EraserIcon: ImageVector =

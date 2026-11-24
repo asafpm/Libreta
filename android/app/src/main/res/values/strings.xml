@@ -156,6 +156,7 @@
     <string name="help_tools">Tools</string>
     <string name="help_pen">Writes in the colour and width chosen. Hold the pen still at the end of a stroke to make it a straight line.</string>
     <string name="help_highlighter">Marks over what is on the page, see-through.</string>
+    <string name="help_laser">Points at things while presenting: draws like the pen or the highlighter, but the traces are not kept in the note. They stay while you keep pointing and fade out once you stop; Settings chooses after how long.</string>
     <string name="help_eraser">Standard erases what it goes over, Whiteout paints white over it, and Delete stroke removes every stroke it touches.</string>
     <string name="help_select">Selects with a rectangle or a lasso, or a tap on one thing. Drag the selection to move it, a corner to resize it, the handle above it to turn it. The colours and widths restyle it, and the bar above it cuts, copies, pastes, duplicates and deletes.</string>
     <string name="help_text">Tap to write text, or tap text to change it. The toolbar chooses its font, size and colour.</string>
@@ -163,7 +164,7 @@
     <string name="help_shape_title">Shape</string>
     <string name="help_shape">Writes freehand, or draws a line, rectangle, ellipse, arrow, double arrow or coordinate system from where the pen goes down to where it lifts.</string>
     <string name="help_colors">The colour to write with. + picks any colour, and the ones picked are kept next to the others. Settings chooses the colours always offered.</string>
-    <string name="help_widths">How wide the pen, highlighter or eraser is. Settings chooses the widths offered.</string>
+    <string name="help_widths">How wide the pen, highlighter, laser pointer or eraser is. Settings chooses the widths offered.</string>
     <string name="help_pressure">When on, pressing harder writes wider. When off, the pen writes at its width however hard it presses.</string>
     <string name="help_finger">When on, a finger writes like the stylus, and two fingers scroll and zoom. When off, fingers only scroll and zoom. Settings can hide this button.</string>
     <string name="help_top_bar">The note\'s top bar</string>
@@ -209,6 +210,10 @@
     <string name="input">Input</string>
     <string name="tool_pen">Pen</string>
     <string name="tool_highlighter">Highlighter</string>
+    <string name="tool_laser">Laser pointer</string>
+    <string name="laser_fade">Laser pointer</string>
+    <string name="laser_fade_summary">How long its traces stay after you stop pointing, before they fade out</string>
+    <string name="seconds">%1$s s</string>
     <string name="tool_eraser">Eraser</string>
     <string name="tool_select">Select</string>
     <string name="tool_text">Text</string>

@@ -135,6 +135,7 @@ private val NOTE =
             listOf(
                 entry(PenIcon, R.string.tool_pen, R.string.help_pen),
                 entry(HighlighterIcon, R.string.tool_highlighter, R.string.help_highlighter),
+                entry(LaserIcon, R.string.tool_laser, R.string.help_laser),
                 entry(EraserIcon, R.string.tool_eraser, R.string.help_eraser),
                 entry(SelectIcon, R.string.tool_select, R.string.help_select),
                 entry(TextIcon, R.string.tool_text, R.string.help_text),

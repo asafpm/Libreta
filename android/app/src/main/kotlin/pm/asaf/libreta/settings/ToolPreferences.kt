@@ -10,6 +10,7 @@ import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.EraserSettings
 import pm.asaf.libreta.core.model.EraserType
 import pm.asaf.libreta.core.model.HighlighterSettings
+import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.PenSettings
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.SelectMode
@@ -52,6 +53,8 @@ class ToolPreferences(
             when (it.tool) {
                 Tool.HIGHLIGHTER -> it.copy(highlighter = it.highlighter.copy(color = color))
 
+                Tool.LASER -> it.copy(laser = it.laser.copy(color = color))
+
                 Tool.PEN, Tool.ERASER -> it.copy(pen = it.pen.copy(color = color))
 
                 Tool.TEXT -> it.copy(text = it.text.copy(color = color))
@@ -67,6 +70,7 @@ class ToolPreferences(
             when (it.tool) {
                 Tool.PEN -> it.copy(pen = it.pen.copy(size = size))
                 Tool.HIGHLIGHTER -> it.copy(highlighter = it.highlighter.copy(size = size))
+                Tool.LASER -> it.copy(laser = it.laser.copy(size = size))
                 Tool.ERASER -> it.copy(eraser = it.eraser.copy(size = size))
                 Tool.SELECT, Tool.TEXT -> it
             }
@@ -137,7 +141,14 @@ class ToolPreferences(
                 Keys.TEXT_COLOR,
                 tools.text.color.rgba
                     .toLong(),
-            ).apply()
+            ).putString(Keys.LASER_LOOK, tools.laser.look.name)
+            .putLong(
+                Keys.LASER_COLOR,
+                tools.laser.color.rgba
+                    .toLong(),
+            ).putString(Keys.LASER_SIZE, tools.laser.size.name)
+            .putLong(Keys.LASER_FADE_DELAY, tools.laser.fadeDelayMillis)
+            .apply()
     }
 }
 
@@ -169,6 +180,13 @@ private fun SharedPreferences.readTools(): ToolSettings {
                 getString(Keys.TEXT_FONT, null) ?: defaults.text.font,
                 getString(Keys.TEXT_SIZE, null)?.toDoubleOrNull() ?: defaults.text.size,
                 color(Keys.TEXT_COLOR) ?: defaults.text.color,
+            ),
+        laser =
+            LaserSettings(
+                enumOf(Keys.LASER_LOOK, defaults.laser.look),
+                color(Keys.LASER_COLOR) ?: defaults.laser.color,
+                enumOf(Keys.LASER_SIZE, defaults.laser.size),
+                getLong(Keys.LASER_FADE_DELAY, defaults.laser.fadeDelayMillis),
             ),
     )
 }
@@ -211,6 +229,10 @@ private object Keys {
     const val TEXT_FONT = "text.font"
     const val TEXT_SIZE = "text.size"
     const val TEXT_COLOR = "text.color"
+    const val LASER_LOOK = "laser.look"
+    const val LASER_COLOR = "laser.color"
+    const val LASER_SIZE = "laser.size"
+    const val LASER_FADE_DELAY = "laser.fadeDelay"
     const val FINGER = "finger.draws"
     const val FINGER_BUTTON = "toolbar.fingerButton"
     const val SIZES = "sizes.visible"

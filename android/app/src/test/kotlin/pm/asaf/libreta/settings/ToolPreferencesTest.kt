@@ -11,6 +11,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.DrawingType
+import pm.asaf.libreta.core.model.LaserLook
+import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.TextSettings
 import pm.asaf.libreta.core.model.Tool
@@ -53,6 +55,23 @@ class ToolPreferencesTest {
             ToolPreferences(preferences)
                 .tools.value.pen.pressure,
         )
+    }
+
+    @Test
+    fun theLaserPointerKeepsItsOwnSettings() {
+        val tools = ToolPreferences(preferences)
+        tools.selectTool(Tool.LASER)
+        tools.setColor(Color.of(0, 128, 255))
+        tools.setSize(PenSize.VERY_THICK)
+        tools.change { it.copy(laser = it.laser.copy(look = LaserLook.HIGHLIGHTER, fadeDelayMillis = 2000L)) }
+        val expected = LaserSettings(LaserLook.HIGHLIGHTER, Color.of(0, 128, 255), PenSize.VERY_THICK, 2000L)
+        assertEquals(expected, tools.tools.value.laser)
+        // The pen and the highlighter keep theirs.
+        assertEquals(ToolSettings().pen, tools.tools.value.pen)
+        assertEquals(ToolSettings().highlighter, tools.tools.value.highlighter)
+        val again = ToolPreferences(preferences).tools.value
+        assertEquals(Tool.LASER, again.tool)
+        assertEquals(expected, again.laser)
     }
 
     @Test

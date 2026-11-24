@@ -18,6 +18,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowLooper
 import pm.asaf.libreta.android.render.PageRenderer
 import pm.asaf.libreta.android.render.RenderCaches
 import pm.asaf.libreta.android.render.RenderThreads
@@ -31,6 +32,8 @@ import pm.asaf.libreta.core.model.Edit
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserSettings
 import pm.asaf.libreta.core.model.EraserType
+import pm.asaf.libreta.core.model.LaserLook
+import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.Layer
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.PageChange
@@ -40,6 +43,7 @@ import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.StrokeTool
 import pm.asaf.libreta.core.model.StylusButton
 import pm.asaf.libreta.core.model.Tool
+import java.util.concurrent.TimeUnit
 import kotlin.math.abs
 
 @RunWith(AndroidJUnit4::class)
@@ -500,6 +504,79 @@ class InkingTest {
         scheduler.advanceUntilIdle()
         view.draw(Canvas(bitmap))
         assertEquals(writing, bitmap.getPixel(500, 400))
+    }
+
+    private fun pointWithTheLaser() {
+        view.tools =
+            view.tools.copy(
+                tool = Tool.LASER,
+                laser = LaserSettings(LaserLook.PEN, Color.of(255, 0, 0), PenSize.VERY_THICK, 1000L),
+            )
+    }
+
+    private fun pixelAt(
+        x: Int,
+        y: Int,
+    ): Int {
+        val bitmap = Bitmap.createBitmap(WIDTH, HEIGHT, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        return bitmap.getPixel(x, y)
+    }
+
+    private fun isRed(pixel: Int) =
+        android.graphics.Color.red(pixel) == 255 && android.graphics.Color.green(pixel) < 100
+
+    private fun later(millis: Long) = ShadowLooper.idleMainLooper(millis, TimeUnit.MILLISECONDS)
+
+    @Test
+    fun theLaserPointerLeavesATraceThatFadesAndIsNotKept() {
+        scheduler.advanceUntilIdle()
+        pointWithTheLaser()
+        send(MotionEvent.ACTION_DOWN, stylus(300f, 400f))
+        for (step in 1..STEPS) send(MotionEvent.ACTION_MOVE, stylus(300f + 400f * step / STEPS, 400f))
+        assertTrue(isRed(pixelAt(500, 400)))
+        send(MotionEvent.ACTION_UP, stylus(700f, 400f))
+        // Not in the note: nothing changed and nothing to undo.
+        assertTrue(allEdits.isEmpty())
+        assertTrue(wetInk.segments.isEmpty())
+        assertTrue(isRed(pixelAt(500, 400)))
+        later(900)
+        assertTrue(isRed(pixelAt(500, 400)))
+        later(1000)
+        val gone = pixelAt(500, 400)
+        assertTrue(Integer.toHexString(gone), android.graphics.Color.green(gone) > 200)
+    }
+
+    @Test
+    fun pointingAgainKeepsTheTracesUp() {
+        scheduler.advanceUntilIdle()
+        pointWithTheLaser()
+        write(300f, 400f, 400f)
+        later(800)
+        write(300f, 600f, 400f)
+        later(800)
+        // A while after the first trace, but not after the last: both show.
+        assertTrue(isRed(pixelAt(500, 400)))
+        assertTrue(isRed(pixelAt(500, 600)))
+        later(1500)
+        assertTrue(!isRed(pixelAt(500, 400)) && !isRed(pixelAt(500, 600)))
+        assertTrue(allEdits.isEmpty())
+    }
+
+    @Test
+    fun theLaserPointerDoesNotStraighten() {
+        scheduler.advanceUntilIdle()
+        pointWithTheLaser()
+        send(MotionEvent.ACTION_DOWN, stylus(300f, 400f))
+        for (step in 1..STEPS) send(MotionEvent.ACTION_MOVE, stylus(300f + 400f * step / STEPS, 400f))
+        // Held still for a while, as would turn a pen stroke into a straight line.
+        repeat(STEPS) {
+            time += 200
+            send(MotionEvent.ACTION_MOVE, stylus(700f, 400f))
+        }
+        send(MotionEvent.ACTION_UP, stylus(700f, 400f))
+        assertTrue(allEdits.isEmpty())
+        assertTrue(isRed(pixelAt(500, 400)))
     }
 
     @Test

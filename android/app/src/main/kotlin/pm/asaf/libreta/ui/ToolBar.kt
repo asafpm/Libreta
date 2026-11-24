@@ -49,7 +49,7 @@ import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.Color as InkColor
 
 /**
- * The tools: pen, highlighter and eraser, then the chosen tool's colour (the fixed colours
+ * The tools: pen, highlighter, laser pointer, eraser, select and text, then the chosen tool's colour (the fixed colours
  * from Settings, recent custom colours, and a picker) and width (and the pen's pressure), or the
  * eraser's type and size; and finger drawing.
  */
@@ -77,11 +77,7 @@ fun ToolBar(
                         ).horizontalScroll(scroll)
                         .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                ToolButton(Tool.PEN, PenIcon, R.string.tool_pen, controls)
-                ToolButton(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter, controls)
-                ToolButton(Tool.ERASER, EraserIcon, R.string.tool_eraser, controls)
-                ToolButton(Tool.SELECT, SelectIcon, R.string.tool_select, controls)
-                ToolButton(Tool.TEXT, TextIcon, R.string.tool_text, controls)
+                for ((tool, icon, label) in TOOLS) ToolButton(tool, icon, label, controls)
                 Separator()
                 when (tools.tool) {
                     Tool.PEN -> {
@@ -99,6 +95,10 @@ fun ToolBar(
                             controls,
                             compact,
                         ) { picking = true }
+                    }
+
+                    Tool.LASER -> {
+                        LaserOptions(controls, compact) { picking = true }
                     }
 
                     Tool.ERASER -> {
@@ -152,19 +152,22 @@ private fun ToolButton(
 }
 
 /**
- * The fixed colours, recent ones and the current one if it is neither, then the widths
- * offered (and the current one), for the pen or highlighter.
+ * The drawing types ([shapes]), then the fixed colours, recent ones and the current one if it is
+ * neither, then the widths offered (and the current one), for the pen, highlighter or laser pointer.
  */
 @Composable
-private fun RowScope.InkOptions(
+internal fun RowScope.InkOptions(
     color: InkColor,
     size: PenSize,
     controls: ToolControls,
     compact: Boolean,
+    shapes: Boolean = true,
     onAddColor: () -> Unit,
 ) {
-    ShapeMenu(controls)
-    Separator()
+    if (shapes) {
+        ShapeMenu(controls)
+        Separator()
+    }
     val swatches = (controls.fixedColors + controls.recentColors + color).distinct()
     val sizes = PenSize.entries.filter { it in controls.visibleSizes || it == size }
     if (compact) {
@@ -320,6 +323,17 @@ private val SELECT_MODES =
     listOf(
         SelectMode.RECTANGLE to R.string.select_rectangle,
         SelectMode.LASSO to R.string.select_lasso,
+    )
+
+/** The tool buttons, in order: each tool, its icon and its name. */
+private val TOOLS =
+    listOf(
+        Triple(Tool.PEN, PenIcon, R.string.tool_pen),
+        Triple(Tool.HIGHLIGHTER, HighlighterIcon, R.string.tool_highlighter),
+        Triple(Tool.LASER, LaserIcon, R.string.tool_laser),
+        Triple(Tool.ERASER, EraserIcon, R.string.tool_eraser),
+        Triple(Tool.SELECT, SelectIcon, R.string.tool_select),
+        Triple(Tool.TEXT, TextIcon, R.string.tool_text),
     )
 
 private val ERASER_TYPES =

@@ -3,6 +3,7 @@
 <p><b>Writing</b></p>
 <ul>
 <li>Pen with pressure, highlighter, and an eraser that erases, paints white, or removes whole strokes</li>
+<li>A laser pointer for presenting: its traces fade away and are not saved</li>
 <li>Lines, rectangles, ellipses, arrows and coordinate systems</li>
 <li>Text in Sans, Serif and Monospace</li>
 <li>Select with a rectangle or a lasso, then move, resize, rotate, restyle, cut, copy and paste</li>

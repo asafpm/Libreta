@@ -4,6 +4,7 @@ package pm.asaf.libreta.viewer
 
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import androidx.input.motionprediction.MotionEventPredictor
@@ -21,6 +22,7 @@ import pm.asaf.libreta.core.model.Color
 import pm.asaf.libreta.core.model.Edit
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserType
+import pm.asaf.libreta.core.model.LaserLook
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.PageChange
 import pm.asaf.libreta.core.model.Tool
@@ -74,6 +76,9 @@ internal class Inking(
 
     /** A stroke being written that the view draws (a highlighter), and its page. */
     private var inView: Pair<Int, Element.Stroke>? = null
+
+    /** The laser pointer's traces, fading. */
+    private val laser = LaserTraces()
     private var wetFramesLeft = 0
     private val predictor: MotionEventPredictor? = runCatching { MotionEventPredictor.newInstance(view) }.getOrNull()
 
@@ -214,6 +219,8 @@ internal class Inking(
                     stroke: Element.Stroke,
                 ) = commitStroke(page, stroke)
 
+                override val laser: LaserTraces get() = this@Inking.laser
+
                 override fun startErasing(
                     deleteStrokes: Boolean,
                     halfSize: Double,
@@ -296,6 +303,7 @@ internal class Inking(
         selection.clear()
         pending.clear()
         inView = null
+        laser.clear()
         wetFramesLeft = 0
         wetInk.clear()
     }
@@ -322,6 +330,7 @@ internal class Inking(
         drawTiles()
         val state = host.state
         val painter = renderer
+        var pointing = false
         if (state != null && painter != null) {
             pending.draw(
                 canvas,
@@ -332,6 +341,12 @@ internal class Inking(
                 state.pages::rendered,
                 state.renderer::version,
             )
+            pointing =
+                laser.draw(canvas, SystemClock.uptimeMillis()) { page, stroke ->
+                    canvas.onPage(state.layout, state.viewport, page) {
+                        painter.renderElements(listOf(stroke), canvas, state.viewport.zoom.toFloat())
+                    }
+                }
             inView?.let { (page, stroke) ->
                 canvas.onPage(state.layout, state.viewport, page) {
                     painter.renderElements(listOf(stroke), canvas, state.viewport.zoom.toFloat())
@@ -343,7 +358,7 @@ internal class Inking(
         erasing.drawCursor(canvas)
         penCursor.draw(canvas)
         if (wetFramesLeft > 0 && --wetFramesLeft == 0) wetInk.clear()
-        return wetFramesLeft > 0
+        return wetFramesLeft > 0 || pointing
     }
 
     /**
@@ -511,6 +526,14 @@ private fun cursorLook(
             // See-through, like highlighter ink.
             val color = shown(tools.highlighter.color) and RGB or HALF_OPAQUE
             PenCursor.Look.Bar(color, (tools.highlighter.width * zoom).toFloat())
+        }
+
+        Tool.LASER -> {
+            val width = (tools.laser.width * zoom).toFloat()
+            when (tools.laser.look) {
+                LaserLook.PEN -> PenCursor.Look.Dot(shown(tools.laser.color), width)
+                LaserLook.HIGHLIGHTER -> PenCursor.Look.Bar(shown(tools.laser.color) and RGB or HALF_OPAQUE, width)
+            }
         }
 
         Tool.TEXT -> {

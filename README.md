@@ -15,6 +15,7 @@ notes open on the computer with Xournal++ and on the tablet with Libreta.
 </p>
 
 - Pen with pressure, highlighter, eraser, shapes, text, pictures, selection, pages and layers
+- A laser pointer for presenting, whose traces fade away and aren't saved
 - Notes on PDFs, kept next to the PDF as Xournal++ keeps them; export to PDF
 - A library of the folders you choose, on the device or in any storage app (such as Nextcloud)
 - No ads, no tracking, no internet access

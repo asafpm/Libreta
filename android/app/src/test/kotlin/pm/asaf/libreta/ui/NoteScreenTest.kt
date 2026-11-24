@@ -71,9 +71,12 @@ import pm.asaf.libreta.core.model.DrawingType
 import pm.asaf.libreta.core.model.Element
 import pm.asaf.libreta.core.model.EraserSettings
 import pm.asaf.libreta.core.model.EraserType
+import pm.asaf.libreta.core.model.LaserLook
+import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.PageStyle
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.Tool
+import pm.asaf.libreta.core.model.ToolSettings
 import pm.asaf.libreta.files.Autosave
 import pm.asaf.libreta.library.FakeDocumentsProvider
 import pm.asaf.libreta.library.LibraryRoot
@@ -172,6 +175,25 @@ class NoteScreenTest : NoteScreenTesting() {
         // The view writes with them, and they are remembered.
         eventually { view.tools == tools }
         assertEquals(tools, AppViewModel(application).tools.tools.value)
+    }
+
+    @Test
+    @Config(qualifiers = "w1200dp-h900dp")
+    fun theLaserPointerHasItsOwnLookColourAndWidth() {
+        val model = openLecture()
+        compose.onNodeWithContentDescription("Laser pointer").performClick()
+        compose.onNodeWithContentDescription("Colour: Red").performScrollTo().assertIsSelected()
+        // It only draws freehand.
+        compose.onNodeWithContentDescription("Shape: Freehand").assertDoesNotExist()
+        compose.onNodeWithText("Highlighter").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Colour: Black").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("Width: Very thick").performScrollTo().performClick()
+
+        val tools = model.tools.tools.value
+        assertEquals(Tool.LASER, tools.tool)
+        assertEquals(LaserSettings(LaserLook.HIGHLIGHTER, Color.of(0, 0, 0), PenSize.VERY_THICK), tools.laser)
+        assertEquals(ToolSettings().pen, tools.pen)
+        assertEquals(ToolSettings().highlighter, tools.highlighter)
     }
 
     @Test
