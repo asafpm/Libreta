@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -45,6 +47,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -138,7 +141,9 @@ fun HomeScreen(
         } else if (locals.isEmpty() && !anyOpened) {
             NoFolders(onAddFolder, Modifier.padding(padding))
         } else {
-            RefreshableGrid(onRefresh, Modifier.padding(padding)) {
+            val grid = rememberLazyGridState()
+            TopFollowsRecent(grid, recent.isNotEmpty())
+            RefreshableGrid(onRefresh, Modifier.padding(padding), grid) {
                 if (locals.isEmpty()) item(key = "add", span = { GridItemSpan(maxLineSpan) }) { NoFolders(onAddFolder) }
                 recentItems(recentTitle, recent, previews, onOpenRecent)
                 for (root in locals) {
@@ -282,6 +287,7 @@ private fun SortMenu(sorting: Sorting) {
 private fun RefreshableGrid(
     onRefresh: suspend () -> Unit,
     modifier: Modifier = Modifier,
+    state: LazyGridState = rememberLazyGridState(),
     content: LazyGridScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -299,8 +305,33 @@ private fun RefreshableGrid(
             }
         },
         modifier = modifier,
-    ) { LibraryGrid(content = content) }
+    ) { LibraryGrid(state = state, content = content) }
 }
+
+/**
+ * Keeps the top of [grid] in view when the recent notes appear or go, at its top. A lazy grid
+ * keeps the item at its top where it is when items are added before it, so recent notes found
+ * once the library is shown (coming back home) would be above it, out of view.
+ */
+@Composable
+private fun TopFollowsRecent(
+    grid: LazyGridState,
+    shown: Boolean,
+) {
+    val last = remember { RecentShown(shown) }
+    SideEffect {
+        // Before the grid is laid out again: where it is is where it was.
+        if (last.shown != shown && grid.firstVisibleItemIndex == 0 && grid.firstVisibleItemScrollOffset == 0) {
+            grid.requestScrollToItem(0)
+        }
+        last.shown = shown
+    }
+}
+
+/** Whether recent notes were shown at the last composition; only a change matters, so not state. */
+private class RecentShown(
+    var shown: Boolean,
+)
 
 /** Looking for notes by name ([onSearch]), what was found, and opening it ([onOpen]). */
 class SearchControls(

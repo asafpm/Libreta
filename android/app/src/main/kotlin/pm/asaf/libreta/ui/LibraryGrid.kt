@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -72,9 +73,9 @@ import pm.asaf.libreta.library.SearchResults
 @Composable
 fun LibraryGrid(
     modifier: Modifier = Modifier,
+    state: LazyGridState = rememberLazyGridState(),
     content: LazyGridScope.() -> Unit,
 ) {
-    val state = rememberLazyGridState()
     val tracker = remember { DragTracker() }
     val follower = remember(tracker) { DragFollower(tracker) }
     ScrollWhileDragging(tracker, state)
