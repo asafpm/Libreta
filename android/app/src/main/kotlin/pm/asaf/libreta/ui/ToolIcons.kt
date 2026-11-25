@@ -402,6 +402,21 @@ val BackgroundIcon: ImageVector =
         lineTo(16f, 16f)
     }
 
+/** Page size: a portrait and a landscape page from the same corner. */
+@Suppress("MagicNumber") // path coordinates
+val PageSizeIcon: ImageVector =
+    lineIcon("Page size") {
+        moveTo(3f, 3f)
+        lineTo(13f, 3f)
+        lineTo(13f, 21f)
+        lineTo(3f, 21f)
+        close()
+        moveTo(13f, 11f)
+        lineTo(21f, 11f)
+        lineTo(21f, 21f)
+        lineTo(13f, 21f)
+    }
+
 /** Layers: stacked sheets seen at an angle. */
 @Suppress("MagicNumber") // path coordinates
 val LayersIcon: ImageVector =

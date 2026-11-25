@@ -8,6 +8,8 @@
 
 package pm.asaf.libreta.core.model
 
+import kotlin.math.abs
+
 /** Paper sizes for new notes, portrait, in points. */
 enum class PaperSize(
     val width: Double,
@@ -17,6 +19,24 @@ enum class PaperSize(
     LETTER(612.0, 792.0),
     A5(419.53, 595.28),
     LEGAL(612.0, 1008.0),
+    ;
+
+    /** Width and height, turned to [landscape] or portrait. */
+    fun size(landscape: Boolean): Pair<Double, Double> = if (landscape) height to width else width to height
+
+    companion object {
+        /** Within this of a paper size (in points), a page is that size. */
+        private const val TOLERANCE = 1.0
+
+        /** The paper size a page of [width] by [height] is, in either orientation, if any. */
+        fun of(
+            width: Double,
+            height: Double,
+        ): PaperSize? {
+            val (short, long) = minOf(width, height) to maxOf(width, height)
+            return entries.firstOrNull { abs(it.width - short) <= TOLERANCE && abs(it.height - long) <= TOLERANCE }
+        }
+    }
 }
 
 /** New notes: Xournal++-style names and a first page. */
@@ -151,7 +171,7 @@ data class NewPageTemplate(
                 listOf(Layer(emptyList())),
             )
         }
-        val (width, height) = if (landscape) paper.height to paper.width else paper.width to paper.height
+        val (width, height) = paper.size(landscape)
         return Page(width, height, Background.Solid(color, style), listOf(Layer(emptyList())))
     }
 

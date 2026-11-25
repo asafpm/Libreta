@@ -700,6 +700,23 @@ class InkingTest {
     }
 
     @Test
+    fun aPageOfANewSizeIsLaidOutAgain() {
+        scheduler.advanceUntilIdle()
+        view.layerViews = listOf(LayerView.of(pages[0]), LayerView(selected = 0))
+        // The first page turned to landscape: shorter, so the second comes up.
+        val turned = listOf(pages[0].copy(width = blank.height, height = blank.width), pages[1])
+        view.showDocument(turned)
+        assertEquals(LayerView(selected = 0), view.layerViews[1])
+        val second = DocumentLayout(turned.map { Size(it.width, it.height) }).pageBounds(1)
+        val viewport = checkNotNull(view.viewport)
+        val x = ((second.left + 100 - viewport.offsetX) * viewport.zoom).toFloat()
+        val y = ((second.top + 50 - viewport.offsetY) * viewport.zoom).toFloat()
+        assertTrue(y < HEIGHT)
+        write(x, y)
+        assertEquals(1, edits.last().first)
+    }
+
+    @Test
     fun inkGoesOnTheSelectedLayerAndHiddenLayersAreNotDrawn() {
         view.scrollToPage(1)
         scheduler.advanceUntilIdle()

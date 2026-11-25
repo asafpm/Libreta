@@ -9,6 +9,7 @@ import pm.asaf.libreta.core.model.Edit
 import pm.asaf.libreta.core.model.LayerOperations
 import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.PageOperations
+import pm.asaf.libreta.core.model.PaperSize
 import pm.asaf.libreta.viewer.DocumentView
 import pm.asaf.libreta.viewer.LayerView
 import pm.asaf.libreta.viewer.scrollToPage
@@ -74,6 +75,13 @@ class PageCommands(
         indices: Collection<Int>,
         background: Background.Solid,
     ) = editor.apply(PageOperations.setBackground(editor.document, indices, background))
+
+    /** Pages [indices] at [paper]'s size (their own when null), [landscape] or portrait. */
+    fun setPaper(
+        indices: Collection<Int>,
+        paper: PaperSize?,
+        landscape: Boolean,
+    ) = editor.apply(PageOperations.setPaper(editor.document, indices, paper, landscape))
 }
 
 /** Layer commands on the layers of a page, and how they are shown (not edits, like Xournal++). */

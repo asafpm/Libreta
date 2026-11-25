@@ -119,6 +119,9 @@
     <string name="drag_pages_hint">Hold a page and drag it to move it</string>
     <string name="page_background">Page background</string>
     <string name="apply_to_all_pages">Apply to all pages</string>
+    <string name="page_size">Page size</string>
+    <string name="page_size_keeps_content">What is written stays where it is, even past the edge of a smaller page.</string>
+    <string name="pdf_pages_keep_size">PDF pages keep the size of the PDF.</string>
     <string name="ruling">Ruling</string>
     <string name="paper_color">Paper colour</string>
     <string name="style_plain">Plain</string>
@@ -170,7 +173,7 @@
     <string name="help_top_bar">The note\'s top bar</string>
     <string name="help_undo_title">Undo and redo</string>
     <string name="help_undo">Undoes the last change, or does it again.</string>
-    <string name="help_pages">Shows the pages: tap one to go to it, hold one and drag it to move it. Its buttons add, duplicate and delete pages and change their background.</string>
+    <string name="help_pages">Shows the pages: tap one to go to it, hold one and drag it to move it. Its buttons add, duplicate and delete pages and change their background and size.</string>
     <string name="help_insert_page">Adds a page after the one in view.</string>
     <string name="help_layers">Shows the page\'s layers: choose the one to write on, show or hide them, add, reorder, merge and rename them.</string>
     <string name="help_paste">Pastes what was copied, or a picture copied in another app.</string>

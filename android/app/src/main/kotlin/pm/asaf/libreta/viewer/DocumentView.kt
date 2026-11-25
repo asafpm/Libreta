@@ -65,15 +65,22 @@ class DocumentView
              * pages kept keep their tiles, versions and layer views. Closes this one's renderer.
              * Also returns each old page's new index (-1: gone).
              */
-            fun rearranged(next: List<Page>): Pair<Content, IntArray> {
-                val mapping = pageMapping(pages.all, next)
+            fun rearranged(
+                next: List<Page>,
+                mapping: IntArray = pageMapping(pages.all, next),
+            ): Pair<Content, IntArray> {
                 val moved = IntArray(pages.size) { -1 }
                 mapping.forEachIndexed { i, old -> if (old >= 0) moved[old] = i }
                 renderer.close()
                 caches.tiles.remap { old -> moved[old].takeIf { it >= 0 } }
                 caches.thumbnails.remap { old -> moved[old].takeIf { it >= 0 } }
                 val views = mapping.mapIndexed { i, old -> if (old >= 0) pages.view(old) else LayerView.of(next[i]) }
-                val versions = IntArray(next.size) { i -> mapping[i].takeIf { it >= 0 }?.let(renderer::version) ?: 0 }
+                // A page changed in place is a new version of it.
+                val versions =
+                    IntArray(next.size) { i ->
+                        val old = mapping[i]
+                        if (old < 0) 0 else renderer.version(old) + if (pages.all[old] === next[i]) 0 else 1
+                    }
                 return Content(ShownPages(next, views), caches, newRenderer, threads, versions, onRendered) to moved
             }
         }
@@ -274,12 +281,17 @@ class DocumentView
             // The document changed under the selection.
             inking.selection.clear()
             val mapping = pageMapping(content.pages.all, pages)
-            if (pages.size == content.pages.size && mapping.withIndex().all { (i, old) -> old == i || old == -1 }) {
+            val inPlace =
+                pages.size == content.pages.size && mapping.withIndex().all { (i, old) -> old == i || old == -1 }
+            val resized = inPlace && pages.indices.any { !pages[it].sameSize(content.pages.all[it]) }
+            if (inPlace && !resized) {
                 for (i in pages.indices) if (mapping[i] == -1) inking.replacePage(i) { this[i] = pages[i] }
                 return
             }
             val anchor = anchor
-            val (next, moved) = content.rearranged(pages)
+            // Pages of a new size are laid out again, each still itself (its layer view kept).
+            val (next, moved) =
+                if (resized) content.rearranged(pages, IntArray(pages.size) { it }) else content.rearranged(pages)
             inking.reset()
             this.content = next
             pendingAnchor =
@@ -662,6 +674,8 @@ class DocumentView
 
 /** Flings from [viewport] of [layout] in a view [width] x [height], at the given velocities. */
 @Suppress("LongParameterList") // the view's size and the velocity
+private fun Page.sameSize(other: Page) = width == other.width && height == other.height
+
 private fun OverScroller.fling(
     layout: DocumentLayout,
     viewport: Viewport,

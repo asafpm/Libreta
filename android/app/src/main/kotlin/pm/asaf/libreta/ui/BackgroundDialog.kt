@@ -79,13 +79,7 @@ fun BackgroundDialog(
                 RulingChoices(style, previews) { style = it }
                 Text(stringResource(R.string.paper_color), style = MaterialTheme.typography.titleSmall)
                 PaperChoices(color, { color = it }) { picking = true }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.toggleable(value = allPages, role = Role.Checkbox) { allPages = it },
-                ) {
-                    Checkbox(checked = allPages, onCheckedChange = null)
-                    Text(stringResource(R.string.apply_to_all_pages), modifier = Modifier.padding(start = 8.dp))
-                }
+                AllPagesChoice(allPages) { allPages = it }
             }
         },
         confirmButton = {
@@ -104,6 +98,21 @@ fun BackgroundDialog(
             },
             onDismiss = { picking = false },
         )
+    }
+}
+
+/** Whether a change is for all pages, or just one. */
+@Composable
+internal fun AllPagesChoice(
+    allPages: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.toggleable(value = allPages, role = Role.Checkbox, onValueChange = onChange),
+    ) {
+        Checkbox(checked = allPages, onCheckedChange = null)
+        Text(stringResource(R.string.apply_to_all_pages), modifier = Modifier.padding(start = 8.dp))
     }
 }
 

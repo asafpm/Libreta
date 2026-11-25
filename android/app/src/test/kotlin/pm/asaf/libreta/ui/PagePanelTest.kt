@@ -60,7 +60,7 @@ class PagePanelTest {
                     physics.pages.take(count),
                     current = 0,
                     thumbnails,
-                    PageActions({}, {}, {}, {}, { from, to -> moves += from to to }, {}),
+                    PageActions({}, {}, {}, {}, { from, to -> moves += from to to }, {}, {}),
                 )
             }
         }
@@ -70,7 +70,7 @@ class PagePanelTest {
     fun commandsAreInOneRowAndAHintTellsHowToMovePages() {
         show()
         val top = compose.onNodeWithContentDescription("Insert a page after this one").getBoundsInRoot().top
-        for (command in listOf("Duplicate page", "Delete page", "Page background")) {
+        for (command in listOf("Duplicate page", "Delete page", "Page background", "Page size")) {
             assertEquals(command, top, compose.onNodeWithContentDescription(command).getBoundsInRoot().top)
         }
         // Pages are moved by dragging them, as the hint says, not by buttons.

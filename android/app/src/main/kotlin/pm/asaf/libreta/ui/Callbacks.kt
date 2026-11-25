@@ -141,6 +141,7 @@ class PageActions(
     val delete: (Int) -> Unit,
     val move: (Int, Int) -> Unit,
     val background: (Int) -> Unit,
+    val size: (Int) -> Unit,
 )
 
 /** What the layer sheet does, for the page it shows. */

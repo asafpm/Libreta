@@ -62,6 +62,43 @@ class PageOperationsTest {
     }
 
     @Test
+    fun changesPaperSizeKeepingWhatIsOnThePages() {
+        val after = done(PageOperations.setPaper(document, listOf(0, 2), PaperSize.A5, landscape = true))
+        val turned = PaperSize.A5.height to PaperSize.A5.width
+        assertEquals(listOf(turned, 100.0 to 200.0, turned), after.pages.map { it.width to it.height })
+        assertEquals(a.copy(width = turned.first, height = turned.second), after.pages[0])
+        assertSame(b, after.pages[1])
+        assertNull(PageOperations.setPaper(after, listOf(0), PaperSize.A5, landscape = true))
+    }
+
+    @Test
+    fun turnsPagesOfTheirOwnSize() {
+        val after = done(PageOperations.setPaper(document, listOf(1), paper = null, landscape = true))
+        assertEquals(200.0 to 100.0, after.pages[1].width to after.pages[1].height)
+        val back = checkNotNull(PageOperations.setPaper(after, listOf(1), paper = null, landscape = false))
+        assertEquals(100.0 to 200.0, after.applying(back).pages[1].size)
+        assertNull(PageOperations.setPaper(document, listOf(1), paper = null, landscape = false))
+    }
+
+    @Test
+    fun pdfPagesKeepThePdfPageSize() {
+        val pdf = Document(listOf(page(background = Background.Pdf(1, FileDomain.ATTACH, "bg.pdf")), a))
+        val after = pdf.applying(checkNotNull(PageOperations.setPaper(pdf, listOf(0, 1), PaperSize.A4, false)))
+        assertSame(pdf.pages[0], after.pages[0])
+        assertEquals(PaperSize.A4.width to PaperSize.A4.height, after.pages[1].size)
+        assertNull(PageOperations.setPaper(pdf, listOf(0), PaperSize.A4, false))
+    }
+
+    @Test
+    fun aPageSizeIsKnownInEitherOrientation() {
+        assertEquals(PaperSize.A4, PaperSize.of(595.0, 842.0))
+        assertEquals(PaperSize.LETTER, PaperSize.of(792.0, 612.0))
+        assertNull(PaperSize.of(100.0, 200.0))
+    }
+
+    private val Page.size get() = width to height
+
+    @Test
     fun changesLayers() {
         val added = done(LayerOperations.addLayer(document, 1, 1))
         assertEquals(listOf(1, 0), added.pages[1].layers.map { it.elements.size })

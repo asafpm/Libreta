@@ -73,7 +73,7 @@ import kotlin.math.abs
 /**
  * The note's pages as thumbnails (tap one to go there, or hold and drag it to move it, as a
  * hint says), and commands for the [current] one: insert a page after it, duplicate, delete,
- * and change its background.
+ * and change its background and size.
  */
 @Composable
 fun PagePanel(
@@ -139,6 +139,7 @@ private fun PageCommands(
         Action(DuplicateIcon, R.string.duplicate_page) { actions.duplicate(current) }
         Action(Icons.Filled.Delete, R.string.delete_page, enabled = count > 1) { actions.delete(current) }
         Action(BackgroundIcon, R.string.page_background) { actions.background(current) }
+        Action(PageSizeIcon, R.string.page_size) { actions.size(current) }
     }
 }
 
@@ -377,7 +378,7 @@ private fun Action(
 }
 
 /** Wide enough for the commands in one row. */
-private const val PANEL_DP = 200
+private const val PANEL_DP = 248
 private const val THUMBNAIL_MARGIN_DP = 16
 
 /** How wide thumbnails are shown. */

@@ -64,6 +64,36 @@ object PageOperations {
         return changes.takeIf { it.isNotEmpty() }?.let(::Edit)
     }
 
+    /**
+     * Gives pages [indices] [paper]'s size (their own size when null), [landscape] or portrait.
+     * What is on them stays where it is, even past a nearer edge. PDF pages keep the PDF page's
+     * size, as in Xournal++.
+     */
+    fun setPaper(
+        document: Document,
+        indices: Collection<Int>,
+        paper: PaperSize?,
+        landscape: Boolean,
+    ): Edit? {
+        val changes =
+            indices.toSortedSet().mapNotNull { index ->
+                val page = document.pages[index]
+                val (width, height) =
+                    paper?.size(landscape)
+                        ?: if (landscape == page.width > page.height) {
+                            page.width to page.height
+                        } else {
+                            page.height to page.width
+                        }
+                if (page.background is Background.Pdf || (width == page.width && height == page.height)) {
+                    null
+                } else {
+                    PageChange(index, page, page.copy(width = width, height = height))
+                }
+            }
+        return changes.takeIf { it.isNotEmpty() }?.let(::Edit)
+    }
+
     /** [document]'s pages rearranged into [pages], with background references that still hold. */
     private fun rearranged(
         document: Document,

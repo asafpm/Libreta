@@ -63,6 +63,7 @@ import pm.asaf.libreta.R
 import pm.asaf.libreta.SaveStatus
 import pm.asaf.libreta.android.render.RenderThreads
 import pm.asaf.libreta.core.geometry.ViewportAnchor
+import pm.asaf.libreta.core.model.Background
 import pm.asaf.libreta.core.model.NewPageTemplate
 import pm.asaf.libreta.core.model.Page
 import pm.asaf.libreta.core.model.Tool
@@ -280,6 +281,9 @@ internal class NotePanels {
     /** The page whose background is being chosen. */
     var background by mutableStateOf<Int?>(null)
 
+    /** The page whose size is being chosen. */
+    var size by mutableStateOf<Int?>(null)
+
     /** The selection's box on the canvas, in pixels; null if nothing is selected. */
     var selection by mutableStateOf<RectF?>(null)
 }
@@ -399,11 +403,12 @@ private fun NotePagePanel(
                 panels.current = to
             },
             background = { panels.background = it },
+            size = { panels.size = it },
         ),
     )
 }
 
-/** The layer sheet and the background dialog, when open. */
+/** The layer sheet, and the background and page size dialogs, when open. */
 @Composable
 private fun NoteDialogs(
     state: NoteState.Loaded,
@@ -452,6 +457,17 @@ private fun NoteDialogs(
                 panels.background = null
             },
             onDismiss = { panels.background = null },
+        )
+    }
+    panels.size?.let { index ->
+        PageSizeDialog(
+            page = pages[index.coerceIn(0, pages.lastIndex)],
+            hasPdfPages = pages.any { it.background is Background.Pdf },
+            onApply = { paper, landscape, all ->
+                commands.pages.setPaper(if (all) pages.indices.toList() else listOf(index), paper, landscape)
+                panels.size = null
+            },
+            onDismiss = { panels.size = null },
         )
     }
 }

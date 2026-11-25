@@ -74,6 +74,7 @@ import pm.asaf.libreta.core.model.EraserType
 import pm.asaf.libreta.core.model.LaserLook
 import pm.asaf.libreta.core.model.LaserSettings
 import pm.asaf.libreta.core.model.PageStyle
+import pm.asaf.libreta.core.model.PaperSize
 import pm.asaf.libreta.core.model.PenSize
 import pm.asaf.libreta.core.model.Tool
 import pm.asaf.libreta.core.model.ToolSettings
@@ -292,8 +293,18 @@ class NoteScreenTest : NoteScreenTesting() {
         compose.onNodeWithText("OK").performClick()
         assertTrue(model.pages().all { (it.background as Background.Solid).style == PageStyle.GRAPH })
 
+        // Every page Letter, landscape; what is on them stays.
+        val unsized = model.pages()
+        clickFirst("Page size")
+        compose.onNodeWithText("Letter").performClick()
+        compose.onNodeWithText("Landscape").performClick()
+        compose.onNodeWithText("Apply to all pages").performClick()
+        compose.onNodeWithText("OK").performClick()
+        assertTrue(model.pages().all { it.width to it.height == PaperSize.LETTER.size(landscape = true) })
+        assertEquals(unsized.map { it.layers }, model.pages().map { it.layers })
+
         // All undone, step by step.
-        repeat(5) { compose.onNodeWithContentDescription("Undo").performClick() }
+        repeat(6) { compose.onNodeWithContentDescription("Undo").performClick() }
         assertEquals(listOf(first), model.pages())
     }
 

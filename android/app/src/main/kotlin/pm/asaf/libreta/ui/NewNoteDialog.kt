@@ -71,10 +71,10 @@ fun NewNoteDialog(
     )
 }
 
-/** The paper size and orientation, as chips and a segmented button. */
+/** The paper size (none chosen when null) and orientation, as chips and a segmented button. */
 @Composable
 internal fun PaperChoice(
-    paper: PaperSize,
+    paper: PaperSize?,
     landscape: Boolean,
     onPaper: (PaperSize) -> Unit,
     onLandscape: (Boolean) -> Unit,
